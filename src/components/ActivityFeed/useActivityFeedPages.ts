@@ -5,8 +5,12 @@ import {
   ActivityScope,
   useLazyGetActivityFeedQuery,
 } from '../../api/audit-service/Activity/activity';
+import { isInitialStatusEcho } from './activityFormat';
 
 export type ActivityFeedError = 'unavailable' | 'forbidden' | 'failed';
+
+const visible = (items: ActivityItem[] | undefined): ActivityItem[] =>
+  (items ?? []).filter((i) => !isInitialStatusEcho(i));
 
 type State = {
   items: ActivityItem[];
@@ -55,7 +59,7 @@ export const useActivityFeedPages = (args: ActivityFeedArgs) => {
       const res = await trigger({ ...argsRef.current, cursor: null }, false).unwrap();
       if (id !== requestId.current) return;
       setState({
-        items: res.items ?? [],
+        items: visible(res.items),
         nextCursor: res.next_cursor ?? null,
         scope: res.scope,
         loading: false,
@@ -90,7 +94,7 @@ export const useActivityFeedPages = (args: ActivityFeedArgs) => {
         const seen = new Set(prev.items.map((i) => i.id));
         return {
           ...prev,
-          items: [...prev.items, ...(res.items ?? []).filter((i) => !seen.has(i.id))],
+          items: [...prev.items, ...visible(res.items).filter((i) => !seen.has(i.id))],
           nextCursor: res.next_cursor ?? null,
           scope: res.scope ?? prev.scope,
           loadingMore: false,

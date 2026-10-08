@@ -17,12 +17,15 @@ import type { ActivityCategory, ActivityItem } from '../../api/audit-service/Act
 import { Button, Search } from '../shared';
 import { Loader } from '../shared/ui/loader';
 import PeoplePicker, { PersonOption } from './PeoplePicker';
+import JobPlaceFilters, { PlaceOption } from './JobPlaceFilters';
 import { useActivityFeedPages } from './useActivityFeedPages';
 import {
   DatePreset,
+  FeedEntry,
   Segment,
   activityTargetPath,
   buildActivitySentence,
+  collapseRepeats,
   exactTimeLabel,
   groupByDay,
   presetRange,
@@ -89,7 +92,17 @@ const Sentence = ({ segments }: { segments: Segment[] }) => (
 
 type Chip = { key: string; label: string; onRemove: () => void };
 
-const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
+type ActivityCardProps = {
+  fullPage: boolean;
+  /**
+   * Full-page filters and paging, rendered inside a host that already
+   * supplies the heading and spacing (My Company's "Activity Feed" tab) —
+   * drops this card's own header and the top offset a standalone page needs.
+   */
+  embedded?: boolean;
+};
+
+const ActivityCard = ({ fullPage, embedded = false }: ActivityCardProps) => {
   const navigate = useNavigate();
   const [category, setCategory] = useState('all');
   const [q, setQ] = useState('');
@@ -97,6 +110,8 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
   const [customRange, setCustomRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [mine, setMine] = useState(false);
   const [people, setPeople] = useState<PersonOption[]>([]);
+  const [departmentFilter, setDepartmentFilter] = useState<PlaceOption | null>(null);
+  const [locationFilter, setLocationFilter] = useState<PlaceOption | null>(null);
 
   const range = useMemo(
     () =>
@@ -113,6 +128,8 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
     q: q || undefined,
     mine: mine || undefined,
     actorIds: people.length ? people.map((p) => p.value) : undefined,
+    departmentId: departmentFilter?.value,
+    locationId: locationFilter?.value,
     occurredFrom: range.from,
     occurredTo: range.to,
     limit: fullPage ? PAGE_LIMIT : WIDGET_LIMIT,
@@ -128,7 +145,11 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
         ? ASSIGNED_JOBS_TABS
         : COMPANY_TABS;
   const showPeoplePicker = scope === 'company';
+  // Job ID/title search means nothing on the platform view (company events).
+  const showSearch = scope !== 'platform';
   const showMine = scope !== 'platform';
+  // Job filters — no departments or locations to pick across companies.
+  const showPlaceFilters = scope !== null && scope !== 'platform';
 
   const chips: Chip[] = [];
   if (q) chips.push({ key: 'q', label: `Search: ${q}`, onRemove: () => setQ('') });
@@ -140,6 +161,20 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
         setPreset('7d');
         setCustomRange(null);
       },
+    });
+  }
+  if (departmentFilter) {
+    chips.push({
+      key: 'department',
+      label: `Department: ${departmentFilter.label}`,
+      onRemove: () => setDepartmentFilter(null),
+    });
+  }
+  if (locationFilter) {
+    chips.push({
+      key: 'location',
+      label: `Location: ${locationFilter.label}`,
+      onRemove: () => setLocationFilter(null),
     });
   }
   if (mine) chips.push({ key: 'mine', label: 'Only mine', onRemove: () => setMine(false) });
@@ -156,7 +191,7 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
     if (path) navigate(path);
   };
 
-  const renderItem = (item: ActivityItem) => {
+  const renderItem = ({ item, count }: FeedEntry) => {
     const sentence = buildActivitySentence(item, scope ?? 'company');
     const path = activityTargetPath(item);
     return (
@@ -164,7 +199,7 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
         <div
           role={path ? 'link' : undefined}
           tabIndex={path ? 0 : undefined}
-          aria-label={sentenceToText(sentence)}
+          aria-label={`${sentenceToText(sentence)}${count > 1 ? `, ${count} times` : ''}`}
           onClick={() => openItem(item)}
           onKeyDown={(e) => e.key === 'Enter' && openItem(item)}
           className={`flex items-center justify-between gap-4 px-4 py-2 bg-white rounded-lg transition ${
@@ -177,6 +212,7 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
             </div>
             <p className="text-sm text-gray-700 leading-relaxed">
               <Sentence segments={sentence} />
+              {count > 1 && <span className="ml-1.5 text-xs text-gray-500">· {count} times</span>}
             </p>
           </div>
           <span className="shrink-0 text-xs text-gray-500" title={exactTimeLabel(item.occurred_at)}>
@@ -205,7 +241,7 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
       return <p className="text-sm text-gray-500 text-center py-6">No activity found</p>;
     }
     if (!fullPage) {
-      return <ul className="space-y-2">{feed.items.map(renderItem)}</ul>;
+      return <ul className="space-y-2">{collapseRepeats(feed.items).map(renderItem)}</ul>;
     }
     return (
       <div className="space-y-4">
@@ -214,7 +250,7 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
             <h3 className="px-1 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
               {group.heading}
             </h3>
-            <ul className="space-y-2">{group.items.map(renderItem)}</ul>
+            <ul className="space-y-2">{collapseRepeats(group.items).map(renderItem)}</ul>
           </section>
         ))}
       </div>
@@ -224,13 +260,15 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
   return (
     <div className="bg-gray-50 rounded-xl shadow px-8 py-4 w-full">
       {feed.loading && <Loader />}
-      <div className={fullPage ? 'w-full pt-16' : 'w-full'}>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 flex items-center justify-center rounded-full bg-[#000000]">
-            <LuSquareActivity className="text-2xl text-white" />
+      <div className={fullPage && !embedded ? 'w-full pt-16' : 'w-full'}>
+        {!embedded && (
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 flex items-center justify-center rounded-full bg-[#000000]">
+              <LuSquareActivity className="text-2xl text-white" />
+            </div>
+            <h2 className="text-xl font-semibold">Activity Feed</h2>
           </div>
-          <h2 className="text-xl font-semibold">Activity Feed</h2>
-        </div>
+        )}
 
         {fullPage && (
           <>
@@ -244,15 +282,17 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
                 }))}
                 className="view-candidate-tabs"
               />
-              <div className="w-64">
-                <Search
-                  appname="activity"
-                  placeholder="Search by Job ID or title"
-                  className="my-search"
-                  onSearch={handleSearch}
-                  allowClear
-                />
-              </div>
+              {showSearch && (
+                <div className="w-64">
+                  <Search
+                    appname="activity"
+                    placeholder="Search by Job ID or title"
+                    className="my-search"
+                    onSearch={handleSearch}
+                    allowClear
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -282,6 +322,14 @@ const ActivityCard = ({ fullPage }: { fullPage: boolean }) => {
                 <PeoplePicker
                   value={people.map((p) => p.value)}
                   onChange={(_ids, opts) => setPeople(opts)}
+                />
+              )}
+              {showPlaceFilters && (
+                <JobPlaceFilters
+                  departmentId={departmentFilter?.value}
+                  locationId={locationFilter?.value}
+                  onDepartmentChange={setDepartmentFilter}
+                  onLocationChange={setLocationFilter}
                 />
               )}
               {showMine && (

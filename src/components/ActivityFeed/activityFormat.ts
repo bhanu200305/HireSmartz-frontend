@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import type { ActivityItem, ActivityScope } from '../../api/audit-service/Activity/activity';
+import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 
 dayjs.extend(relativeTime);
 
@@ -59,6 +60,15 @@ const actorSegment = (item: ActivityItem, scope: ActivityScope): Segment => {
 const candidateSegment = (item: ActivityItem): Segment => b(item.candidate?.name ?? 'A candidate');
 const personSegment = (item: ActivityItem): Segment => b(item.person?.name ?? 'A team member');
 const companySegment = (item: ActivityItem): Segment => b(item.company?.name ?? 'A company');
+
+/**
+ * " the Hiring Manager role" — `role_name` is the role key (`hiring_manager`),
+ * labelled the way the rest of the app labels roles; " a role" when absent.
+ */
+const roleSegments = (roleName?: string | null): Segment[] =>
+  roleName
+    ? [{ text: ' the ' }, b(systemRoleLabel(roleName)), { text: ' role' }]
+    : [{ text: ' a role' }];
 
 /** Job title alone, or just the code when the title is null. */
 const jobSegment = (item: ActivityItem): Segment | null => {
@@ -204,7 +214,7 @@ export const buildActivitySentence = (item: ActivityItem, scope: ActivityScope):
     case 'team.joined':
       return [actor, t(' joined the company')];
     case 'team.role_assigned':
-      return [actor, t(' gave '), person, t(' the '), b(params.role_name ?? 'a'), t(' role')];
+      return [actor, t(' gave '), person, ...roleSegments(params.role_name)];
     case 'team.role_removed':
       return [actor, t(' removed a role from '), person];
     case 'team.role_created':
@@ -216,7 +226,7 @@ export const buildActivitySentence = (item: ActivityItem, scope: ActivityScope):
           : item.type === 'team.role_deleted'
             ? 'deleted'
             : 'changed';
-      return [actor, t(` ${verb} the `), b(params.role_name ?? 'a'), t(' role')];
+      return [actor, t(` ${verb}`), ...roleSegments(params.role_name)];
     }
     case 'team.member_offboarded':
       return [actor, t(' offboarded '), person];
@@ -225,7 +235,7 @@ export const buildActivitySentence = (item: ActivityItem, scope: ActivityScope):
     case 'platform.company_onboarded':
       return [companySegment(item), t(' joined the platform')];
     case 'platform.company_status_changed':
-      return [companySegment(item), t(' changed to '), b(statusLabel(params.to_status))];
+      return [companySegment(item), t("'s status changed to "), b(statusLabel(params.to_status))];
     case 'platform.company_admin_invited':
       return [t('An admin was invited for '), companySegment(item)];
     case 'platform.staff_invited':
@@ -239,6 +249,17 @@ export const buildActivitySentence = (item: ActivityItem, scope: ActivityScope):
       return [t('Activity'), ...(item.job?.code ? [t(' on '), b(item.job.code)] : [])];
   }
 };
+
+/**
+ * A candidate's starting status (none → Applied). candidate-service emits it
+ * alongside the applied/added event itself, so the feed would say the same
+ * thing twice ("X added Y to Job", then "Y was moved to Applied
+ * automatically"). Hidden from the feed; audit-service could drop it instead.
+ */
+export const isInitialStatusEcho = (item: ActivityItem): boolean =>
+  item.type === 'candidate.status_changed' &&
+  !item.params?.from_status &&
+  item.params?.to_status?.toLowerCase() === 'applied';
 
 /** Plain-text version of a sentence — for aria-labels and tests. */
 export const sentenceToText = (segments: Segment[]): string => segments.map((s) => s.text).join('');
@@ -266,6 +287,40 @@ export const dayHeading = (iso: string): string => {
 };
 
 export type DayGroup = { heading: string; items: ActivityItem[] };
+
+/** One feed row: an event, standing in for `count` identical ones in a row. */
+export type FeedEntry = { item: ActivityItem; count: number };
+
+// Same who, what and on what — the sentence would read identically.
+const repeatKey = (item: ActivityItem): string =>
+  [
+    item.type,
+    item.actor?.type,
+    item.actor?.id,
+    item.job?.id,
+    item.candidate?.id,
+    item.person?.id,
+    item.company?.id,
+    JSON.stringify(item.params ?? {}),
+  ].join('|');
+
+/**
+ * Folds back-to-back identical events (four saves of the same interview
+ * rounds) into one row with a count. The row keeps the newest event, so its
+ * time is the latest one. Only adjacent repeats fold; order is unchanged.
+ */
+export const collapseRepeats = (items: ActivityItem[]): FeedEntry[] => {
+  const entries: FeedEntry[] = [];
+  let lastKey: string | null = null;
+  for (const item of items) {
+    const key = repeatKey(item);
+    const last = entries[entries.length - 1];
+    if (last && key === lastKey) last.count += 1;
+    else entries.push({ item, count: 1 });
+    lastKey = key;
+  }
+  return entries;
+};
 
 /** Groups an already newest-first list into consecutive day buckets. */
 export const groupByDay = (items: ActivityItem[]): DayGroup[] => {

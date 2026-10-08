@@ -35,6 +35,10 @@ const ICON_LOGO_SRC = '/logoSmall.svg';
 // Full brand logo (icon + wordmark) shown when the sidebar is expanded.
 const FULL_LOGO_SRC = '/cfpLogo.svg';
 
+// menuItem.tsx entries for audit-service's Activity Feed, one per audience;
+// all displayed as "Activity Feed" (see the label below).
+const ACTIVITY_FEED_ITEM_NAMES = new Set(['Tenant Audit Log', 'Activity', 'Platform Activity']);
+
 // Both widths every page's content column needs to know, to reserve the
 // right amount of space — kept here (not computed ad hoc) since MainLayout
 // is the only other consumer and both need the exact same numbers, in
@@ -191,17 +195,16 @@ const Sidebar: React.FC<SidebarProps> = ({
       // Mirror image of "Companies" above: a platform caller's static
       // permission set happens to include COMPANY_SETTINGS_EDIT (and, for
       // "Interviews", INTERVIEW_QUESTIONS_VIEW) too, but `/my-company`,
-      // `/company-metrics`, `/activityFeed` and `/interviews` all either
-      // redirect anyone with no tenant of their own straight back to `/`,
-      // fetch against `tenantId ?? ''` (same dead end), or — `/interviews`'s
-      // own case — hit an interview-service endpoint that outright requires
-      // a tenant user. Tenant-only.
+      // `/company-metrics` and `/interviews` all either redirect anyone with
+      // no tenant of their own straight back to `/`, fetch against
+      // `tenantId ?? ''` (same dead end), or — `/interviews`'s own case — hit
+      // an interview-service endpoint that outright requires a tenant user;
+      // "Tenant Audit Log" (`/my-activity`) is the tenant Activity Feed, and
+      // platform callers get "Platform Activity" instead. Tenant-only.
       //
-      // Matched by "Tenant Audit Log", not "Audit Log" — the platform
-      // Audit Log entry below (a different item, displayed with the exact
-      // same label) shares that display text but must NOT share this gate;
-      // see menuItem.tsx's own comment on the tenant entry for the bug this
-      // once caused when both were literally named "Audit Log".
+      // Matched by "Tenant Audit Log", not by its displayed label — the
+      // platform "Platform Activity" entry shows the same "Activity Feed"
+      // label but must NOT share this gate; see menuItem.tsx's comment.
       return Boolean(tenantId) && hasAccess(item.requiredAuthority);
     }
 
@@ -225,6 +228,16 @@ const Sidebar: React.FC<SidebarProps> = ({
     // entry and isHiringManagerOrRecruiterRole's own comment. Tenant-only
     // (own activity has nowhere to come from for a platform caller), same
     // guard as "Company Metrics"/"Tenant Audit Log"/"Interviews" above.
+    // Platform-only, and not for cfp_support (no audit:read — the feed would
+    // 403). Same real-role source as "Admin"/"My Support Access" above.
+    if (item.name === 'Platform Activity') {
+      return (
+        isPlatformCaller &&
+        hasAccess(item.requiredAuthority) &&
+        !isCfpSupportRole(platformProfileData?.role)
+      );
+    }
+
     if (item.name === 'Activity') {
       return Boolean(tenantId) && isHiringManagerOrRecruiterRole(role);
     }
@@ -343,12 +356,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           const label =
             item.name === 'CFP Users' && tenantId
               ? 'Users'
-              : // Internal name only, kept distinct from the platform
-                // "Audit Log" entry so the two can be gated separately (see
-                // menuItem.tsx's comment on this entry) — both still show
-                // "Audit Log" to whoever actually sees them.
-                item.name === 'Tenant Audit Log'
-                ? 'Audit Log'
+              : // Internal names only, kept distinct so each can be gated
+                // separately above (company admin / hiring manager +
+                // recruiter / platform) — every one of them reads "Activity
+                // Feed" to whoever actually sees it.
+                ACTIVITY_FEED_ITEM_NAMES.has(item.name)
+                ? 'Activity Feed'
                 : item.name;
           const button = (
             <button
