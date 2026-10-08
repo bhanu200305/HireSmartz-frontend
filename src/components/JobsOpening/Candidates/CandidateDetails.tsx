@@ -146,6 +146,7 @@ import {
   isIntakeCallRound,
   isIdentityVerificationRound,
   isResumeStageRound,
+  isRoundSkipped,
   isStaleResumeRound,
   normaliseRoundStatus,
   orderRoundsForFlow,
@@ -1532,6 +1533,8 @@ const CandidateDetails = () => {
     aiHint?: string;
     /** Left out of the Overall Score average — see `overallScore` below. */
     excludeFromOverall?: boolean;
+    /** Shows "Skipped" in both columns instead of the round's (0) score. */
+    skipped?: boolean;
   }[] = [
     ...(roundsLoaded && !hasResumeStageRound
       ? [
@@ -1544,6 +1547,18 @@ const CandidateDetails = () => {
         ]
       : []),
     ...rounds.map((round) => {
+      // A skipped round never ran, so its score row's 0 isn't a result:
+      // shown as "Skipped" and kept out of the Overall Score average.
+      if (isRoundSkipped(round)) {
+        return {
+          key: round.id,
+          label: roundLabel(round),
+          ai: null,
+          human: null,
+          skipped: true,
+          excludeFromOverall: true,
+        };
+      }
       if (isResumeStageRound(round)) {
         return {
           key: round.id,
@@ -1758,7 +1773,7 @@ const CandidateDetails = () => {
                     </ul>
                   }
                 >
-                  <div className="cursor-help">{row}</div>
+                  <div>{row}</div>
                 </Tooltip>
               ) : (
                 <div key={bar.label}>{row}</div>
@@ -2155,9 +2170,7 @@ const CandidateDetails = () => {
                           pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
                         const reasons = sectionReasons(section.reason);
                         const row = (
-                          <div
-                            className={`grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm ${reasons.length > 0 ? 'cursor-help' : ''}`}
-                          >
+                          <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm">
                             <span
                               className="truncate text-gray-800"
                               title={reasons.length > 0 ? undefined : formatSectionKey(section.key)}
@@ -2650,7 +2663,7 @@ const CandidateDetails = () => {
                       className="truncate pr-2"
                       title={
                         allRoundsCompleted
-                          ? 'Average across rounds with a score (Intake Call consistency check not included)'
+                          ? 'Average across rounds with a score (skipped rounds and the Intake Call consistency check not included)'
                           : 'Shown once all rounds are completed'
                       }
                     >
@@ -2671,12 +2684,21 @@ const CandidateDetails = () => {
                       <div className="truncate pr-2" title={row.label}>
                         {row.label}
                       </div>
-                      <div className="text-right text-primary" title={row.aiHint}>
-                        {formatScoredCell(row.ai)}
-                      </div>
-                      <div className="text-right text-green-700">
-                        {formatScoredCell(row.human, HUMAN_SCORE_MAX)}
-                      </div>
+                      {row.skipped ? (
+                        <>
+                          <div className="text-right text-gray-500">Skipped</div>
+                          <div className="text-right text-gray-500">Skipped</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-right text-primary" title={row.aiHint}>
+                            {formatScoredCell(row.ai)}
+                          </div>
+                          <div className="text-right text-green-700">
+                            {formatScoredCell(row.human, HUMAN_SCORE_MAX)}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -3444,6 +3466,7 @@ const CandidateDetails = () => {
           roundId={interviewersModalFor.id}
           roundName={roundLabel(interviewersModalFor)}
           currentInterviewerIds={interviewersModalFor.interviewer_ids ?? []}
+          jobId={parsedJobId || undefined}
         />
       )}
       {scoreModalFor && candidateId && (

@@ -7,6 +7,7 @@ import {
   useListEligibleInterviewersQuery,
   useSetPanelInterviewersMutation,
 } from '../../../../api/candidate-service/Candidates/interviewRounds';
+import { useGetInterviewersCalendarStatusQuery } from '../../../../api/interview-service/client';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
 
 // Why a person is in the list — `roles` carries one or both of these raw
@@ -45,6 +46,8 @@ type PanelInterviewersModalProps = {
   roundName: string;
   /** The round's current `interviewer_ids` — pre-checks the picker. */
   currentInterviewerIds: string[];
+  /** The job, for each interviewer's calendar status (green/red tag). */
+  jobId?: string;
 };
 
 const PanelInterviewersModal = ({
@@ -54,6 +57,7 @@ const PanelInterviewersModal = ({
   roundId,
   roundName,
   currentInterviewerIds,
+  jobId,
 }: PanelInterviewersModalProps) => {
   const {
     data: interviewers,
@@ -62,6 +66,21 @@ const PanelInterviewersModal = ({
   } = useListEligibleInterviewersQuery(candidateId, {
     skip: !open,
   });
+  // Same green/red calendar status the Send Invite picker colors its chips
+  // by (whole eligible pool for the job), polled while open so a calendar
+  // connected elsewhere flips to green without a refresh.
+  const { data: calendarStatuses } = useGetInterviewersCalendarStatusQuery(
+    { jobId: jobId ?? '' },
+    {
+      skip: !open || !jobId,
+      pollingInterval: open ? 15_000 : 0,
+      skipPollingIfUnfocused: true,
+      refetchOnFocus: true,
+    }
+  );
+  const calendarConnectedById = new Map(
+    (calendarStatuses ?? []).map((s) => [String(s.interviewer_id), s.calendar_connected])
+  );
   const [setPanelInterviewers, { isLoading: isSaving }] = useSetPanelInterviewersMutation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -133,34 +152,53 @@ const PanelInterviewersModal = ({
           <p className="text-sm text-gray-500">No eligible interviewers found for this tenant.</p>
         ) : (
           <div className="flex max-h-[min(360px,55vh)] flex-col gap-1 overflow-y-auto rounded-lg border border-gray-200 p-2">
-            {interviewers.map((interviewer) => (
-              <div
-                key={interviewer.id}
-                className="flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-gray-50"
-              >
-                <Checkbox
-                  id={`panel-interviewer-${interviewer.id}`}
-                  checked={selected.has(interviewer.id)}
-                  onChange={() => toggle(interviewer.id)}
-                />
-                <label
-                  htmlFor={`panel-interviewer-${interviewer.id}`}
-                  className="min-w-0 flex-1 cursor-pointer"
+            {interviewers.map((interviewer) => {
+              const connected = calendarConnectedById.get(String(interviewer.id));
+              return (
+                <div
+                  key={interviewer.id}
+                  className="flex items-center gap-3 rounded-lg px-2.5 py-2 hover:bg-gray-50"
                 >
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="truncate text-sm font-medium text-gray-900">
-                      {interviewer.display_name}
-                    </span>
-                    {interviewer.roles.map((role) => (
-                      <Badge key={role} status="neutral" className="shrink-0">
-                        {roleLabel(role)}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="truncate text-xs text-gray-500">{interviewer.email}</div>
-                </label>
-              </div>
-            ))}
+                  <Checkbox
+                    id={`panel-interviewer-${interviewer.id}`}
+                    checked={selected.has(interviewer.id)}
+                    onChange={() => toggle(interviewer.id)}
+                  />
+                  <label
+                    htmlFor={`panel-interviewer-${interviewer.id}`}
+                    className="min-w-0 flex-1 cursor-pointer"
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-gray-900">
+                        {interviewer.display_name}
+                      </span>
+                      {interviewer.roles.map((role) => (
+                        <Badge key={role} status="neutral" className="shrink-0">
+                          {roleLabel(role)}
+                        </Badge>
+                      ))}
+                      {/* Same colors as the Send Invite picker's chips. */}
+                      {connected !== undefined && (
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+                            connected
+                              ? 'border-green-200 bg-green-50 text-green-700'
+                              : 'border-red-200 bg-red-50 text-red-700'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`}
+                            aria-hidden
+                          />
+                          {connected ? 'Calendar connected' : 'Calendar not connected'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-xs text-gray-500">{interviewer.email}</div>
+                  </label>
+                </div>
+              );
+            })}
           </div>
         )}
 

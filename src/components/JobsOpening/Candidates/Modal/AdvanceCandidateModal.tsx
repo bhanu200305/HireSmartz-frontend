@@ -264,9 +264,9 @@ const AdvanceCandidateModal = ({
       open={open}
       onClose={isSubmitting ? undefined : onClose}
       title="Advance Candidate"
-      modalProps={{ width: 560 }}
+      modalProps={{ width: 480 }}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <p className="text-center text-sm text-gray-700">
           You are advancing candidate <strong>{candidateName}</strong> from{' '}
           <strong>{fromLabel}</strong>
@@ -307,7 +307,7 @@ const AdvanceCandidateModal = ({
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Add feedback here..."
-              rows={6}
+              rows={3}
               maxLength={FEEDBACK_MAX}
               className="resize-y rounded-lg text-sm"
             />

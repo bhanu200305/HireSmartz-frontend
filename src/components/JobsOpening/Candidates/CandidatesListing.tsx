@@ -93,6 +93,19 @@ const CandidateAverageScoreCell = ({ average }: { average: number | null | undef
 // With the Round filter or a browser-side sort (last name, status) on, the list
 // loads up to 200 candidates (the API maximum) and is filtered, sorted and
 // paged here.
+/** Short warning under a candidate's name when there's no way to reach them;
+ * null when both a phone number and an email are on file. */
+const missingContactLabel = (
+  candidate: Pick<CandidateView, 'contact_no' | 'email_id'>
+): string | null => {
+  const noPhone = !candidate.contact_no?.trim();
+  const noEmail = !candidate.email_id?.trim();
+  if (noPhone && noEmail) return 'No phone or email';
+  if (noPhone) return 'No phone';
+  if (noEmail) return 'No email';
+  return null;
+};
+
 const CLIENT_PAGED_FETCH_LIMIT = 200;
 // Value of the Round filter's "Resume Review" option (no round id exists).
 const RESUME_ROUND_FILTER = '__resume__';
@@ -695,6 +708,12 @@ const CandidatesListing = () => {
                                 {expandedId === candidate.id ? <UpOutlined /> : <DownOutlined />}
                               </span>
                             </div>
+                            {missingContactLabel(candidate) && (
+                              <p className="m-0 mt-0.5 flex items-center gap-1 text-xs font-medium text-amber-700">
+                                <LuTriangleAlert size={12} className="shrink-0" aria-hidden />
+                                {missingContactLabel(candidate)}
+                              </p>
+                            )}
                           </Col>
                           <Col span={4}>
                             <CandidateAverageScoreCell average={candidate.average_score} />
