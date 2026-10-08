@@ -18,7 +18,7 @@ import { asJobId } from '../../../api/job-service/jobId';
 import { toInterviewSequencePayload } from '../../../api/job-service/interviewSequenceHelpers';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
 import { slotOptions } from '../../../shared/utils/business-logic';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { resolveVariantLabel as formatVariantLabel } from '../../../shared/utils/variantLabel';
 import {
   firstAvailableVariant,
@@ -55,6 +55,14 @@ const UpdateInterviewRound = () => {
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(
     () => interviewRounds.find((round) => String(round.id) === String(roundData?.round)) ?? null
   );
+
+  // The round types may finish loading after this opened; pick up this round's
+  // type then, so its duration / format fields show with the saved values.
+  useEffect(() => {
+    if (selectedRoundType) return;
+    const match = interviewRounds.find((round) => String(round.id) === String(roundData?.round));
+    if (match) setSelectedRoundType(match);
+  }, [interviewRounds, roundData?.round, selectedRoundType]);
 
   const {
     control,

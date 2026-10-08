@@ -99,6 +99,10 @@ const EditDetailedInterviewRounds = () => {
         roundType: round.roundType,
         sequence: round.sequence,
         description: round.description,
+        // So the form opens with the saved duration / format (e.g. 30 min,
+        // Soundwave) instead of blank.
+        duration: round.duration,
+        variant: round.variant,
       },
     });
   };
