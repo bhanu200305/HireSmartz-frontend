@@ -62,6 +62,7 @@ import {
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
   candidateDisplayStatusTooltip,
+  getSmsBlockedReason,
   resolveDisplayStatus,
 } from './candidateDisplay';
 import { normaliseRoundStatus } from './roundProgress';
@@ -847,11 +848,7 @@ const CandidatesListing = () => {
                               </Tooltip>
                               <Tooltip
                                 title={
-                                  !candidate.contact_no
-                                    ? 'No phone number on file'
-                                    : candidate.sms_consent_at === null
-                                      ? 'Candidate has not given SMS consent'
-                                      : `SMS ${candidate.contact_no}`
+                                  getSmsBlockedReason(candidate) ?? `SMS ${candidate.contact_no}`
                                 }
                               >
                                 <span className="inline-flex">
@@ -859,9 +856,7 @@ const CandidatesListing = () => {
                                     type="button"
                                     aria-label="Send SMS"
                                     className="flex cursor-pointer hover:text-[var(--primary)] transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-neutral-900"
-                                    disabled={
-                                      !candidate.contact_no || candidate.sms_consent_at === null
-                                    }
+                                    disabled={getSmsBlockedReason(candidate) !== null}
                                     onClick={() => setSmsCandidate(candidate)}
                                   >
                                     <IoChatbubbleEllipses size={17} />

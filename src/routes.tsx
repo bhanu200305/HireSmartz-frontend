@@ -53,6 +53,7 @@ const AdminToolsPage = lazy(() => import('./pages/AdminToolsPage'));
 const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const ActivityFeedPage = lazy(() => import('./pages/ActivityFeedPage'));
 const MyActivityPage = lazy(() => import('./pages/MyActivityPage'));
+const MyCalendarPage = lazy(() => import('./pages/MyCalendarPage'));
 const MySupportAccessPage = lazy(() => import('./pages/MySupportAccessPage'));
 const JobsOpeningPage = lazyImport(() => import('./pages/JobsOpening'), 'JobsOpeningPage');
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -767,6 +768,12 @@ export const Routes: RouteType[] = [
     name: 'Interviews',
     path: '/interviews',
     component: InterviewsPage,
+  },
+  {
+    // Landing page for emailed links to the user's own interview calendar.
+    name: 'MyCalendar',
+    path: '/my-calendar',
+    component: MyCalendarPage,
   },
   {
     name: 'MyActivity',

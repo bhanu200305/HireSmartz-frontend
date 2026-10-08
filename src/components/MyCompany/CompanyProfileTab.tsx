@@ -739,7 +739,7 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                   onClick={() => applyScrapeField('culture_text')}
                   className="text-xs font-semibold text-primary-600 hover:underline shrink-0 cursor-pointer"
                 >
-                  Use As Culture Intro
+                  Use As Company Intro
                 </button>
               </div>
             )}

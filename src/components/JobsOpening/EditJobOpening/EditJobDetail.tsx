@@ -2999,14 +2999,14 @@ const EditJobDetail = () => {
 
           <div className="mt-2 max-w-[33%]">
             <div className="flex items-center gap-2">
-              <span className="text-sm capitalize">Company Culture</span>
+              <span className="text-sm capitalize">Company Intro</span>
               <Tooltip
                 trigger={['hover', 'click']}
-                title={hasCultureInfo ? cultureInfoText : 'No company culture information provided'}
+                title={hasCultureInfo ? cultureInfoText : 'No company intro provided'}
               >
                 <button
                   type="button"
-                  aria-label="View company culture information"
+                  aria-label="View company intro"
                   className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)] cursor-pointer"
                 >
                   <InfoCircleOutlined />
@@ -3026,8 +3026,7 @@ const EditJobDetail = () => {
                 className="culture-switch"
               />
               <span className="text-sm text-gray-700 leading-5">
-                Play Company Culture Introduction at the start of AI Audio Screening and AI Video
-                Interview
+                Play Company Intro at the start of AI Audio Screening and AI Video Interview
               </span>
             </div>
           </div>

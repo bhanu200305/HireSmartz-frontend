@@ -9,6 +9,17 @@ import type { CandidateInterviewScoreView } from '../../../api/candidate-service
 // exact same "First Last" formatting the Table view's rows use, without
 // making CandidatesListing.tsx export a non-component value
 // (react-refresh/only-export-components).
+/** Why SMS can't be sent to a candidate, or null when it can. SMS is on by
+ * default: only a missing phone number or an explicit opt-out
+ * (`sms_opted_out_at`) blocks it. A missing field means "allowed". */
+export const getSmsBlockedReason = (
+  c: Pick<CandidateView, 'contact_no' | 'sms_opted_out_at'> | null | undefined
+): string | null => {
+  if (!c?.contact_no) return 'No phone number on file';
+  if (c.sms_opted_out_at != null) return 'Candidate has opted out of SMS';
+  return null;
+};
+
 export const candidateDisplayName = (c: CandidateView) =>
   `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || 'N/A';
 

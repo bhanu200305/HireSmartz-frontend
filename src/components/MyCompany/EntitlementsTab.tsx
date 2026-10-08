@@ -33,7 +33,7 @@ type FlagKey = Exclude<keyof Entitlements, 'locked_flags'>;
 const FLAGS: { key: FlagKey; label: string; description: string; icon: React.ReactNode }[] = [
   {
     key: 'is_culture_intro_enabled',
-    label: 'Culture Intro',
+    label: 'Company Intro',
     description: 'Show a "why work here" intro to candidates.',
     icon: <MdOutlineFavorite size={18} />,
   },

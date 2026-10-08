@@ -41,7 +41,7 @@ const messageText = (item: MessageHistoryItemView) => {
 
 type Props = {
   candidateId: string;
-  /** Why SMS can't be sent (no SMS consent, or no phone number); null when it can. */
+  /** Why SMS can't be sent (opted out of SMS, or no phone number); null when it can. */
   smsBlockedReason: string | null;
   onSendSms: () => void;
 };

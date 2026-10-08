@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tooltip } from 'antd';
 import { Link } from 'react-router-dom';
 import type { Dayjs } from 'dayjs';
@@ -353,9 +353,16 @@ const MonthGrid = ({
 
 type MyInterviewCalendarProps = {
   onSelectBooking: (bookingId: string) => void;
+  /** Jump to this interview's day and open its details (deep link from an email). */
+  focusBookingId?: string | null;
+  onFocusHandled?: () => void;
 };
 
-export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProps) => {
+export const MyInterviewCalendar = ({
+  onSelectBooking,
+  focusBookingId,
+  onFocusHandled,
+}: MyInterviewCalendarProps) => {
   const currentUserId = useSelector((state: RootState) => state.LoginSlice.userId);
   const dayGroupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   // Which month the big calendar below is showing + which date (if any) is
@@ -384,6 +391,35 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
     }
     return map;
   }, [data?.items]);
+
+  // Deep link: once the bookings are in, show the day of the requested
+  // interview and open its details. Not found (past the fetched window, not on
+  // this user's roster) just says so; the calendar still opens normally.
+  const onSelectBookingRef = useRef(onSelectBooking);
+  const onFocusHandledRef = useRef(onFocusHandled);
+  useEffect(() => {
+    onSelectBookingRef.current = onSelectBooking;
+    onFocusHandledRef.current = onFocusHandled;
+  });
+  useEffect(() => {
+    if (!focusBookingId || isLoading || !currentUserId) return;
+    const booking = data?.items.find((b) => b.id === focusBookingId);
+    if (booking?.start_time && dayjs(booking.start_time).isValid()) {
+      const when = dayjs(booking.start_time);
+      setFocusedDate(when);
+      onSelectBookingRef.current(booking.id);
+      // After the day's group has rendered.
+      requestAnimationFrame(() => {
+        dayGroupRefs.current[when.format('YYYY-MM-DD')]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    } else if (!isError) {
+      showToast({ message: 'That interview is not in your calendar.', type: 'info' });
+    }
+    onFocusHandledRef.current?.();
+  }, [focusBookingId, isLoading, isError, data, currentUserId]);
 
   const todayKey = dayjs().format('YYYY-MM-DD');
   const todaysBookings = bookingsByDate.get(todayKey) ?? [];

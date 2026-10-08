@@ -5,6 +5,7 @@ import { LuExternalLink, LuCirclePlay } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { RATING_TO_RECOMMENDATION } from '../../shared/utils/ratingRecommendation';
 import { useFromCalendar } from './useFromCalendar';
+import { hasRoundStarted, offlineRecordingUploadErrorMessage } from './offlineRecordingErrors';
 
 import { Badge } from '../../components/shared/ui/badge';
 import { Button } from '../../components/shared/ui/button';
@@ -123,6 +124,17 @@ export const BookingDetailDrawer = ({
   // online PANEL/AI_VIDEO get their recording automatically, so manually
   // attaching one there would just create a second, conflicting artifact.
   const isOfflinePanel = isPanel && booking?.round_snapshot?.delivery_mode === 'offline';
+  // The recording can only be uploaded once the round has started (the backend
+  // refuses earlier with 425). Re-checked every 30s so the button appears by
+  // itself while the drawer is open.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open || !isOfflinePanel) return;
+    setNowMs(Date.now());
+    const timer = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [open, isOfflinePanel]);
+  const roundStarted = hasRoundStarted(booking?.start_time, nowMs);
   const { data: interviewers } = useGetInterviewersQuery(undefined, {
     skip: !open || !isPanel || !canUpdate,
   });
@@ -238,7 +250,9 @@ export const BookingDetailDrawer = ({
       showToast({ message: 'Recording uploaded.', type: 'success' });
     } catch (e2) {
       const err = e2 as InterviewApiError;
-      showToast({ message: err?.message || 'Could not upload the recording.', type: 'error' });
+      // The backend's two distinct refusals (not started yet / not an in-person
+      // panel round) get their own messages instead of one generic failure.
+      showToast({ message: offlineRecordingUploadErrorMessage(err), type: 'error' });
     }
   };
 
@@ -628,23 +642,25 @@ export const BookingDetailDrawer = ({
                         Attach
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-neutral-400">or</span>
-                      <input
-                        ref={audioFileInputRef}
-                        type="file"
-                        accept={AUDIO_UPLOAD_ACCEPT}
-                        className="hidden"
-                        onChange={(e) => void handleAudioFileSelected(e)}
-                      />
-                      <Button
-                        className={GHOST_BTN}
-                        disabled={uploadState.isLoading || hasRecording}
-                        onClick={() => audioFileInputRef.current?.click()}
-                      >
-                        {uploadState.isLoading ? 'Uploading…' : 'Upload A Recording File'}
-                      </Button>
-                    </div>
+                    {roundStarted && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-neutral-400">or</span>
+                        <input
+                          ref={audioFileInputRef}
+                          type="file"
+                          accept={AUDIO_UPLOAD_ACCEPT}
+                          className="hidden"
+                          onChange={(e) => void handleAudioFileSelected(e)}
+                        />
+                        <Button
+                          className={GHOST_BTN}
+                          disabled={uploadState.isLoading || hasRecording}
+                          onClick={() => audioFileInputRef.current?.click()}
+                        >
+                          {uploadState.isLoading ? 'Uploading…' : 'Upload A Recording File'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

@@ -76,7 +76,7 @@ const CompanySettings: React.FC = () => {
         tabs: [
           { key: '5', label: 'Default Scoring Weights', children: <PlatformScoringDefaultsTab /> },
           { key: '8', label: 'Intake Questions', children: <IntakeQuestionsTab /> },
-          { key: '9', label: 'Culture Intro', children: <CultureIntroTab /> },
+          { key: '9', label: 'Company Intro', children: <CultureIntroTab /> },
         ],
       },
       {

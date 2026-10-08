@@ -59,6 +59,7 @@ import { useListApplicationSourcesQuery } from '../../../api/candidate-service/M
 import {
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
+  getSmsBlockedReason,
   resolveDisplayStatus,
 } from './candidateDisplay';
 import {
@@ -1331,14 +1332,10 @@ const CandidateDetails = () => {
     }
   };
 
-  // SMS needs a phone number AND the candidate's SMS consent (candidate-service
-  // refuses the send otherwise, 422 CANDIDATE_HAS_NO_SMS_CONSENT). `undefined`
-  // (field not returned) is not treated as "no consent".
-  const smsBlockedReason = !candidate?.contact_no
-    ? 'No phone number on file'
-    : candidate.sms_consent_at === null
-      ? 'Candidate has not given SMS consent'
-      : null;
+  // SMS needs a phone number, and the candidate must not have opted out
+  // (SMS is on by default; candidate-service refuses the send otherwise, 422
+  // CANDIDATE_OPTED_OUT_OF_SMS). A missing `sms_opted_out_at` means "allowed".
+  const smsBlockedReason = getSmsBlockedReason(candidate);
 
   // The header pill shows the same four top-level states as the candidate list
   // (In Process / Selected / Rejected / Withdrawn). The raw status label can
