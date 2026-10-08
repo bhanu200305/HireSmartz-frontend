@@ -8,15 +8,15 @@ describe('getVariantBadge', () => {
   });
 
   it('shows the database label and keeps the icon for a known code', () => {
-    const badge = getVariantBadge('offline', { offline: 'In-Person Round' });
-    expect(badge?.label).toBe('In-Person Round');
+    const badge = getVariantBadge('avatar', { avatar: 'Virtual Interviewer' });
+    expect(badge?.label).toBe('Virtual Interviewer');
     expect(badge?.icon).not.toBeNull();
   });
 
   it('lets a Super Admin override change the text without changing the icon', () => {
-    const original = getVariantBadge('online', { online: 'Online Round' });
-    const renamed = getVariantBadge('online', { online: 'Remote Panel' });
-    expect(renamed?.label).toBe('Remote Panel');
+    const original = getVariantBadge('soundwave', { soundwave: 'Voice Agent Round' });
+    const renamed = getVariantBadge('soundwave', { soundwave: 'Voice Round' });
+    expect(renamed?.label).toBe('Voice Round');
     expect(renamed?.icon).toBe(original?.icon);
   });
 

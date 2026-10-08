@@ -177,6 +177,7 @@ const EditDetailedInterviewRounds = () => {
           anchorRoundTypeIds={anchorRoundTypeIds}
           removableAnchorRoundTypeIds={intakeRoundTypeIds}
           variantLabelOverrides={variantLabelOverrides}
+          roundTypes={roundTypes}
         />
       )}
       <div className="mt-6 flex justify-center gap-6">

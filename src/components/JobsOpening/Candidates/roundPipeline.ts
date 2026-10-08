@@ -68,7 +68,10 @@ export const interviewTypeForRound = (round: CandidateInterviewRoundView): Inter
       return 'audio';
   }
   const name = (round.round_name ?? '').toLowerCase();
-  if (name.includes('panel')) return 'panel';
+  // Live Video / In-Person before the AI "video" check below.
+  if (name.includes('panel') || name.includes('live video') || name.includes('in-person')) {
+    return 'panel';
+  }
   if (name.includes('video')) return 'ai_video';
   if (name.includes('intake')) return 'audio';
   return 'audio_screening';

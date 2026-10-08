@@ -61,15 +61,11 @@ export const formatCallIntent = (callIntent: string | null): string =>
     ? (CALL_INTENT_LABELS[callIntent] ?? formatRoundStatus(callIntent))
     : 'Pending';
 
-/** A job round's configured variant (job-service `job_interview_sequence.
- * variant`, or the booking snapshot's presentation/delivery mode) as a
- * display label — AI Video: soundwave | avatar; Hiring Panel: online |
- * offline. Null for rounds with no variant. */
-export const formatRoundVariant = (variant: string | null | undefined): string | null => {
-  const value = (variant ?? '').trim().toLowerCase();
+/** A booking's delivery mode (interview-service: online | offline) as a
+ * display label, or null when there is none. */
+export const formatDeliveryMode = (mode: string | null | undefined): string | null => {
+  const value = (mode ?? '').trim().toLowerCase();
   if (!value) return null;
-  if (value === 'soundwave') return 'Soundwave';
-  if (value === 'avatar') return 'Avatar';
   if (value === 'online') return 'Online';
   if (value === 'offline') return 'In-person';
   return value.charAt(0).toUpperCase() + value.slice(1);

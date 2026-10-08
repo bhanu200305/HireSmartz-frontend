@@ -206,7 +206,7 @@ const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
             </div>
           )}
 
-          {/* Scoring-section picker - Hiring Panel rounds only */}
+          {/* Scoring-section picker - Live Video / In-Person rounds only */}
           {showSectionPicker && (
             <div className="mb-6">
               <Typography

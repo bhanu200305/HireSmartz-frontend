@@ -3,15 +3,15 @@ import { resolveVariantLabel } from '../../../src/shared/utils/variantLabel';
 
 describe('resolveVariantLabel', () => {
   it('uses the database label when one is set', () => {
-    expect(resolveVariantLabel('offline', { offline: 'On Site Visit' })).toBe('On Site Visit');
+    expect(resolveVariantLabel('avatar', { avatar: 'Virtual Host' })).toBe('Virtual Host');
   });
 
   it('matches the variant code case-insensitively', () => {
-    expect(resolveVariantLabel('ONLINE', { online: 'Video Call' })).toBe('Video Call');
+    expect(resolveVariantLabel('SOUNDWAVE', { soundwave: 'Voice Agent' })).toBe('Voice Agent');
   });
 
   it('falls back to the capitalised code plus Round when no label is set', () => {
-    expect(resolveVariantLabel('offline', null)).toBe('Offline Round');
+    expect(resolveVariantLabel('avatar', null)).toBe('Avatar Round');
     expect(resolveVariantLabel('soundwave', {})).toBe('Soundwave Round');
   });
 
@@ -20,6 +20,6 @@ describe('resolveVariantLabel', () => {
   });
 
   it('ignores labels set for other codes', () => {
-    expect(resolveVariantLabel('avatar', { online: 'Video Call' })).toBe('Avatar Round');
+    expect(resolveVariantLabel('avatar', { soundwave: 'Voice Agent' })).toBe('Avatar Round');
   });
 });

@@ -121,7 +121,7 @@ const describeImportError = (error: string): string => {
 /** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
 const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
   if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
-    return 'Add an AI Video Interview, Hiring Panel, or AI Audio Screening round to the Interview Sequence before generating questions.';
+    return 'Add an AI Agent Call, AI Video Interview, Live Video Interview or In-Person Interview round to the Interview Sequence before generating questions.';
   }
   return getJobErrorMessage(err, fallback);
 };
@@ -311,18 +311,13 @@ const AiQuestionsSetup = () => {
   const effectiveOpenKey =
     openSectionKey === '__default__' ? (activeRoundInstanceId ?? '') : openSectionKey;
 
-  // Hiring Panel = available_variants ["online", "offline"].
+  // A human-led round: Live Video or In-Person.
   const activeRoundTypeId = jdRounds.find(
     (round) => round.round_instance_id === activeRoundInstanceId
   )?.round_id;
   const isHiringPanelActiveRound = useMemo(() => {
-    const variants = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.available_variants;
-    return (
-      !!variants &&
-      variants.length === 2 &&
-      variants.includes('online') &&
-      variants.includes('offline')
-    );
+    const kind = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.special_kind;
+    return kind === 'live_video' || kind === 'in_person';
   }, [roundTypes, activeRoundTypeId]);
   // AI Video = available_variants ["soundwave", "avatar"].
   const isAiVideoActiveRound = useMemo(() => {
@@ -938,8 +933,8 @@ const AiQuestionsSetup = () => {
 
         {noEligibleRound && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Add an AI Video Interview, Hiring Panel, or AI Audio Screening round to the Interview
-            Sequence before adding questions.
+            Add an AI Agent Call, AI Video Interview, Live Video Interview or In-Person Interview
+            round to the Interview Sequence before adding questions.
           </div>
         )}
 

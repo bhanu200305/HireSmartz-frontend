@@ -124,7 +124,6 @@ import RoundCollapsibleSection from './RoundCollapsibleSection';
 import RoundDetailTabs from './RoundDetailTabs';
 import ScoringCriteriaModal, { type InterviewScoringRoundType } from './Modal/ScoringCriteriaModal';
 import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
-import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import CandidateMessageHistory from './CandidateMessageHistory';
 import { useCandidateNavigation } from './useCandidateNavigation';
 import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
@@ -441,24 +440,6 @@ const CandidateDetails = () => {
   // organization's, else the platform default — the same weights ai-service
   // scores with), fetched only while a resume or interview popup is open;
   // the modal falls back to the platform defaults if they can't be loaded.
-  // The job's round plan — the only place a round's variant (AI Video:
-  // soundwave/avatar, Hiring Panel: online/offline) lives; the candidate's
-  // round view doesn't carry it. Matched by round_id + sequence, falling back
-  // to round_id alone when that round type occurs once in the plan.
-  const { data: jobRoundPlan } = useGetInterviewRoundsByJobIdQuery(parsedJobId ?? '', {
-    skip: !parsedJobId,
-  });
-  const variantForRound = (round: CandidateInterviewRoundView): string | null => {
-    if (!round.round_id) return null;
-    const plan = (jobRoundPlan ?? []) as Array<{
-      roundId?: string;
-      sequence?: number;
-      variant?: string | null;
-    }>;
-    const sameType = plan.filter((r) => r.roundId === round.round_id);
-    const exact = sameType.find((r) => r.sequence === round.sequence);
-    return (exact ?? (sameType.length === 1 ? sameType[0] : undefined))?.variant ?? null;
-  };
   const { data: jobScoringConfig } = useGetJobScoringConfigQuery(parsedJobId ?? '', {
     skip: !parsedJobId || !scoringCriteriaFor || scoringCriteriaFor.kind === 'intake',
   });
@@ -731,7 +712,7 @@ const CandidateDetails = () => {
   const isPanelRound = selectedRound
     ? selectedRound.round_type
       ? selectedRound.round_type === 'PANEL'
-      : Boolean(selectedRound.round_name?.toLowerCase().includes('panel'))
+      : /panel|live video|in-person/i.test(selectedRound.round_name ?? '')
     : false;
   // Job Service's question bank, grouped by round — matched back to the
   // SELECTED round by `sequence`, not `round_id`: a round TYPE (e.g.
@@ -2991,7 +2972,6 @@ const CandidateDetails = () => {
                         resumeScore={candidate?.resume_score ?? null}
                         consistencyScore={candidate?.consistency_score ?? null}
                         jobId={parsedJobId || undefined}
-                        variant={variantForRound(round)}
                         onSelect={() => {
                           setIsResumeFallbackSelected(false);
                           setSelectedRound(round);

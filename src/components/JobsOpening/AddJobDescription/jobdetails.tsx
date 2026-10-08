@@ -3154,8 +3154,7 @@ const JobDetails = () => {
                           className="culture-switch"
                         />
                         <span className="text-sm text-gray-700 leading-5">
-                          Play Company Intro at the start of AI Audio Screening and AI Video
-                          Interview
+                          Play Company Intro at the start of AI Agent Call and AI Video Interview
                         </span>
                       </div>
                     </Form.Item>

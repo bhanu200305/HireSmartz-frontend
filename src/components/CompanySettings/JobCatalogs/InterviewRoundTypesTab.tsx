@@ -12,8 +12,6 @@ import { isHiddenRoundType } from '../../../shared/utils/roundInfoContent';
 type RoundTypeFormValues = {
   round_name: string;
   round_description: string;
-  variantLabelOnline: string;
-  variantLabelOffline: string;
   variantLabelSoundwave: string;
   variantLabelAvatar: string;
 };
@@ -21,16 +19,6 @@ type RoundTypeFormValues = {
 const roundTypeFields: CatalogField<RoundTypeFormValues>[] = [
   { name: 'round_name', label: 'Name', type: 'text', required: true },
   { name: 'round_description', label: 'Description', type: 'textarea' },
-  {
-    name: 'variantLabelOnline',
-    label: 'Display text for "online" (if this round type uses it)',
-    type: 'text',
-  },
-  {
-    name: 'variantLabelOffline',
-    label: 'Display text for "offline" (if this round type uses it)',
-    type: 'text',
-  },
   {
     name: 'variantLabelSoundwave',
     label: 'Display text for "soundwave" (if this round type uses it)',
@@ -45,8 +33,6 @@ const roundTypeFields: CatalogField<RoundTypeFormValues>[] = [
 const emptyForm: RoundTypeFormValues = {
   round_name: '',
   round_description: '',
-  variantLabelOnline: '',
-  variantLabelOffline: '',
   variantLabelSoundwave: '',
   variantLabelAvatar: '',
 };
@@ -97,18 +83,12 @@ const InterviewRoundTypesTab: React.FC = () => {
       toFormValues={(item) => ({
         round_name: item.round_name,
         round_description: item.round_description ?? '',
-        variantLabelOnline: item.variant_labels?.online ?? '',
-        variantLabelOffline: item.variant_labels?.offline ?? '',
         variantLabelSoundwave: item.variant_labels?.soundwave ?? '',
         variantLabelAvatar: item.variant_labels?.avatar ?? '',
       })}
       onCreate={() => Promise.resolve()}
       onUpdate={(id, values) => {
         const variant_labels: Record<string, string> = {};
-        if (values.variantLabelOnline.trim())
-          variant_labels.online = values.variantLabelOnline.trim();
-        if (values.variantLabelOffline.trim())
-          variant_labels.offline = values.variantLabelOffline.trim();
         if (values.variantLabelSoundwave.trim())
           variant_labels.soundwave = values.variantLabelSoundwave.trim();
         if (values.variantLabelAvatar.trim())
