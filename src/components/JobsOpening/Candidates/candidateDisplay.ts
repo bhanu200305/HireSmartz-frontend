@@ -16,7 +16,7 @@ export const getSmsBlockedReason = (
   c: Pick<CandidateView, 'contact_no' | 'sms_opted_out_at'> | null | undefined
 ): string | null => {
   if (!c?.contact_no) return 'No phone number on file';
-  if (c.sms_opted_out_at != null) return 'Candidate has opted out of SMS';
+  if (c.sms_opted_out_at != null) return 'Candidate opted out of SMS';
   return null;
 };
 

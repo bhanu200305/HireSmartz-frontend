@@ -64,7 +64,8 @@ export const CareersInstantCallPage = () => {
   const [lastNameError, setLastNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [smsConsent, setSmsConsent] = useState(false);
+  // SMS is on unless the candidate opts out, so the box starts ticked.
+  const [smsConsent, setSmsConsent] = useState(true);
   const [tosConsent, setTosConsent] = useState(false);
   const [tosError, setTosError] = useState(false);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
@@ -299,9 +300,7 @@ export const CareersInstantCallPage = () => {
             <label htmlFor="sms-consent" className="text-sm text-gray-600 leading-relaxed">
               I agree to receive SMS updates about my application.
               <br />
-              <span className="text-gray-400">
-                (Optional: you can continue without agreeing to SMS communication)
-              </span>
+              <span className="text-gray-400">(Uncheck if you don&apos;t want SMS updates)</span>
             </label>
           </div>
 
