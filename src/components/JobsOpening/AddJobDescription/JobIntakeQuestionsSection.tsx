@@ -249,7 +249,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
                 disabled={checkingRelevance}
                 onClick={handleCheckRelevance}
               >
-                {checkingRelevance ? 'Checking...' : 'Check Relevance To JD'}
+                {checkingRelevance ? 'Checking...' : 'Check JD Relevance'}
               </button>
             </Tooltip>
           )}
