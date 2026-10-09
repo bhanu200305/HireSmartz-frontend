@@ -47,3 +47,20 @@ describe('ConfirmationModal', () => {
     expect(screen.getByRole('button', { name: 'Use Uploaded JD' })).toBeTruthy();
   });
 });
+
+describe('ConfirmationModal title', () => {
+  it('is centred', () => {
+    render(
+      <ConfirmationModal
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        title="Delete this?"
+        confirmText="Delete"
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Delete this?' }).className).toContain(
+      'text-center'
+    );
+  });
+});

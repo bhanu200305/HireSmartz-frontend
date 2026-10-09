@@ -22,8 +22,8 @@ type FlagKey = Exclude<keyof PlatformEntitlements, 'locked_flags'>;
 const FLAGS: { key: FlagKey; label: string; description: string; icon: React.ReactNode }[] = [
   {
     key: 'is_culture_intro_enabled',
-    label: 'Culture Intro',
-    description: 'Show this company\'s "About our culture" section to candidates.',
+    label: 'Company Intro',
+    description: 'Show this company\'s "Company Intro" section to candidates.',
     icon: <MdOutlineFavorite size={18} />,
   },
   {

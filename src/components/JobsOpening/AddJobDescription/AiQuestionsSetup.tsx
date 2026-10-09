@@ -20,6 +20,7 @@ import {
   useGenerateJobQuestionsMutation,
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
+  useGetQuestionImportsQuery,
   useLazyGetQuestionImportTemplateQuery,
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
@@ -105,7 +106,7 @@ const getRoundIdsMissingQuestions = (err: unknown): string[] =>
 
 /** Plain-language reason for a row the import rejected (job-service's wording, reworded). */
 const describeImportError = (error: string): string => {
-  if (/question text is required/i.test(error)) return 'The question is empty';
+  if (/question text is required/i.test(error)) return 'The row contains no text';
   const tooLong = (label: string, regex: RegExp) => {
     const limit = error.match(regex)?.[1];
     return limit ? `${label} is too long - the limit is ${limit} characters` : null;
@@ -121,7 +122,7 @@ const describeImportError = (error: string): string => {
 /** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
 const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
   if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
-    return 'Add an AI Video Interview, Hiring Panel, or AI Audio Call round to the Interview Sequence before generating questions.';
+    return 'Add an AI Agent Call, AI Video Interview, Live Video Interview or In-Person Interview round to the Interview Sequence before generating questions.';
   }
   return getJobErrorMessage(err, fallback);
 };
@@ -288,18 +289,36 @@ const AiQuestionsSetup = () => {
       jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
       selectedRoundInstanceId) ||
     defaultRoundInstanceId;
+  // Files bulk-imported into this round, newest first.
+  const { data: questionImports } = useGetQuestionImportsQuery(
+    { jobOpeningId: activeJobOpeningId ?? '', interviewRoundId: activeRoundInstanceId },
+    { skip: !activeJobOpeningId || !activeRoundInstanceId }
+  );
+  const uploadedFiles = useMemo(
+    () =>
+      (questionImports?.imports ?? []).map((file) => ({
+        id: file.id,
+        fileName: file.file_name,
+        uploadedAt: file.uploaded_at,
+        imported: file.imported_count,
+        failed: file.failed_count,
+        duplicates: file.duplicate_count,
+      })),
+    [questionImports]
+  );
+  // The API lists the newest batch first.
   const visibleQuestions = useMemo(
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
     [questions, activeRoundInstanceId]
   );
-  // After an add, scroll the list so the new question at the bottom is in view.
+  // After an add, scroll the list to the top where the new question is.
   const questionListRef = useRef<HTMLDivElement>(null);
   const scrollToEndAfterAddRef = useRef(false);
   useEffect(() => {
     if (!scrollToEndAfterAddRef.current) return;
     scrollToEndAfterAddRef.current = false;
     const list = questionListRef.current;
-    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+    if (list) list.scrollTo({ top: 0, behavior: 'smooth' });
   }, [visibleQuestions.length]);
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
@@ -310,18 +329,13 @@ const AiQuestionsSetup = () => {
   const effectiveOpenKey =
     openSectionKey === '__default__' ? (activeRoundInstanceId ?? '') : openSectionKey;
 
-  // Hiring Panel = available_variants ["online", "offline"].
+  // A human-led round: Live Video or In-Person.
   const activeRoundTypeId = jdRounds.find(
     (round) => round.round_instance_id === activeRoundInstanceId
   )?.round_id;
   const isHiringPanelActiveRound = useMemo(() => {
-    const variants = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.available_variants;
-    return (
-      !!variants &&
-      variants.length === 2 &&
-      variants.includes('online') &&
-      variants.includes('offline')
-    );
+    const kind = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.special_kind;
+    return kind === 'live_video' || kind === 'in_person';
   }, [roundTypes, activeRoundTypeId]);
   // AI Video = available_variants ["soundwave", "avatar"].
   const isAiVideoActiveRound = useMemo(() => {
@@ -380,6 +394,21 @@ const AiQuestionsSetup = () => {
     return `${count} question${count === 1 ? '' : 's'} ${isAppend ? 'added' : 'generated'}`;
   };
 
+  // Freshly generated questions start ticked: every question in the round
+  // that wasn't there before generating (all of them after a replace, just
+  // the new ones after an add).
+  const selectGeneratedQuestions = (
+    latest: { id: string; interview_round_id?: string | null }[],
+    roundId: string | null
+  ) => {
+    const before = new Set((questionSnapshotBeforeGenerateRef.current ?? '').split(','));
+    setSelectedIds(
+      latest
+        .filter((q) => (roundId ? q.interview_round_id === roundId : true) && !before.has(q.id))
+        .map((q) => q.id)
+    );
+  };
+
   // Stop polling once the list differs from its pre-generation snapshot.
   useEffect(() => {
     if (!isGeneratingQuestions) return;
@@ -387,6 +416,7 @@ const AiQuestionsSetup = () => {
     if (questionsSnapshotKey === questionSnapshotBeforeGenerateRef.current) return;
     setIsGeneratingQuestions(false);
     const generatedRoundId = roundBeingGeneratedForRef.current;
+    selectGeneratedQuestions(questions, generatedRoundId);
     // Fewer than requested: say so, instead of a plain success count.
     if (generationNotice) {
       showToast({ message: generationNotice, type: 'info' });
@@ -413,12 +443,11 @@ const AiQuestionsSetup = () => {
     if (!isGeneratingQuestions) return;
     const timeoutId = setTimeout(async () => {
       const result = await refetchQuestions();
-      const latestKey = (result.data?.rounds ?? [])
-        .flatMap((round) => round.questions ?? [])
-        .map((q) => q.id)
-        .join(',');
+      const latestQuestions = (result.data?.rounds ?? []).flatMap((round) => round.questions ?? []);
+      const latestKey = latestQuestions.map((q) => q.id).join(',');
       if (latestKey !== questionSnapshotBeforeGenerateRef.current) {
         setIsGeneratingQuestions(false);
+        selectGeneratedQuestions(latestQuestions, roundBeingGeneratedForRef.current);
         showToast({ message: 'Questions generated', type: 'success' });
         if (roundBeingGeneratedForRef.current) {
           setOpenSectionKey(roundBeingGeneratedForRef.current);
@@ -624,15 +653,16 @@ const AiQuestionsSetup = () => {
   const confirmDelete = () => {
     if (isDeleteInProgress || !activeJobOpeningId) return;
     setIsDeleteInProgress(true);
-    const idsToRemove = new Set(
-      selectedIds.length > 0 ? selectedIds : selectedQuestionId ? [selectedQuestionId] : []
-    );
+    // A row's own trash icon deletes just that row, even while other rows are
+    // ticked (it used to delete every ticked row instead); the header button
+    // deletes the ticked rows.
+    const idsToRemove = new Set(selectedQuestionId ? [selectedQuestionId] : selectedIds);
     const remaining = questions.filter((q) => !idsToRemove.has(q.id)).map(toQuestionRequest);
 
     persistQuestions(remaining)
       .then(() => {
         showToast({ message: 'Deleted successfully', type: 'success' });
-        setSelectedIds([]);
+        setSelectedIds((prev) => prev.filter((id) => !idsToRemove.has(id)));
       })
       .catch((err) =>
         showToast({
@@ -921,8 +951,8 @@ const AiQuestionsSetup = () => {
 
         {noEligibleRound && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Add an AI Video Interview, Hiring Panel, or AI Audio Call round to the Interview
-            Sequence before adding questions.
+            Add an AI Agent Call, AI Video Interview, Live Video Interview or In-Person Interview
+            round to the Interview Sequence before adding questions.
           </div>
         )}
 
@@ -1097,6 +1127,7 @@ const AiQuestionsSetup = () => {
                       failedCount={failedRowCount}
                       duplicateCount={duplicateRowCount}
                       warnings={importWarnings}
+                      uploadedFiles={uploadedFiles}
                       onClearDetails={() => {
                         setUploadedFileName('');
                         setImportWarnings([]);
@@ -1127,7 +1158,11 @@ const AiQuestionsSetup = () => {
                 setSelectedQuestionId(null);
               }
             }}
-            title={selectedIds.length > 0 ? 'Delete selected questions?' : 'Delete question?'}
+            title={
+              !selectedQuestionId && selectedIds.length > 0
+                ? 'Delete selected questions?'
+                : 'Delete question?'
+            }
             onConfirm={confirmDelete}
             confirmText="Delete"
             isLoading={isDeleteInProgress}

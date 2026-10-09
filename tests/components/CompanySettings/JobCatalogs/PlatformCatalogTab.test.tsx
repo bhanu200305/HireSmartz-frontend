@@ -6,7 +6,7 @@ import type { CatalogField } from '../../../../src/components/CompanySettings/Jo
 type Item = { id: string; name: string };
 type FormValues = { name: string };
 
-const items: Item[] = [{ id: '1', name: 'Resume Screening' }];
+const items: Item[] = [{ id: '1', name: 'Resume Review' }];
 const fields: CatalogField<FormValues>[] = [{ name: 'name', label: 'Name', type: 'text' }];
 const baseProps = {
   title: 'Catalogue',

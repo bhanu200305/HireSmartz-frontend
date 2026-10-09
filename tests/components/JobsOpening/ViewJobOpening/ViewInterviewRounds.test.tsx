@@ -7,8 +7,8 @@ const jobData = {
     interviewRounds: [
       {
         id: 1,
-        round: { id: 'r-resume', name: 'Resume Screening' },
-        description: 'AI resume screening.',
+        round: { id: 'r-resume', name: 'Resume Review' },
+        description: 'AI resume review.',
         duration: null,
         variant: null,
       },
@@ -21,10 +21,10 @@ const jobData = {
       },
       {
         id: 3,
-        round: { id: 'r-panel', name: 'Hiring Panel Round' },
+        round: { id: 'r-panel', name: 'Live Video Interview' },
         description: 'Human panel.',
         duration: 30,
-        variant: 'online',
+        variant: null,
       },
       {
         id: 4,
@@ -42,7 +42,7 @@ const jobData = {
 };
 
 const roundTypes = [
-  { id: 'r-resume', name: 'Resume Screening', special_kind: 'resume', variant_labels: undefined },
+  { id: 'r-resume', name: 'Resume Review', special_kind: 'resume', variant_labels: undefined },
   {
     id: 'r-intake',
     name: 'Renamed Intake',
@@ -51,11 +51,16 @@ const roundTypes = [
   },
   {
     id: 'r-panel',
-    name: 'Hiring Panel Round',
-    special_kind: null,
-    variant_labels: { online: 'Remote Panel' },
+    name: 'Live Video Interview',
+    special_kind: 'live_video',
+    variant_labels: undefined,
   },
-  { id: 'r-video', name: 'AI Video Interview', special_kind: null, variant_labels: undefined },
+  {
+    id: 'r-video',
+    name: 'AI Video Interview',
+    special_kind: null,
+    variant_labels: { soundwave: 'Voice Agent' },
+  },
 ];
 
 vi.mock('../../../../src/api/job-service/JobOpening/GetJobOpeningById', () => ({
@@ -84,12 +89,12 @@ describe('ViewInterviewRounds', () => {
 
   it('shows one numbered pill per round and the first round by default', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: '1. Resume Screening' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '3. Hiring Panel Round' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '1. Resume Review' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '3. Live Video Interview' })).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: '1. Resume Screening' }).getAttribute('aria-current')
+      screen.getByRole('button', { name: '1. Resume Review' }).getAttribute('aria-current')
     ).toBe('true');
-    expect(screen.getByText('AI resume screening.')).toBeTruthy();
+    expect(screen.getByText('AI resume review.')).toBeTruthy();
   });
 
   it('shows no Questions section for the Resume round', () => {
@@ -104,14 +109,20 @@ describe('ViewInterviewRounds', () => {
     expect(screen.getByText('What is your name?')).toBeTruthy();
   });
 
-  it("lists a round's own questions numbered, with the database variant label and duration", () => {
+  it("lists a round's own questions numbered, with its duration and no variant", () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '3. Hiring Panel Round' }));
+    fireEvent.click(screen.getByRole('button', { name: '3. Live Video Interview' }));
     expect(screen.getByText('Questions (2)')).toBeTruthy();
     expect(screen.getByText('Tell me about yourself')).toBeTruthy();
     expect(screen.getByText('Why this job?')).toBeTruthy();
-    expect(screen.getByText('Remote Panel')).toBeTruthy();
     expect(screen.getByText('30 min')).toBeTruthy();
+    expect(screen.queryByText('Voice Agent')).toBeNull();
+  });
+
+  it('shows the database variant label for the AI Video round', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '4. AI Video Interview' }));
+    expect(screen.getByText('Voice Agent')).toBeTruthy();
   });
 
   it('says so when a round has no questions', () => {

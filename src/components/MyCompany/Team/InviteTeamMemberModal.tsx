@@ -80,7 +80,10 @@ const InviteTeamMemberForm = ({
 
   // Offices feed the Create Role wizard's optional per-location permission
   // overrides (its Step 2) — not fetched unless the user can create a role.
-  const { data: offices } = useListTenantOfficesQuery({ tenantId }, { skip: !canCreateRole });
+  const { data: offices } = useListTenantOfficesQuery(
+    { tenantId, includeInactive: false },
+    { skip: !canCreateRole }
+  );
   const availableLocations = (offices ?? []).map((office) => ({
     id: office.office_id,
     name: officeDisplayName(office),

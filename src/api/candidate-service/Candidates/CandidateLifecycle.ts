@@ -41,6 +41,9 @@ export type CandidateView = {
   phone_number_issue?: PhoneNumberIssue | null;
   /** When the candidate agreed to receive SMS; null means SMS sends are refused. */
   sms_consent_at?: string | null;
+  /** When the candidate opted out of SMS. SMS is on by default: a candidate is
+   * texted unless this is set (`null` or missing means texting is allowed). */
+  sms_opted_out_at?: string | null;
   qualification: string | null;
   address: string | null;
   applied_date: string;

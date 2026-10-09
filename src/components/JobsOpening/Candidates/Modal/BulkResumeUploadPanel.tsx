@@ -39,6 +39,76 @@ const STALL_TIMEOUT_MS = 2 * 60 * 1000;
 // Consecutive failed progress requests before treating the batch the same way.
 const MAX_FAILED_POLLS = 3;
 
+// candidate-service's per-file rejection reasons (error_messages.py,
+// bulk_upload_resumes.py), reworded to read after "...could not be added
+// because": [one file, several files].
+const KNOWN_FAILURE_REASONS: Record<string, [string, string]> = {
+  'this resume was already uploaded for this job': [
+    'it was already uploaded for this job',
+    'they were already uploaded for this job',
+  ],
+  'this file is repeated in this upload': [
+    'it was included more than once in this upload',
+    'they were included more than once in this upload',
+  ],
+  "this file isn't a valid PDF, DOC or DOCX resume": [
+    "it isn't a valid PDF, DOC or DOCX resume",
+    "they aren't valid PDF, DOC or DOCX resumes",
+  ],
+  'file is empty': ['it is empty', 'they are empty'],
+};
+
+/** The heading for a group of files that failed for the same reason, e.g.
+ * "4 resumes could not be added because they were already uploaded for this
+ * job:". An unrecognised reason is kept verbatim rather than reworded. */
+const failureGroupHeading = (reason: string, count: number): string => {
+  const subject = count === 1 ? '1 resume' : `${count} resumes`;
+  if (!reason) return `${subject} could not be added:`;
+  const key = reason.trim().toLowerCase();
+  const known = Object.entries(KNOWN_FAILURE_REASONS).find(([text]) => text.toLowerCase() === key);
+  if (known) return `${subject} could not be added because ${known[1][count === 1 ? 0 : 1]}:`;
+  const sizeLimit = /^must be under (.+)$/i.exec(reason.trim());
+  if (sizeLimit) {
+    return `${subject} could not be added because ${count === 1 ? "it's" : "they're"} larger than ${sizeLimit[1]}:`;
+  }
+  return `${subject} could not be added (${reason.trim()}):`;
+};
+
+/** Files that were not added, with the reason each failed. */
+type NotAddedFile = { filename: string; reason: string | null };
+
+/** One group per distinct reason (first-seen order), its files listed beneath,
+ * instead of repeating the same reason after every file name. */
+const groupFailures = (files: NotAddedFile[]) => {
+  const groups = new Map<string, string[]>();
+  files.forEach((file) => {
+    const reason = file.reason?.trim() ?? '';
+    groups.set(reason, [...(groups.get(reason) ?? []), file.filename]);
+  });
+  return Array.from(groups, ([reason, filenames]) => ({ reason, filenames }));
+};
+
+/** The red "could not be added" box: the one message used both on the progress
+ * screen and when every file was rejected up front. */
+const NotAddedList = ({ files }: { files: NotAddedFile[] }) => (
+  <div className="flex max-h-48 w-full flex-col gap-2 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+    {groupFailures(files).map(({ reason, filenames }) => (
+      <div key={reason || 'no-reason'}>
+        <p className="mb-1 text-sm font-semibold text-red-700">
+          {failureGroupHeading(reason, filenames.length)}
+        </p>
+        <ul className="m-0 list-disc space-y-1 pl-5 text-xs text-red-700">
+          {filenames.map((filename, i) => (
+            <li key={`${filename}-${i}`} className="break-all">
+              {filename}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+);
+
 type BulkResumeUploadPanelProps = {
   /** Fires once parsing finishes (not merely once the files are accepted) —
    * the parent's cue to refetch its candidate list. Same timing UploadCvModal
@@ -53,6 +123,11 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   const [files, setFiles] = useState<File[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [completedBatchId, setCompletedBatchId] = useState<string | null>(null);
+  // Set when EVERY uploaded file was rejected: no batch exists to track, so the
+  // reasons are listed here in the panel itself (no toast, no auto-close).
+  const [rejectedOnly, setRejectedOnly] = useState<{ filename: string; reason: string }[] | null>(
+    null
+  );
 
   const { id: jobOpeningId } = useParams<{ id: string }>();
   const tenantId = useSessionTenantId();
@@ -127,7 +202,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   // pending auto-close timer below, and the `completedBatchId === batchId`
   // guard would then block scheduling a new one, since as far as this
   // effect can tell, "the completion already happened." The result: the
-  // "Done" message shows (it isn't gated on this effect), but the modal
+  // completion summary shows (it isn't gated on this effect), but the modal
   // never actually closes on its own — exactly the reported symptom,
   // reliably reproducible any time something else in the tree happens to
   // re-render this modal in the 1.5s window, which real usage's live
@@ -159,7 +234,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   // Once parsing finishes: tell the parent so it can refetch the candidate
   // list (guarded by completedBatchId so this fires exactly once per batch,
   // not on every 3s poll after done), then close the parent modal on its own
-  // after a brief delay — the "Done" message above is enough of a hand-off,
+  // after a brief delay — the "N of N resumes added" line is enough of a hand-off,
   // no need to make the user click away themselves, but it should still be
   // readable for a moment before it disappears.
   //
@@ -175,7 +250,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   // effect body, whether or not that body does anything) — it cancelled
   // the correct, already-scheduled timer, and with the guard now blocking
   // a replacement, nothing ever rescheduled it: onDone() never fired, so
-  // the "Done, you can close this now." message just sat there forever.
+  // the completed batch just sat there forever.
   //
   // Only a batch where everything succeeded closes itself. One with failed
   // files, or one given up on, stays open (with its list / message) until the
@@ -198,6 +273,7 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     setFiles([]);
     setBatchId(null);
+    setRejectedOnly(null);
     onDoneRef.current();
   };
 
@@ -238,25 +314,26 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
         files,
       }).unwrap();
 
-      showToast({
-        message: `${res.valid_files} of ${res.total_files} resume(s) accepted and are being processed.`,
-        type: 'success',
-      });
-      if (res.invalid_files.length > 0) {
-        showToast({
-          message: `Rejected: ${res.invalid_files.map((f) => `${f.filename} (${f.reason})`).join(', ')}`,
-          type: 'error',
-        });
-      }
-
+      // Rejected files (duplicates, unreadable ones) are listed in this panel
+      // with their reasons, never in a toast; only a plain all-accepted
+      // confirmation is toasted.
       setFiles([]);
       if (res.valid_files > 0) {
+        if (res.invalid_files.length === 0) {
+          showToast({
+            message: `${res.valid_files} of ${res.total_files} resume(s) accepted and are being processed.`,
+            type: 'success',
+          });
+        }
         // Keep the panel mounted, tracking parse progress, rather than
         // closing immediately — ai-service parsing 30 resumes isn't instant
         // (FRONTEND_INTEGRATION_DETAILS.md §4.2's own "poll, don't assume a
         // fixed completion time").
         setBatchId(res.batch_id);
         setCompletedBatchId(null);
+      } else if (res.invalid_files.length > 0) {
+        // Nothing was accepted: stay open and list why.
+        setRejectedOnly(res.invalid_files.map((f) => ({ filename: f.filename, reason: f.reason })));
       } else {
         onDone();
       }
@@ -268,19 +345,46 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
     }
   };
 
+  // Counted against everything the recruiter uploaded (`total_files`), not
+  // just the files that passed the upload checks (`valid_files`) — a batch
+  // of 5 with 4 duplicates used to read "Processed 1 of 1". Files rejected
+  // up front (total - valid) are already decided, so they count as done.
+  const progressText = (() => {
+    if (!batchProgress) return 'Starting…';
+    const total = batchProgress.total_files;
+    const plural = total === 1 ? 'resume' : 'resumes';
+    if (!finished) {
+      const done = Math.min(
+        total,
+        batchProgress.parsed_files + (total - batchProgress.valid_files)
+      );
+      return `Processed ${done} of ${total} ${plural}…`;
+    }
+    const added = Math.max(0, total - failedItems.length);
+    return `${added} of ${total} ${plural} added.`;
+  })();
+
+  if (rejectedOnly) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6">
+        <NotAddedList files={rejectedOnly} />
+        <Button
+          type="button"
+          onClick={handleClose}
+          className="mt-1 w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white"
+        >
+          CLOSE
+        </Button>
+      </div>
+    );
+  }
+
   if (batchId) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
         {isProcessing && <Spin size="large" />}
         {(batchProgress || isProcessing) && (
-          <p className="text-sm text-gray-600 text-center">
-            {batchProgress
-              ? `Processed ${batchProgress.parsed_files} of ${batchProgress.valid_files} resume(s)${isProcessing ? '…' : '.'}`
-              : 'Starting…'}
-          </p>
-        )}
-        {finished && (
-          <p className="text-sm font-semibold text-green-600">Done, you can close this now.</p>
+          <p className="text-sm text-gray-600 text-center">{progressText}</p>
         )}
         {!finished && isStalled && (
           <p className="text-sm text-center text-gray-600">
@@ -289,21 +393,12 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
           </p>
         )}
         {finished && failedItems.length > 0 && (
-          <div className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-            <p className="mb-1 text-sm font-semibold text-red-700">
-              {failedItems.length === 1
-                ? '1 resume could not be added:'
-                : `${failedItems.length} resumes could not be added:`}
-            </p>
-            <ul className="m-0 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-red-700">
-              {failedItems.map((item, i) => (
-                <li key={`${item.filename}-${i}`}>
-                  <span className="font-semibold">{item.filename}</span>
-                  {item.error_message ? `: ${item.error_message}` : ''}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <NotAddedList
+            files={failedItems.map((item) => ({
+              filename: item.filename,
+              reason: item.error_message,
+            }))}
+          />
         )}
         {(isStalled || (finished && failedItems.length > 0)) && (
           <Button

@@ -32,7 +32,14 @@ export type JobOpeningDropdownOption = {
   available_variants?: string[] | null;
   variant_labels?: Record<string, string> | null;
   max_occurrences?: number | null;
-  special_kind?: 'intake_call' | 'resume' | 'verification' | null;
+  special_kind?:
+    | 'intake_call'
+    | 'resume'
+    | 'verification'
+    | 'audio_screening'
+    | 'live_video'
+    | 'in_person'
+    | null;
   /** Skills only: false for a platform-shared skill, so the UI can offer
    * rename/remove only for this organization's own additions. */
   isEditable?: boolean;

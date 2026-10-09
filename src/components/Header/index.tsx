@@ -19,7 +19,7 @@ import './header.css';
 import { Search, showToast } from '../shared';
 import { FilterSelectIcon } from '../shared/ui/FilterSelectIcon';
 import { useModalCloseAttention } from '../shared/ui/useModalCloseAttention';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { KeyboardEvent } from 'react';
 import GlobalSearch, {
   getDefaultUserDetailPath,
@@ -27,6 +27,10 @@ import GlobalSearch, {
   type SearchResult,
 } from '../shared/GlobalSearch';
 import { useGetCategoriesQuery } from '../../api/search-service/Dashboard/GlobalSearch';
+import {
+  filterSearchCategories,
+  JOB_DEPARTMENT_SEARCH_VALUE,
+} from '../../shared/utils/globalSearchCategories';
 import {
   useLazyGetNylasAuthUrlQuery,
   useGetNylasGrantStatusQuery,
@@ -43,6 +47,11 @@ import NotificationBell from './NotificationBell';
 import LocationSwitcher from '../Navbar/LocationSwitcher';
 import { useGetTenantProfileQuery } from '../../api/organization-service/Tenants/profile';
 import { MyInterviewCalendarModal } from '../../pages/InterviewsPage/MyInterviewCalendarModal';
+import {
+  MY_CALENDAR_PATH,
+  parseOpenCalendar,
+  withoutOpenCalendar,
+} from '../../pages/InterviewsPage/openCalendarParam';
 
 const { Option, OptGroup } = Select;
 
@@ -117,6 +126,50 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
   const [showSwitchCalendarModal, setShowSwitchCalendarModal] = useState(false);
   const [showDisconnectCalendarModal, setShowDisconnectCalendarModal] = useState(false);
   const [showInterviewCalendar, setShowInterviewCalendar] = useState(false);
+  // Interview to jump to when the calendar was opened from an emailed link.
+  const [calendarFocusBookingId, setCalendarFocusBookingId] = useState<string | null>(null);
+  // The calendar popup closes when a link inside it opens another page, and
+  // that page's "Back to Calendar" reopens it (it is not a page of its own).
+  // Declared in this order so a Back that changes the page AND asks to reopen
+  // ends up open.
+  useEffect(() => {
+    setShowInterviewCalendar(false);
+  }, [location.pathname]);
+  // `?openCalendar=<booking_id>` on any signed-in page, or the /my-calendar page
+  // itself, opens the calendar (at that interview, if given). Declared after the
+  // close-on-navigation effect above so arriving by link ends up open.
+  const openCalendarRequest = parseOpenCalendar(location.search);
+  const isMyCalendarPage = location.pathname === MY_CALENDAR_PATH;
+  useEffect(() => {
+    if (!openCalendarRequest.requested) return;
+    setShowInterviewCalendar(true);
+    setCalendarFocusBookingId(openCalendarRequest.bookingId);
+    // Consume the parameter so a refresh or Back does not reopen it. (This
+    // effect then runs once more with nothing requested and returns above, so
+    // the interview to focus is not cleared before the calendar has used it.)
+    navigate(
+      { pathname: location.pathname, search: withoutOpenCalendar(location.search) },
+      { replace: true, state: location.state }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCalendarRequest.requested, openCalendarRequest.bookingId]);
+  // Arriving on /my-calendar without a parameter also opens it.
+  useEffect(() => {
+    if (isMyCalendarPage) setShowInterviewCalendar(true);
+  }, [isMyCalendarPage]);
+  const reopenCalendar = Boolean(
+    (location.state as { reopenCalendar?: boolean } | null)?.reopenCalendar
+  );
+  useEffect(() => {
+    if (!reopenCalendar) return;
+    setShowInterviewCalendar(true);
+    // Consume the flag so a refresh or a later Back doesn't reopen it again.
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: { ...(location.state as object), reopenCalendar: false },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reopenCalendar]);
   const withCloseAttention = useModalCloseAttention();
 
   // getLocalStorageItem now falls back to sessionStorage for this key (see
@@ -226,7 +279,20 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
     refetchOnMountOrArgChange: true,
   });
 
-  const categoriesData = categoriesRes as CategoriesResponse | undefined;
+  // "Department" under Job Openings isn't offered to company users (the backend
+  // can't search jobs by department for them yet).
+  const categoriesData = useMemo(
+    () => filterSearchCategories(categoriesRes as CategoriesResponse | undefined, isPlatformCaller),
+    [categoriesRes, isPlatformCaller]
+  );
+  // A saved "Department" choice from before that: drop it, or the search would
+  // keep sending a field that returns nothing.
+  useEffect(() => {
+    if (!isPlatformCaller && persistedCategoryValue === JOB_DEPARTMENT_SEARCH_VALUE) {
+      setSelectedValue(null);
+      dispatch(clearGlobalSearchCategorySelection());
+    }
+  }, [isPlatformCaller, persistedCategoryValue, dispatch]);
 
   useEffect(() => {
     setSearchQuery(persistedGlobalQuery || '');
@@ -913,6 +979,8 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
       <MyInterviewCalendarModal
         open={showInterviewCalendar}
         onClose={() => setShowInterviewCalendar(false)}
+        focusBookingId={calendarFocusBookingId}
+        onFocusHandled={() => setCalendarFocusBookingId(null)}
       />
     </>
   );

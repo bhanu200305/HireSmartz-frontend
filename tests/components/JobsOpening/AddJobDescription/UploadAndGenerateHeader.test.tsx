@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import UploadAndGenerateHeader, {
   type ImportWarningItem,
+  type UploadedFileItem,
 } from '../../../../src/components/JobsOpening/AddJobDescription/UploadAndGenerateHeader';
 
 const warnings: ImportWarningItem[] = [
@@ -52,7 +53,8 @@ describe('UploadAndGenerateHeader import details', () => {
     expect(screen.getByText('Rows that were skipped')).toBeTruthy();
     expect(screen.getByText('Not imported (2)')).toBeTruthy();
     expect(screen.getByText('Skipped duplicates (2)')).toBeTruthy();
-    expect(screen.getByText(/Fix these rows in your file/)).toBeTruthy();
+    expect(screen.getByText(/The question already exists/)).toBeTruthy();
+    expect(screen.queryByText(/Fix these rows/)).toBeNull();
     expect(screen.getByText('Row 4')).toBeTruthy();
     expect(screen.getByText('Question text is required')).toBeTruthy();
     expect(screen.getByText('Row 9')).toBeTruthy();
@@ -78,5 +80,85 @@ describe('UploadAndGenerateHeader import details', () => {
 
     fireEvent.click(screen.getByText('View details (4)'));
     expect(screen.getByText('Not imported (2)')).toBeTruthy();
+  });
+});
+
+describe('UploadAndGenerateHeader clear button', () => {
+  it('is a cross icon with no text, and clears the details', () => {
+    const onClear = vi.fn();
+    render(
+      <UploadAndGenerateHeader
+        description=""
+        onGenerate={vi.fn()}
+        onUpload={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+        uploadedFileName="questions.xlsx"
+        importedCount={1}
+        onClearDetails={onClear}
+      />
+    );
+
+    expect(screen.queryByText(/Clear Details/i)).toBeNull();
+    fireEvent.click(screen.getByLabelText('Clear details'));
+    expect(onClear).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('UploadAndGenerateHeader uploaded files', () => {
+  const files: UploadedFileItem[] = [
+    {
+      id: 'f2',
+      fileName: 'round-two.xlsx',
+      uploadedAt: '2026-10-09T10:30:00Z',
+      imported: 4,
+      failed: 1,
+      duplicates: 2,
+    },
+    {
+      id: 'f1',
+      fileName: 'older.xlsx',
+      uploadedAt: null,
+      imported: null,
+      failed: null,
+      duplicates: null,
+    },
+  ];
+
+  const renderWithFiles = (uploadedFiles: UploadedFileItem[]) =>
+    render(
+      <ConfigProvider theme={{ token: { motion: false } }}>
+        <UploadAndGenerateHeader
+          description=""
+          onGenerate={vi.fn()}
+          onUpload={vi.fn()}
+          onDownloadTemplate={vi.fn()}
+          uploadedFiles={uploadedFiles}
+        />
+      </ConfigProvider>
+    );
+
+  it('shows nothing when no file was uploaded to the round', () => {
+    renderWithFiles([]);
+    expect(screen.queryByText(/Uploaded files/)).toBeNull();
+  });
+
+  it('lists every file with its counts in a modal that can be closed', async () => {
+    renderWithFiles(files);
+
+    fireEvent.click(screen.getByText('Uploaded files (2)'));
+    expect(await screen.findByText('round-two.xlsx')).toBeTruthy();
+    expect(screen.getByText(/4 added · 1 invalid · 2 duplicate/)).toBeTruthy();
+    expect(screen.getByText('older.xlsx')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Close'));
+    await waitFor(() => expect(screen.queryByText('round-two.xlsx')).toBeNull());
+  });
+
+  it('leaves out counts a file does not have', async () => {
+    renderWithFiles([files[1]]);
+
+    fireEvent.click(screen.getByText('Uploaded files (1)'));
+    expect(await screen.findByText('older.xlsx')).toBeTruthy();
+    expect(screen.queryByText(/added/)).toBeNull();
   });
 });

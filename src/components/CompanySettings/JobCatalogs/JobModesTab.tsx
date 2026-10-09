@@ -33,6 +33,7 @@ const JobModesTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
+    includeInactive: true,
   });
   const [create] = useCreatePlatformJobModeMutation();
   const [update] = useUpdatePlatformJobModeMutation();

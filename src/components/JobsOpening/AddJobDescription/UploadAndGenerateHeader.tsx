@@ -1,4 +1,5 @@
 import React from 'react';
+import dayjs from 'dayjs';
 import { Modal, Tooltip } from 'antd';
 import { Button, Typography } from '../../shared';
 import {
@@ -7,7 +8,7 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
-import { MdDownload } from 'react-icons/md';
+import { MdClose, MdDownload } from 'react-icons/md';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
@@ -17,6 +18,16 @@ export interface ImportWarningItem {
   reason: string;
   /** The question on that row, when the file had one. */
   questionText?: string | null;
+}
+
+/** A file uploaded earlier, with what came of it. Counts are null on old files. */
+export interface UploadedFileItem {
+  id: string;
+  fileName: string | null;
+  uploadedAt: string | null;
+  imported: number | null;
+  failed: number | null;
+  duplicates: number | null;
 }
 
 const MAX_SHOWN_QUESTION_CHARS = 400;
@@ -33,6 +44,8 @@ interface UploadAndGenerateHeaderProps {
   failedCount?: number;
   duplicateCount?: number;
   warnings?: ImportWarningItem[];
+  /** Files uploaded to this round before, newest first. */
+  uploadedFiles?: UploadedFileItem[];
   onClearDetails?: () => void;
   isGenerating?: boolean;
   isUploading?: boolean;
@@ -52,6 +65,7 @@ export const UploadAndGenerateHeader = ({
   failedCount = 0,
   duplicateCount = 0,
   warnings = [],
+  uploadedFiles = [],
   onClearDetails,
   isGenerating = false,
   isUploading = false,
@@ -60,6 +74,7 @@ export const UploadAndGenerateHeader = ({
 }: UploadAndGenerateHeaderProps) => {
   const skippedCount = failedCount + duplicateCount;
   const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const [filesOpen, setFilesOpen] = React.useState(false);
   // A fresh set of skipped rows opens the details once. Keyed on the rows, not the array.
   const warningsKey = warnings
     .map((warn) => `${warn.type}:${warn.row ?? ''}:${warn.reason}`)
@@ -116,6 +131,16 @@ export const UploadAndGenerateHeader = ({
         </Tooltip>
       </div>
 
+      {uploadedFiles.length > 0 && (
+        <button
+          type="button"
+          className="self-start text-sm font-semibold text-brand-500 hover:text-brand-800 cursor-pointer"
+          onClick={() => setFilesOpen(true)}
+        >
+          Uploaded files ({uploadedFiles.length})
+        </button>
+      )}
+
       {/* Upload Details & Warning display */}
       {uploadedFileName && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl p-4 flex flex-col gap-2">
@@ -126,10 +151,12 @@ export const UploadAndGenerateHeader = ({
             </Typography>
             {onClearDetails && (
               <button
-                className="text-brand-500 hover:text-brand-800 text-xs font-semibold cursor-pointer"
+                type="button"
+                aria-label="Clear details"
+                className="text-brand-500 hover:text-brand-800 cursor-pointer"
                 onClick={onClearDetails}
               >
-                Clear Details [x]
+                <MdClose size={18} />
               </button>
             )}
           </div>
@@ -184,6 +211,44 @@ export const UploadAndGenerateHeader = ({
         </div>
       )}
       <Modal
+        open={filesOpen && uploadedFiles.length > 0}
+        onCancel={() => setFilesOpen(false)}
+        title="Uploaded files"
+        footer={
+          <Button
+            className="rounded-full bg-button px-6 py-1.5 text-sm font-semibold text-white"
+            onClick={() => setFilesOpen(false)}
+          >
+            Close
+          </Button>
+        }
+        width={560}
+        style={{ top: 72 }}
+        destroyOnClose
+      >
+        <ul className="m-0 flex max-h-[60vh] list-none flex-col gap-2 overflow-y-auto p-0 pr-1">
+          {uploadedFiles.map((file) => {
+            const parts = [
+              file.imported !== null && `${file.imported} added`,
+              file.failed ? `${file.failed} invalid` : null,
+              file.duplicates ? `${file.duplicates} duplicate` : null,
+            ].filter(Boolean);
+            return (
+              <li key={file.id} className="rounded-xl border border-gray-100 bg-white px-3 py-2.5">
+                <p className="m-0 break-all text-sm font-medium text-gray-900">
+                  {file.fileName ?? 'Uploaded file'}
+                </p>
+                <p className="m-0 mt-1 text-xs text-gray-500">
+                  {file.uploadedAt ? dayjs(file.uploadedAt).format('MMM D, YYYY, h:mm A') : ''}
+                  {file.uploadedAt && parts.length > 0 && ' · '}
+                  {parts.join(' · ')}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </Modal>
+      <Modal
         open={detailsOpen && warnings.length > 0}
         onCancel={() => setDetailsOpen(false)}
         title="Rows that were skipped"
@@ -204,12 +269,12 @@ export const UploadAndGenerateHeader = ({
             {
               type: 'error' as const,
               title: 'Not imported',
-              hint: 'Fix these rows in your file and upload it again.',
+              hint: null,
             },
             {
               type: 'duplicate' as const,
               title: 'Skipped duplicates',
-              hint: 'These questions already exist, so there is nothing to fix.',
+              hint: 'The question already exists, so these were not added.',
             },
           ].map(({ type, title, hint }) => {
             const items = warnings.filter((warn) => warn.type === type);
@@ -230,7 +295,7 @@ export const UploadAndGenerateHeader = ({
                       {title} ({items.length})
                     </span>
                   </div>
-                  <span className="text-xs text-gray-500">{hint}</span>
+                  {hint && <span className="text-xs text-gray-500">{hint}</span>}
                 </div>
                 <ul className="m-0 flex list-none flex-col gap-2 p-0">
                   {items.map((warn) => (

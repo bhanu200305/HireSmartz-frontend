@@ -24,7 +24,7 @@ const renderModal = (feedbackRequirement: AdvanceFeedbackRequirement) =>
       onClose={vi.fn()}
       candidate={candidate}
       fromRound={round('Intake Call')}
-      toRound={round('AI Audio Call')}
+      toRound={round('AI Audio Screening')}
       feedbackRequirement={feedbackRequirement}
       canAutoInvite
       onSuccess={vi.fn()}

@@ -9,18 +9,18 @@ export const GROUPED_INTERNAL_STATUS_OPTIONS = [
     value: 'Resume-Review Awaited',
   },
   {
-    label: 'AI Audio Call',
+    label: 'AI Agent Call',
     value: 'AI',
     children: [
-      { label: 'Canceled', value: 'AI Audio Screening-Cancelled' },
-      { label: 'Completed', value: 'AI Audio Screening-Completed' },
-      { label: 'In Progress', value: 'AI Audio Screening-In Progress' },
-      { label: 'Invitation Sent', value: 'AI Audio Screening-Invitation Sent' },
-      { label: 'No Show', value: 'AI Audio Screening-No Show' },
-      { label: 'Not Completed', value: 'AI Audio Screening-Not Completed' },
-      { label: 'Not Scheduled', value: 'AI Audio Screening-Not Scheduled' },
-      { label: 'Scheduled', value: 'AI Audio Screening-Booking Created' },
-      { label: 'Skipped', value: 'AI Audio Screening-Skipped' },
+      { label: 'Canceled', value: 'AI Agent Call-Cancelled' },
+      { label: 'Completed', value: 'AI Agent Call-Completed' },
+      { label: 'In Progress', value: 'AI Agent Call-In Progress' },
+      { label: 'Invitation Sent', value: 'AI Agent Call-Invitation Sent' },
+      { label: 'No Show', value: 'AI Agent Call-No Show' },
+      { label: 'Not Completed', value: 'AI Agent Call-Not Completed' },
+      { label: 'Not Scheduled', value: 'AI Agent Call-Not Scheduled' },
+      { label: 'Scheduled', value: 'AI Agent Call-Booking Created' },
+      { label: 'Skipped', value: 'AI Agent Call-Skipped' },
     ],
   },
   {
@@ -65,7 +65,7 @@ export const EXTERNAL_STATUS_OPTIONS = [
 // status eligible for advance array
 export const ELIGIBLE_FOR_ADVANCE_STATUS = [
   'Resume-Review Awaited',
-  'AI Audio Screening-Completed',
+  'AI Agent Call-Completed',
   'Video Interview-Completed',
   'In-person Interview-Completed',
 ];

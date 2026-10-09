@@ -2,6 +2,7 @@ type SpecialKind = 'resume' | 'intake_call' | 'verification';
 
 // Fallback when the round type's special_kind isn't available.
 const NAME_TO_SPECIAL_KIND: Record<string, SpecialKind> = {
+  'resume review': 'resume',
   'resume screening': 'resume',
   'resume round': 'resume',
   'intake call': 'intake_call',
@@ -27,10 +28,9 @@ export const firstAvailableVariant = (variants?: string[] | null): string | null
 export const isHiddenRoundType = (specialKind?: string | null): boolean =>
   specialKind === 'verification';
 
-type RoundKind = SpecialKind | 'audio_screening' | 'ai_video' | 'panel';
+type RoundKind = SpecialKind | 'audio_screening' | 'ai_video' | 'live_video' | 'in_person';
 
 const AI_VIDEO_VARIANTS = ['soundwave', 'avatar'];
-const PANEL_VARIANTS = ['online', 'offline'];
 
 /** Which kind of round this is, from its type's special kind, its variant or its name. */
 const detectRoundKind = (options: {
@@ -39,24 +39,34 @@ const detectRoundKind = (options: {
   variants?: (string | null | undefined)[] | null;
 }): RoundKind | undefined => {
   const special = options.specialKind ?? getSpecialKindFromRoundName(options.roundName);
-  if (special === 'resume' || special === 'intake_call' || special === 'verification') {
+  if (
+    special === 'resume' ||
+    special === 'intake_call' ||
+    special === 'verification' ||
+    special === 'audio_screening' ||
+    special === 'live_video' ||
+    special === 'in_person'
+  ) {
     return special;
   }
   const variants = (options.variants ?? []).filter(Boolean).map((v) => String(v).toLowerCase());
   if (variants.some((v) => AI_VIDEO_VARIANTS.includes(v))) return 'ai_video';
-  if (variants.some((v) => PANEL_VARIANTS.includes(v))) return 'panel';
   const name = options.roundName?.toLowerCase() ?? '';
-  if (name.includes('audio')) return 'audio_screening';
+  // Live Video / In-Person before the "video" check below, which is the AI one.
+  if (name.includes('live video')) return 'live_video';
+  if (name.includes('in-person') || name.includes('in person')) return 'in_person';
+  if (name.includes('audio') || name.includes('agent call')) return 'audio_screening';
   if (name.includes('video')) return 'ai_video';
-  if (name.includes('panel')) return 'panel';
   return undefined;
 };
+
+const OVERVIEW = 'Round Overview';
 
 const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
   resume: [
     {
-      title: 'What this round is',
-      text: "Every candidate's resume is reviewed and scored against the job. It is always the first round and cannot be removed.",
+      title: OVERVIEW,
+      text: 'Each resume is reviewed and graded against the job description, by AI and by your team.',
     },
     {
       title: 'Focus areas',
@@ -65,8 +75,8 @@ const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
   ],
   intake_call: [
     {
-      title: 'What this round is',
-      text: 'A short AI phone call that checks what the candidate says against their resume.',
+      title: OVERVIEW,
+      text: 'An optional first conversation with the candidate, before or after the resume.',
     },
     {
       title: 'Focus areas',
@@ -79,14 +89,14 @@ const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
   ],
   verification: [
     {
-      title: 'What this round is',
+      title: OVERVIEW,
       text: 'A check that the candidate is who they say they are.',
     },
   ],
   audio_screening: [
     {
-      title: 'What this round is',
-      text: 'An AI-led audio interview. The candidate answers your questions by voice.',
+      title: OVERVIEW,
+      text: 'An AI phone interview with the candidate, scored against the job. The hiring team decides who advances.',
     },
     {
       title: 'Focus areas',
@@ -95,18 +105,28 @@ const ROUND_INFO: Record<RoundKind, RoundInfoSection[]> = {
   ],
   ai_video: [
     {
-      title: 'What this round is',
-      text: 'An AI-led video interview with a virtual interviewer. The candidate answers your questions on camera.',
+      title: OVERVIEW,
+      text: 'An AI-led video interview the hiring team can watch before meeting the candidate.',
     },
     {
       title: 'Focus areas',
       text: 'Skills Match.',
     },
   ],
-  panel: [
+  live_video: [
     {
-      title: 'What this round is',
-      text: "A live interview with your team's interviewers, online or in person.",
+      title: OVERVIEW,
+      text: 'A live video interview with 1 to 10 interviewers, wherever they are.',
+    },
+    {
+      title: 'Focus areas',
+      text: 'Skills Match, Personality Traits, Qualifications, Company Fit, Career Goals.',
+    },
+  ],
+  in_person: [
+    {
+      title: OVERVIEW,
+      text: 'The candidate meets your interviewers at your office.',
     },
     {
       title: 'Focus areas',
@@ -120,7 +140,14 @@ export const getRoundInfoSections = (options: {
   specialKind?: string | null;
   roundName?: string | null;
   variants?: (string | null | undefined)[] | null;
+  /** The round type's description from the Super Admin; replaces the built-in overview. */
+  description?: string | null;
 }): RoundInfoSection[] => {
   const kind = detectRoundKind(options);
-  return kind ? ROUND_INFO[kind] : [];
+  if (!kind) return [];
+  const description = options.description?.trim();
+  if (!description) return ROUND_INFO[kind];
+  return ROUND_INFO[kind].map((section) =>
+    section.title === OVERVIEW ? { ...section, text: description } : section
+  );
 };

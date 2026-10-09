@@ -170,11 +170,12 @@ export const orderRoundsForFlow = (
  * `orderRoundsForFlow` has moved the resume stage for an instant-call
  * candidate. Every caller passes the same (possibly reordered) array.
  */
-// A stale real round named "Resume Screening" (or the old "Resume Round"), distinct from the synthetic
-// "resume" stage (always shown as "Resume Screening").
+// A stale round named "Resume Review" (or an older name), not the synthetic "resume" stage.
 export const isStaleResumeRound = (round: CandidateInterviewRoundView): boolean =>
   round.stage_type === 'interview' &&
-  ['resume screening', 'resume round'].includes(round.round_name.trim().toLowerCase());
+  ['resume review', 'resume screening', 'resume round'].includes(
+    round.round_name.trim().toLowerCase()
+  );
 
 /** Whether a round counts as finished for working out the candidate's current
  * round: skipped, or explicitly advanced by a recruiter. Interview-service
@@ -210,6 +211,24 @@ export const resolveCurrentRound = (
 export const isRoundConcluded = (round: CandidateInterviewRoundView): boolean => {
   const bucket = bucketForStatus(round.status);
   return bucket === 'done' || bucket === 'failed';
+};
+
+/** Whether the Overall Score may be shown: no round is outstanding except
+ * the last one, and that one has concluded. The last round can never be
+ * advanced, so `resolveCurrentRound` keeps it current until the candidate is
+ * selected or rejected; only this score uses the looser rule. Rounds that
+ * `resolveCurrentRound` ignores are ignored here too. */
+export const isReadyForOverallScore = (rounds: CandidateInterviewRoundView[]): boolean => {
+  if (rounds.length === 0) return false;
+  const lastId = rounds[rounds.length - 1].id;
+  return rounds
+    .filter(
+      (r) =>
+        !isStaleResumeRound(r) &&
+        !isRoundFinishedForProgress(r) &&
+        (r.stage_type !== 'resume' || r.due_at !== null)
+    )
+    .every((r) => r.id === lastId && isRoundConcluded(r));
 };
 
 /** Grace period after a round's `scheduled_at` before treating it as

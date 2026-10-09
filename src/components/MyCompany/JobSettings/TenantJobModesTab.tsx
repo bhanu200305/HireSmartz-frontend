@@ -37,6 +37,7 @@ const TenantJobModesTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
+    includeInactive: true,
   });
   const [create] = useCreateJobModeMutation();
   const [update] = useUpdateJobModeMutation();

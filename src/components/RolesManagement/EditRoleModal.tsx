@@ -89,8 +89,10 @@ const EditRoleModal: React.FC<EditRoleModalProps> = ({
         // `overflowX: 'hidden'` avoids a stray horizontal scrollbar per the
         // CSS "orthogonal overflow" rule (overflow-y non-visible computes
         // overflow-x to auto unless it's set explicitly too).
+        // paddingRight 38 = index.css's 24px edge-scrollbar padding + this
+        // modal's own 14px gutter (an inline value replaces the CSS one).
         styles: {
-          body: { overflowX: 'hidden', paddingRight: 14 },
+          body: { overflowX: 'hidden', paddingRight: 38 },
         },
         classNames: { body: 'thin-scrollbar' },
       }}

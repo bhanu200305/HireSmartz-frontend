@@ -4,10 +4,10 @@ import { MAX_REINVITES } from '../../../api/interview-service/client';
 // Shared by RoundSidebarItem.tsx (the Assessment round tabs) and CandidateDetails.tsx
 // (the round drill-down a card click opens) so a round is never labeled one
 // thing on the card and something else once you're inside it — both used to
-// compute this independently ("Resume Screening" on the card vs. the raw
+// compute this independently ("Resume Review" on the card vs. the raw
 // backend name "Resume Review" as the drill-down's title).
 export const roundLabel = (round: CandidateInterviewRoundView) =>
-  round.stage_type === 'resume' ? 'Resume Screening' : round.round_name || 'Round';
+  round.stage_type === 'resume' ? 'Resume Review' : round.round_name || 'Round';
 
 /** Round status → the label shown on the Interview Scheduling cards and the
  * Assessment tab's round list, so both read the same (backend contract):
@@ -61,15 +61,11 @@ export const formatCallIntent = (callIntent: string | null): string =>
     ? (CALL_INTENT_LABELS[callIntent] ?? formatRoundStatus(callIntent))
     : 'Pending';
 
-/** A job round's configured variant (job-service `job_interview_sequence.
- * variant`, or the booking snapshot's presentation/delivery mode) as a
- * display label — AI Video: soundwave | avatar; Hiring Panel: online |
- * offline. Null for rounds with no variant. */
-export const formatRoundVariant = (variant: string | null | undefined): string | null => {
-  const value = (variant ?? '').trim().toLowerCase();
+/** A booking's delivery mode (interview-service: online | offline) as a
+ * display label, or null when there is none. */
+export const formatDeliveryMode = (mode: string | null | undefined): string | null => {
+  const value = (mode ?? '').trim().toLowerCase();
   if (!value) return null;
-  if (value === 'soundwave') return 'Soundwave';
-  if (value === 'avatar') return 'Avatar';
   if (value === 'online') return 'Online';
   if (value === 'offline') return 'In-person';
   return value.charAt(0).toUpperCase() + value.slice(1);

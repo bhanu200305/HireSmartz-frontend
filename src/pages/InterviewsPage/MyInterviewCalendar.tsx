@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tooltip } from 'antd';
 import { Link } from 'react-router-dom';
 import type { Dayjs } from 'dayjs';
@@ -28,6 +28,7 @@ import {
 } from '../../api/interview-service/client';
 import { buildCandidateDetailsPath } from '../../components/JobsOpening/Candidates/useCandidateNavigation';
 import { useJobTitleForOpening } from './useJobTitleForOpening';
+import { useFromCalendar } from './useFromCalendar';
 import { bookingStatusBadge, bookingStatusLabel, interviewTypeLabel } from './interviewLabels';
 
 // `GET /bookings` has no date-range filter and orders by `created_at` desc,
@@ -95,9 +96,6 @@ const dayGroupLabel = (date: Dayjs): string => {
   return date.format('dddd');
 };
 
-// Lets the candidate page's Back button return to the calendar.
-const FROM_CALENDAR = { returnTo: '/interviews', returnLabel: 'Back to Calendar' };
-
 // Candidate name + the job opening id their profile link needs — shared by
 // every card/avatar below so each only renders once RTK Query's own cache
 // resolves it (one request per distinct candidate, not one per usage).
@@ -146,6 +144,7 @@ const HeroAvatarChip = ({ booking, onClick }: { booking: BookingView; onClick: (
 };
 
 const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => void }) => {
+  const fromCalendar = useFromCalendar();
   const { name, jobOpeningId } = useCandidateSummary(booking.candidate_id);
   const resolveJobTitle = useJobTitleForOpening();
   const jobTitle = booking.round_snapshot?.job_title?.trim() || resolveJobTitle(booking.job_id);
@@ -181,7 +180,7 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
             {profileHref ? (
               <Link
                 to={profileHref}
-                state={FROM_CALENDAR}
+                state={fromCalendar}
                 onClick={(e) => e.stopPropagation()}
                 title="Open this candidate's full profile"
                 className="truncate font-semibold text-brand-700 underline decoration-transparent underline-offset-2 transition-colors hover:text-brand-800 hover:decoration-brand-400"
@@ -216,12 +215,12 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
       {profileHref && (
         <Link
           to={profileHref}
-          state={FROM_CALENDAR}
+          state={fromCalendar}
           onClick={(e) => e.stopPropagation()}
           title="Open this candidate's full profile"
           className="flex shrink-0 items-center gap-1 self-start rounded-full border border-neutral-200 px-2 py-1 text-xs font-medium text-neutral-600 hover:border-brand-300 hover:text-brand-600"
         >
-          Profile
+          View
           <LuExternalLink size={12} />
         </Link>
       )}
@@ -354,9 +353,16 @@ const MonthGrid = ({
 
 type MyInterviewCalendarProps = {
   onSelectBooking: (bookingId: string) => void;
+  /** Jump to this interview's day and open its details (deep link from an email). */
+  focusBookingId?: string | null;
+  onFocusHandled?: () => void;
 };
 
-export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProps) => {
+export const MyInterviewCalendar = ({
+  onSelectBooking,
+  focusBookingId,
+  onFocusHandled,
+}: MyInterviewCalendarProps) => {
   const currentUserId = useSelector((state: RootState) => state.LoginSlice.userId);
   const dayGroupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   // Which month the big calendar below is showing + which date (if any) is
@@ -385,6 +391,35 @@ export const MyInterviewCalendar = ({ onSelectBooking }: MyInterviewCalendarProp
     }
     return map;
   }, [data?.items]);
+
+  // Deep link: once the bookings are in, show the day of the requested
+  // interview and open its details. Not found (past the fetched window, not on
+  // this user's roster) just says so; the calendar still opens normally.
+  const onSelectBookingRef = useRef(onSelectBooking);
+  const onFocusHandledRef = useRef(onFocusHandled);
+  useEffect(() => {
+    onSelectBookingRef.current = onSelectBooking;
+    onFocusHandledRef.current = onFocusHandled;
+  });
+  useEffect(() => {
+    if (!focusBookingId || isLoading || !currentUserId) return;
+    const booking = data?.items.find((b) => b.id === focusBookingId);
+    if (booking?.start_time && dayjs(booking.start_time).isValid()) {
+      const when = dayjs(booking.start_time);
+      setFocusedDate(when);
+      onSelectBookingRef.current(booking.id);
+      // After the day's group has rendered.
+      requestAnimationFrame(() => {
+        dayGroupRefs.current[when.format('YYYY-MM-DD')]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    } else if (!isError) {
+      showToast({ message: 'That interview is not in your calendar.', type: 'info' });
+    }
+    onFocusHandledRef.current?.();
+  }, [focusBookingId, isLoading, isError, data, currentUserId]);
 
   const todayKey = dayjs().format('YYYY-MM-DD');
   const todaysBookings = bookingsByDate.get(todayKey) ?? [];

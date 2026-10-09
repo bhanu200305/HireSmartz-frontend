@@ -40,15 +40,15 @@ const CultureIntroTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   const handleSave = async () => {
     const text = draft.trim();
     if (!text) {
-      showToast({ message: 'The culture intro cannot be empty.', type: 'error' });
+      showToast({ message: 'The company intro cannot be empty.', type: 'error' });
       return;
     }
     setError(null);
     try {
       await updateIntro({ tenantId, intro_text: text }).unwrap();
-      showToast({ message: 'Culture intro updated.', type: 'success' });
+      showToast({ message: 'Company intro updated.', type: 'success' });
     } catch (err) {
-      const message = getOrgErrorMessage(err, 'Failed to update culture intro.');
+      const message = getOrgErrorMessage(err, 'Failed to update company intro.');
       setError(message);
       showToast({ message, type: 'error' });
     }
@@ -59,7 +59,7 @@ const CultureIntroTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   return (
     <div className="p-4">
       <Typography variant="h5" className="mb-1">
-        Culture Intro
+        Company Intro
       </Typography>
       <Typography variant="body2" className="mb-6 block max-w-2xl">
         The opening script your AI interviewer reads aloud before the Q&amp;A in every audio

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { transformJobTypesResponse } from '../../../../src/api/job-service/JobOpening/catalogs';
+import {
+  toJobTypeRow,
+  transformJobTypesResponse,
+} from '../../../../src/api/job-service/JobOpening/catalogs';
 
 describe('transformJobTypesResponse — is_active/is_deleted', () => {
   it('keeps is_active and is_deleted from the raw response', () => {
@@ -39,5 +42,17 @@ describe('transformJobTypesResponse — is_active/is_deleted', () => {
 
   it('returns an empty array when job_types is missing', () => {
     expect(transformJobTypesResponse({})).toEqual([]);
+  });
+});
+
+describe('toJobTypeRow', () => {
+  it('keeps is_active so a deactivated type reads as off in the table', () => {
+    const row = toJobTypeRow({
+      id: '1',
+      job_type_name: 'Contract',
+      is_active: false,
+    });
+
+    expect(row.is_active).toBe(false);
   });
 });

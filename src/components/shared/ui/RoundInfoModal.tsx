@@ -12,6 +12,28 @@ interface RoundInfoModalProps {
   onClose: () => void;
 }
 
+interface RoundInfoBodyProps {
+  description?: string | null;
+  sections?: RoundInfoSection[];
+}
+
+/** The sections, or the round's own description when there are none. */
+export const RoundInfoBody: FC<RoundInfoBodyProps> = ({ description, sections = [] }) =>
+  sections.length > 0 ? (
+    <div className="flex flex-col gap-4">
+      {sections.map((section) => (
+        <div key={section.title}>
+          <h3 className="m-0 mb-1 text-sm font-semibold text-neutral-900">{section.title}</h3>
+          <p className="m-0 text-sm text-neutral-600 leading-relaxed">{section.text}</p>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="m-0 text-sm text-neutral-600 leading-relaxed">
+      {description || 'No description has been added for this round.'}
+    </p>
+  );
+
 /** Round info popup opened from the "i" icon. */
 const RoundInfoModal: FC<RoundInfoModalProps> = ({
   roundName,
@@ -48,20 +70,7 @@ const RoundInfoModal: FC<RoundInfoModalProps> = ({
       </div>
 
       <div className="px-6 py-5 overflow-y-auto">
-        {sections.length > 0 ? (
-          <div className="flex flex-col gap-4">
-            {sections.map((section) => (
-              <div key={section.title}>
-                <h3 className="m-0 mb-1 text-sm font-semibold text-neutral-900">{section.title}</h3>
-                <p className="m-0 text-sm text-neutral-600 leading-relaxed">{section.text}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="m-0 text-sm text-neutral-600 leading-relaxed">
-            {description || 'No description has been added for this round.'}
-          </p>
-        )}
+        <RoundInfoBody description={description} sections={sections} />
       </div>
     </div>
   </div>

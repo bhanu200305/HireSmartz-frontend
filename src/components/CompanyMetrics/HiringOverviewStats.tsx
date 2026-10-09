@@ -46,7 +46,7 @@ import { Authorities } from '../../constants/authorities.constant';
 // mapped to display names. Round types outside these (e.g. Identity Verification)
 // are excluded upstream.
 const ROUND_TYPE_LABELS: Record<string, string> = {
-  AUDIO: 'AI Audio Call',
+  AUDIO: 'AI Agent Call',
   AVATAR: 'AI Video Interview',
   VIDEO: 'Panel',
 };

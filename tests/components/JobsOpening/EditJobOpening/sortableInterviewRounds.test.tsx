@@ -14,7 +14,7 @@ const renderRounds = (withIntake: boolean) =>
     <SortableInterviewRounds
       isEditMode
       rounds={[
-        round('resume', 'Resume Screening', 1),
+        round('resume', 'Resume Review', 1),
         ...(withIntake ? [round('intake', 'Intake Call', 2)] : []),
         round('video', 'AI Video Interview', withIntake ? 3 : 2),
       ]}
@@ -29,7 +29,7 @@ const renderRounds = (withIntake: boolean) =>
 describe('SortableInterviewRounds controls', () => {
   it('gives the mandatory Resume round no edit or delete control', () => {
     renderRounds(false);
-    const resumeCard = screen.getByText(/Resume Screening/).closest('div')!.parentElement!;
+    const resumeCard = screen.getByText(/Resume Review/).closest('div')!.parentElement!;
     expect(resumeCard.querySelector('[aria-label="Delete round"]')).toBeNull();
     expect(resumeCard.querySelector('[aria-label="Edit round"]')).toBeNull();
   });

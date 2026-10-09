@@ -32,6 +32,7 @@ const SkillsTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
+    includeInactive: true,
   });
   const { data: categories = [] } = useListPlatformSkillCategoriesQuery();
   const [create] = useCreatePlatformSkillMutation();

@@ -17,6 +17,13 @@ type Progress = {
   }[];
 };
 
+let uploadResponse: {
+  batch_id: string;
+  total_files: number;
+  valid_files: number;
+  invalid_files: { filename: string; reason: string }[];
+};
+const showToastMock = vi.fn();
 let progress: Progress | undefined;
 let pollError: unknown;
 const pollingIntervals: number[] = [];
@@ -24,8 +31,7 @@ const pollingIntervals: number[] = [];
 vi.mock('../../../../src/api/candidate-service/Candidates/CandidateLifecycle', () => ({
   useBulkUploadResumesMutation: () => [
     () => ({
-      unwrap: () =>
-        Promise.resolve({ batch_id: 'b1', total_files: 4, valid_files: 4, invalid_files: [] }),
+      unwrap: () => Promise.resolve(uploadResponse),
     }),
     { isLoading: false },
   ],
@@ -35,7 +41,9 @@ vi.mock('../../../../src/api/candidate-service/Candidates/CandidateLifecycle', (
   },
 }));
 vi.mock('../../../../src/hooks/useSessionTenantId', () => ({ useSessionTenantId: () => 't1' }));
-vi.mock('../../../../src/components/shared/ui/toast', () => ({ showToast: vi.fn() }));
+vi.mock('../../../../src/components/shared/ui/toast', () => ({
+  showToast: (...args: unknown[]) => showToastMock(...args),
+}));
 
 import BulkResumeUploadPanel from '../../../../src/components/JobsOpening/Candidates/Modal/BulkResumeUploadPanel';
 
@@ -76,6 +84,8 @@ describe('BulkResumeUploadPanel progress', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     progress = undefined;
+    uploadResponse = { batch_id: 'b1', total_files: 4, valid_files: 4, invalid_files: [] };
+    showToastMock.mockReset();
     pollError = undefined;
     pollingIntervals.length = 0;
   });
@@ -89,11 +99,92 @@ describe('BulkResumeUploadPanel progress', () => {
     });
     const { onCompleted, onDone } = await renderPanel();
     expect(onCompleted).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/Done, you can close this now/)).toBeTruthy();
+    expect(screen.getByText('4 of 4 resumes added.')).toBeTruthy();
+    expect(screen.queryByText(/Done, you can close this now/)).toBeNull();
     await act(async () => {
       vi.advanceTimersByTime(2000);
     });
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts every uploaded file, including ones rejected as duplicates', async () => {
+    // 5 uploaded, 4 rejected up front as already uploaded, 1 accepted and parsed.
+    const dup = (name: string) => ({
+      filename: name,
+      status: 'failed',
+      candidate_id: null,
+      error_message: 'this resume was already uploaded for this job',
+    });
+    progress = batch({
+      status: 'completed',
+      total_files: 5,
+      valid_files: 1,
+      parsed_files: 1,
+      items: [
+        { filename: 'new.pdf', status: 'parsed', candidate_id: 'c1', error_message: null },
+        dup('a.pdf'),
+        dup('b.pdf'),
+        dup('c.pdf'),
+        dup('d.pdf'),
+      ],
+    });
+    await renderPanel();
+    expect(screen.getByText('1 of 5 resumes added.')).toBeTruthy();
+    expect(screen.queryByText(/Processed 1 of 1/)).toBeNull();
+    // The reason is said once, in the heading — not repeated per file.
+    expect(
+      screen.getByText(
+        '4 resumes could not be added because they were already uploaded for this job:'
+      )
+    ).toBeTruthy();
+    expect(screen.queryAllByText(/already uploaded for this job/)).toHaveLength(1);
+    ['a.pdf', 'b.pdf', 'c.pdf', 'd.pdf'].forEach((name) =>
+      expect(screen.getByText(name)).toBeTruthy()
+    );
+  });
+
+  it('groups failed files under one heading per reason', async () => {
+    const failed = (name: string, reason: string | null) => ({
+      filename: name,
+      status: 'failed',
+      candidate_id: null,
+      error_message: reason,
+    });
+    progress = batch({
+      status: 'completed',
+      total_files: 5,
+      valid_files: 1,
+      parsed_files: 1,
+      items: [
+        { filename: 'ok.pdf', status: 'parsed', candidate_id: 'c1', error_message: null },
+        failed('a.pdf', 'this resume was already uploaded for this job'),
+        failed('b.pdf', 'this resume was already uploaded for this job'),
+        failed('big.pdf', 'must be under 5MB'),
+        failed('odd.pdf', 'Parser timed out'),
+      ],
+    });
+    await renderPanel();
+    expect(
+      screen.getByText(
+        '2 resumes could not be added because they were already uploaded for this job:'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByText("1 resume could not be added because it's larger than 5MB:")
+    ).toBeTruthy();
+    expect(screen.getByText('1 resume could not be added (Parser timed out):')).toBeTruthy();
+  });
+
+  it('shows progress against the total while still processing', async () => {
+    // 5 uploaded, 1 rejected up front, 2 of the 4 accepted parsed so far.
+    progress = batch({
+      total_files: 5,
+      valid_files: 4,
+      parsed_files: 2,
+      items: [{ filename: 'a.pdf', status: 'uploaded', candidate_id: 'c1', error_message: null }],
+    });
+    await renderPanel();
+    expect(screen.getByText('Processed 3 of 5 resumes…')).toBeTruthy();
   });
 
   it('finishes on the item list alone and keeps failed files open with their reason', async () => {
@@ -132,5 +223,43 @@ describe('BulkResumeUploadPanel progress', () => {
     expect(onDone).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('CLOSE'));
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists rejected files in the panel, with no toast and no auto-close, when none were accepted', async () => {
+    uploadResponse = {
+      batch_id: 'b1',
+      total_files: 2,
+      valid_files: 0,
+      invalid_files: [
+        { filename: 'a.pdf', reason: 'this resume was already uploaded for this job' },
+        { filename: 'b.pdf', reason: 'this resume was already uploaded for this job' },
+      ],
+    };
+    const { onDone } = await renderPanel();
+    expect(
+      screen.getByText(
+        '2 resumes could not be added because they were already uploaded for this job:'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('a.pdf')).toBeTruthy();
+    expect(showToastMock).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(onDone).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('CLOSE'));
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no toast when some were accepted and some rejected (the screen lists them)', async () => {
+    uploadResponse = {
+      batch_id: 'b1',
+      total_files: 3,
+      valid_files: 1,
+      invalid_files: [{ filename: 'dup.pdf', reason: 'duplicate' }],
+    };
+    progress = batch({ parsed_files: 0, valid_files: 1, items: [] });
+    await renderPanel();
+    expect(showToastMock).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@ import { Button } from '../components/shared';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
 import { useSelector } from 'react-redux';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../redux/provider/store';
 import { sanitizedPath } from '../shared/utils/business-logic';
 import { useGetJobDescriptionByIdQuery } from '../api/job-service/JobOpening/ViewJobDescriptionById';
@@ -178,13 +178,22 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     viewTabIndex >= 0 && viewTabIndex + 1 < allSteps.length ? currentPaths[viewTabIndex + 1] : null;
 
   // Candidate list Back goes to the job listing, not `navigate(-1)`.
-  const returnState = location.state as { returnTo?: string; returnLabel?: string } | null;
+  const returnState = location.state as {
+    returnTo?: string;
+    returnLabel?: string;
+    reopenCalendar?: boolean;
+  } | null;
   const returnTo =
     isCandidateDetailsPage && returnState?.returnTo?.startsWith('/') ? returnState.returnTo : null;
 
   const handleBackNavigation = () => {
     if (returnTo) {
-      navigate(returnTo);
+      // From the calendar popup: land back on the page it was opened from, with
+      // the popup open again.
+      navigate(
+        returnTo,
+        returnState?.reopenCalendar ? { state: { reopenCalendar: true } } : undefined
+      );
     } else if (isCandidateDetailsPage && id) {
       navigate(`/jobs/view/${id}/candidates`);
     } else if (fromDashboard) {
@@ -260,11 +269,23 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
           <BackButton onClick={() => navigate('/jobs')} label="Back to Job Openings" />
           {/* `ml-auto` keeps it on the right even when a narrow screen wraps it. */}
           <div className="ml-auto flex flex-col items-end gap-1">
-            <BackButton
-              onClick={handleBackNavigation}
-              label={returnTo ? (returnState?.returnLabel ?? 'Back') : 'Back to Candidate List'}
-              className="-mr-2"
-            />
+            {returnTo || !id ? (
+              <BackButton
+                onClick={handleBackNavigation}
+                label={returnState?.returnLabel ?? 'Back'}
+                className="-mr-2"
+              />
+            ) : (
+              // A real link back to this job's candidate list, styled like
+              // the candidate page's tabs (e.g. "SMS Communication"): grey,
+              // accent colour on hover, never underlined.
+              <Link
+                to={`/jobs/view/${id}/candidates`}
+                className="rounded py-1 text-sm font-medium text-[var(--gray-500)] no-underline transition-colors hover:text-[var(--accent-500)] hover:no-underline focus:outline-none focus-visible:text-[var(--accent-500)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30"
+              >
+                Candidate List
+              </Link>
+            )}
             <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
           </div>
         </div>

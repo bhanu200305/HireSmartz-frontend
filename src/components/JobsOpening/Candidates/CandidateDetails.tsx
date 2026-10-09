@@ -59,6 +59,7 @@ import { useListApplicationSourcesQuery } from '../../../api/candidate-service/M
 import {
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
+  getSmsBlockedReason,
   resolveDisplayStatus,
 } from './candidateDisplay';
 import {
@@ -123,7 +124,6 @@ import RoundCollapsibleSection from './RoundCollapsibleSection';
 import RoundDetailTabs from './RoundDetailTabs';
 import ScoringCriteriaModal, { type InterviewScoringRoundType } from './Modal/ScoringCriteriaModal';
 import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
-import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import CandidateMessageHistory from './CandidateMessageHistory';
 import { useCandidateNavigation } from './useCandidateNavigation';
 import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
@@ -140,12 +140,14 @@ import {
 import { roundLabel, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
+  isReadyForOverallScore,
   isRoundConcluded,
   isAiVideoRound,
   isAudioScreeningRound,
   isIntakeCallRound,
   isIdentityVerificationRound,
   isResumeStageRound,
+  isRoundSkipped,
   isStaleResumeRound,
   normaliseRoundStatus,
   orderRoundsForFlow,
@@ -439,24 +441,6 @@ const CandidateDetails = () => {
   // organization's, else the platform default — the same weights ai-service
   // scores with), fetched only while a resume or interview popup is open;
   // the modal falls back to the platform defaults if they can't be loaded.
-  // The job's round plan — the only place a round's variant (AI Video:
-  // soundwave/avatar, Hiring Panel: online/offline) lives; the candidate's
-  // round view doesn't carry it. Matched by round_id + sequence, falling back
-  // to round_id alone when that round type occurs once in the plan.
-  const { data: jobRoundPlan } = useGetInterviewRoundsByJobIdQuery(parsedJobId ?? '', {
-    skip: !parsedJobId,
-  });
-  const variantForRound = (round: CandidateInterviewRoundView): string | null => {
-    if (!round.round_id) return null;
-    const plan = (jobRoundPlan ?? []) as Array<{
-      roundId?: string;
-      sequence?: number;
-      variant?: string | null;
-    }>;
-    const sameType = plan.filter((r) => r.roundId === round.round_id);
-    const exact = sameType.find((r) => r.sequence === round.sequence);
-    return (exact ?? (sameType.length === 1 ? sameType[0] : undefined))?.variant ?? null;
-  };
   const { data: jobScoringConfig } = useGetJobScoringConfigQuery(parsedJobId ?? '', {
     skip: !parsedJobId || !scoringCriteriaFor || scoringCriteriaFor.kind === 'intake',
   });
@@ -675,7 +659,7 @@ const CandidateDetails = () => {
   }, [selectedRound?.id]);
 
   // Assessment tab always has something selected in its sidebar, like the
-  // old app (which opened on Resume Screening): the first round, or the
+  // old app (which opened on Resume Review): the first round, or the
   // Resume Assessment fallback entry when there's no resume-stage round.
   // Only runs while nothing is picked, so it never overrides a real choice.
   useEffect(() => {
@@ -729,7 +713,7 @@ const CandidateDetails = () => {
   const isPanelRound = selectedRound
     ? selectedRound.round_type
       ? selectedRound.round_type === 'PANEL'
-      : Boolean(selectedRound.round_name?.toLowerCase().includes('panel'))
+      : /panel|live video|in-person/i.test(selectedRound.round_name ?? '')
     : false;
   // Job Service's question bank, grouped by round — matched back to the
   // SELECTED round by `sequence`, not `round_id`: a round TYPE (e.g.
@@ -1330,14 +1314,10 @@ const CandidateDetails = () => {
     }
   };
 
-  // SMS needs a phone number AND the candidate's SMS consent (candidate-service
-  // refuses the send otherwise, 422 CANDIDATE_HAS_NO_SMS_CONSENT). `undefined`
-  // (field not returned) is not treated as "no consent".
-  const smsBlockedReason = !candidate?.contact_no
-    ? 'No phone number on file'
-    : candidate.sms_consent_at === null
-      ? 'Candidate has not given SMS consent'
-      : null;
+  // SMS needs a phone number, and the candidate must not have opted out
+  // (SMS is on by default; candidate-service refuses the send otherwise, 422
+  // CANDIDATE_OPTED_OUT_OF_SMS). A missing `sms_opted_out_at` means "allowed".
+  const smsBlockedReason = getSmsBlockedReason(candidate);
 
   // The header pill shows the same four top-level states as the candidate list
   // (In Process / Selected / Rejected / Withdrawn). The raw status label can
@@ -1410,6 +1390,7 @@ const CandidateDetails = () => {
   // plan hasn't loaded/has no rounds yet, which would otherwise trivially
   // satisfy "nothing outstanding".
   const allRoundsCompleted = rounds.length > 0 && currentRound === null;
+  const overallScoreReady = isReadyForOverallScore(rounds);
   const isAdvanceLocked = currentRound !== null && currentRound.id === advancedFromRoundId;
   const nextRound = currentRound
     ? (rounds[rounds.findIndex((r) => r.id === currentRound.id) + 1] ?? null)
@@ -1532,18 +1513,32 @@ const CandidateDetails = () => {
     aiHint?: string;
     /** Left out of the Overall Score average — see `overallScore` below. */
     excludeFromOverall?: boolean;
+    /** Shows "Skipped" in both columns instead of the round's (0) score. */
+    skipped?: boolean;
   }[] = [
     ...(roundsLoaded && !hasResumeStageRound
       ? [
           {
             key: RESUME_FALLBACK_KEY,
-            label: 'Resume Screening',
+            label: 'Resume Review',
             ai: candidate?.resume_score ?? null,
             human: candidate?.resume_rating ?? null,
           },
         ]
       : []),
     ...rounds.map((round) => {
+      // A skipped round never ran, so its score row's 0 isn't a result:
+      // shown as "Skipped" and kept out of the Overall Score average.
+      if (isRoundSkipped(round)) {
+        return {
+          key: round.id,
+          label: roundLabel(round),
+          ai: null,
+          human: null,
+          skipped: true,
+          excludeFromOverall: true,
+        };
+      }
       if (isResumeStageRound(round)) {
         return {
           key: round.id,
@@ -1592,9 +1587,9 @@ const CandidateDetails = () => {
       : null;
   };
   const overallRows = scoredRows.filter((row) => !row.excludeFromOverall);
-  // N/A (null) until every round is completed — a mid-pipeline average
-  // would read as a final verdict.
-  const overallScore = allRoundsCompleted
+  // N/A (null) until every round is done and the last has concluded — a
+  // mid-pipeline average would read as a final verdict.
+  const overallScore = overallScoreReady
     ? {
         ai: averageOf(overallRows.map((row) => row.ai)),
         human: averageOf(overallRows.map((row) => row.human)),
@@ -1615,7 +1610,7 @@ const CandidateDetails = () => {
   // Resume stage detail in the old app's text layout: score sentences, the
   // recruiter's star rating + comments, and the resume page on the right.
   // Same data and handlers as before; shared by the resume round and the
-  // fallback "Resume Screening" tab.
+  // fallback "Resume Review" tab.
   const resumeMatchMetrics = (jobScoringConfig?.data?.resumeConfig?.weights ?? []).map((w) => ({
     label: RESUME_CRITERIA_LABELS[w.categoryName] ?? w.displayName ?? w.categoryName,
     max: w.weightPercentage,
@@ -1758,7 +1753,7 @@ const CandidateDetails = () => {
                     </ul>
                   }
                 >
-                  <div className="cursor-help">{row}</div>
+                  <div>{row}</div>
                 </Tooltip>
               ) : (
                 <div key={bar.label}>{row}</div>
@@ -1855,7 +1850,7 @@ const CandidateDetails = () => {
         // What actually belongs here is the resume's own AI score
         // plus the recruiter's own review of it — previously only
         // reachable from the Assessment tab, so adding one here
-        // never showed up on the "Resume Screening" pipeline card
+        // never showed up on the "Resume Review" pipeline card
         // a recruiter actually clicks into.
         renderResumeAssessment()
       ) : (
@@ -2155,9 +2150,7 @@ const CandidateDetails = () => {
                           pct >= 70 ? 'bg-success' : pct >= 40 ? 'bg-warning' : 'bg-danger';
                         const reasons = sectionReasons(section.reason);
                         const row = (
-                          <div
-                            className={`grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm ${reasons.length > 0 ? 'cursor-help' : ''}`}
-                          >
+                          <div className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm">
                             <span
                               className="truncate text-gray-800"
                               title={reasons.length > 0 ? undefined : formatSectionKey(section.key)}
@@ -2456,6 +2449,18 @@ const CandidateDetails = () => {
       </div>
     ) : null;
 
+  // Shown under the header when the resume gave no email and/or phone number.
+  const missingEmail = Boolean(candidate) && !candidate?.email_id?.trim();
+  const missingPhone = Boolean(candidate) && !candidate?.contact_no?.trim();
+  const missingContactNotice =
+    missingEmail && missingPhone
+      ? "No email or phone number found in candidate's resume. Actions like email, text, scheduling invites and notifications won't work until they are added."
+      : missingEmail
+        ? "No email found in candidate's resume. Actions like email and scheduling invites won't work until it is added."
+        : missingPhone
+          ? "No phone number found in candidate's resume. Actions like text and notifications won't work until it is added."
+          : null;
+
   return (
     <>
       {headerSlot && candidateSwitcher && createPortal(candidateSwitcher, headerSlot)}
@@ -2637,8 +2642,8 @@ const CandidateDetails = () => {
                     <div
                       className="truncate pr-2"
                       title={
-                        allRoundsCompleted
-                          ? 'Average across rounds with a score (Intake Call consistency check not included)'
+                        overallScoreReady
+                          ? 'Average across rounds with a score (skipped rounds and the Intake Call consistency check not included)'
                           : 'Shown once all rounds are completed'
                       }
                     >
@@ -2659,12 +2664,21 @@ const CandidateDetails = () => {
                       <div className="truncate pr-2" title={row.label}>
                         {row.label}
                       </div>
-                      <div className="text-right text-primary" title={row.aiHint}>
-                        {formatScoredCell(row.ai)}
-                      </div>
-                      <div className="text-right text-green-700">
-                        {formatScoredCell(row.human, HUMAN_SCORE_MAX)}
-                      </div>
+                      {row.skipped ? (
+                        <>
+                          <div className="text-right text-gray-500">Skipped</div>
+                          <div className="text-right text-gray-500">Skipped</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-right text-primary" title={row.aiHint}>
+                            {formatScoredCell(row.ai)}
+                          </div>
+                          <div className="text-right text-green-700">
+                            {formatScoredCell(row.human, HUMAN_SCORE_MAX)}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2762,20 +2776,22 @@ const CandidateDetails = () => {
             </div>
           </div>
 
-          {/* Only reachable via bulk resume upload — every other intake
-              path (recruiter Add Candidate, both public apply flows) now
-              requires email server-side. ai-service's resume parsing
-              just didn't find one here. Warn rather than disable: the
-              pipeline actions above don't themselves need an email to
-              function (REJECT/ADVANCE are internal status moves), it's
-              downstream things like scheduling emails that would
-              silently go nowhere. */}
-          {candidate && !candidate.email_id && (
-            <div className="mt-4 flex w-full items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <p className="text-xs text-amber-800">
-                No email on file for this candidate — actions that email them (scheduling invites,
-                notifications) won&apos;t work until one is added.
-              </p>
+          {/* Email and/or phone missing (the resume had none, e.g. a bulk resume
+              upload): say which, and which actions won't work, with a way
+              straight into editing them. */}
+          {candidate && missingContactNotice && (
+            <div className="mt-4 flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <p className="text-xs text-red-700">{missingContactNotice}</p>
+              <button
+                type="button"
+                className="shrink-0 cursor-pointer rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                onClick={() => {
+                  setActiveTab('details');
+                  setIsEditingDetails(true);
+                }}
+              >
+                Add Details
+              </button>
             </div>
           )}
         </div>
@@ -2924,7 +2940,7 @@ const CandidateDetails = () => {
                           <h3
                             className={`text-sm font-semibold ${isResumeFallbackSelected ? 'text-primary' : 'text-gray-900'}`}
                           >
-                            Resume Screening
+                            Resume Review
                           </h3>
                           {candidate?.resume_score != null && (
                             <p className="text-xs text-gray-800">
@@ -2958,7 +2974,6 @@ const CandidateDetails = () => {
                         resumeScore={candidate?.resume_score ?? null}
                         consistencyScore={candidate?.consistency_score ?? null}
                         jobId={parsedJobId || undefined}
-                        variant={variantForRound(round)}
                         onSelect={() => {
                           setIsResumeFallbackSelected(false);
                           setSelectedRound(round);
@@ -3038,7 +3053,7 @@ const CandidateDetails = () => {
           {activeTab === 'sms' && candidateId && (
             <CandidateMessageHistory
               candidateId={candidateId}
-              canSms={smsBlockedReason === null}
+              smsBlockedReason={smsBlockedReason}
               onSendSms={() => setIsSmsOpen(true)}
             />
           )}
@@ -3153,7 +3168,7 @@ const CandidateDetails = () => {
             setAdvancedFromRoundId(currentRound?.id ?? null);
             void refetchRounds();
             refetchCandidate();
-            // Advancing into a Hiring Panel round without inviting it: remind
+            // Advancing into a panel round without inviting it: remind
             // the recruiter to pick the panel and invite. Shown once.
             if (newRound?.round_type === 'PANEL' && !inviteSent) setPanelPromptRound(newRound);
           }}
@@ -3163,7 +3178,7 @@ const CandidateDetails = () => {
         // Informational, never a gate: closing it any way (X, Escape, outside
         // click) is the same as Later. Shown once per advance.
         <AntdCommonModal
-          title="Next round: Hiring Panel"
+          title={`Next round: ${roundLabel(panelPromptRound)}`}
           open
           onClose={() => setPanelPromptRound(null)}
           modalProps={{ width: 480 }}
@@ -3291,7 +3306,7 @@ const CandidateDetails = () => {
                 : isAiVideoRound(selectedRound)
                   ? 'from the available AI Video Interview slots.'
                   : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                    ? 'from the available AI Audio Call slots.'
+                    ? 'from the available AI Agent Call slots.'
                     : 'from the available slots.'}
             </p>
             {isPanelRound && (
@@ -3430,6 +3445,7 @@ const CandidateDetails = () => {
           roundId={interviewersModalFor.id}
           roundName={roundLabel(interviewersModalFor)}
           currentInterviewerIds={interviewersModalFor.interviewer_ids ?? []}
+          jobId={parsedJobId || undefined}
         />
       )}
       {scoreModalFor && candidateId && (

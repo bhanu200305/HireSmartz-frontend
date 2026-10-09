@@ -47,7 +47,7 @@ const ReasonText = ({ text }: { text: string }) => {
   );
 };
 
-// One AI score on the Resume Screening panel (resume score, intake-call
+// One AI score on the Resume Review panel (resume score, intake-call
 // consistency): label + "x / 5" with a colour-banded bar on top, the AI's
 // explanation below it — always stacked, full card width, never a side
 // column. A side-by-side layout here (score block left, text right) looked

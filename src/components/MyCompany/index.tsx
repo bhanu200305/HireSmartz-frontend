@@ -228,7 +228,7 @@ const MyCompany: React.FC = () => {
         // existing `?tab=` links to every other tab keep working.
         canViewCultureIntro && {
           key: '12',
-          label: 'Culture Intro',
+          label: 'Company Intro',
           children: <CultureIntroTab tenantId={tenantId} />,
         },
         isCompanyAdmin && {

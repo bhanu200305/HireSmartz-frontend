@@ -74,7 +74,7 @@ const CultureIntroTab: React.FC = () => {
   const handleSave = async () => {
     const text = draft.trim();
     if (!text) {
-      showToast({ message: 'The culture intro cannot be empty.', type: 'error' });
+      showToast({ message: 'The company intro cannot be empty.', type: 'error' });
       return;
     }
     setError(null);
@@ -87,9 +87,9 @@ const CultureIntroTab: React.FC = () => {
           intro_text: text,
         }).unwrap();
       }
-      showToast({ message: 'Culture intro updated.', type: 'success' });
+      showToast({ message: 'Company intro updated.', type: 'success' });
     } catch (err) {
-      const message = getOrgErrorMessage(err, 'Failed to update culture intro.');
+      const message = getOrgErrorMessage(err, 'Failed to update company intro.');
       setError(message);
       showToast({ message, type: 'error' });
     }
@@ -101,7 +101,7 @@ const CultureIntroTab: React.FC = () => {
         <span className="bg-gradient-to-br from-primary-600 to-accent-500 text-white p-1.5 rounded-full flex items-center justify-center shrink-0">
           <MdOutlineRecordVoiceOver size={14} />
         </span>
-        <h2 className="text-lg font-semibold text-gray-800 m-0">Culture Intro</h2>
+        <h2 className="text-lg font-semibold text-gray-800 m-0">Company Intro</h2>
       </div>
       <p className="text-xs text-gray-500 mb-4 max-w-3xl">
         The opening script the AI interviewer reads aloud before the Q&amp;A in every audio

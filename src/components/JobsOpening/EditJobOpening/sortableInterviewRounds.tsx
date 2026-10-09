@@ -7,14 +7,12 @@ import {
   HiDotsVertical,
   HiOutlineMicrophone,
   HiOutlineUserCircle,
-  HiOutlineVideoCamera,
-  HiOutlineOfficeBuilding,
 } from 'react-icons/hi';
-import { MdEdit, MdInfoOutline } from 'react-icons/md';
+import { MdEdit } from 'react-icons/md';
 import type { IconType } from 'react-icons';
 import { DraggableItem } from '../../shared/ui/DragAndDrop';
 import { showToast } from '../../shared';
-import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import RoundInfoButton from '../../shared/ui/RoundInfoButton';
 import { getRoundInfoSections } from '../../../shared/utils/roundInfoContent';
 import { resolveVariantLabel } from '../../../shared/utils/variantLabel';
 
@@ -34,8 +32,6 @@ type InterviewRound = {
 const VARIANT_ICONS: Record<string, IconType> = {
   soundwave: HiOutlineMicrophone,
   avatar: HiOutlineUserCircle,
-  online: HiOutlineVideoCamera,
-  offline: HiOutlineOfficeBuilding,
 };
 
 export const getVariantBadge = (
@@ -63,6 +59,8 @@ type SortableInterviewRoundsProps = {
   removableAnchorRoundTypeIds?: Set<string>;
   // Variant display text, merged across round types.
   variantLabelOverrides?: Record<string, string>;
+  // Catalog round types, for each round's description and kind in its info popup.
+  roundTypes?: { id: string | number; description?: string; special_kind?: string | null }[];
 };
 
 export const SortableInterviewRounds = ({
@@ -74,9 +72,9 @@ export const SortableInterviewRounds = ({
   anchorRoundTypeIds,
   removableAnchorRoundTypeIds,
   variantLabelOverrides,
+  roundTypes,
 }: SortableInterviewRoundsProps) => {
   const [items, setItems] = useState<InterviewRound[]>(rounds);
-  const [infoRound, setInfoRound] = useState<InterviewRound | null>(null);
 
   useEffect(() => {
     setItems(rounds);
@@ -120,8 +118,8 @@ export const SortableInterviewRounds = ({
       );
       showToast({
         message: hasIntake
-          ? 'Resume Screening must stay round 1 and the Intake Call round 2. No other round can be moved ahead of them.'
-          : 'Resume Screening must stay round 1. No other round can be moved ahead of it.',
+          ? 'Resume Review must stay round 1 and the Intake Call round 2. No other round can be moved ahead of them.'
+          : 'Resume Review must stay round 1. No other round can be moved ahead of it.',
         type: 'error',
       });
       return;
@@ -132,6 +130,7 @@ export const SortableInterviewRounds = ({
 
   const renderCardBody = (round: InterviewRound, index: number, isOver = false) => {
     const badge = getVariantBadge(round.variant, variantLabelOverrides);
+    const roundType = roundTypes?.find((type) => String(type.id) === String(round.round?.id));
     const BadgeIcon = badge?.icon;
     const summary = round.duration ? `${round.duration} min` : '';
     // Anchor rounds are never edited/retyped here. Resume is mandatory, so it
@@ -157,14 +156,18 @@ export const SortableInterviewRounds = ({
               </span>
             )}
             {summary && <span className="text-sm text-neutral-500">{summary}</span>}
-            <button
-              type="button"
-              className="text-neutral-400 hover:text-primary-600 cursor-pointer p-0.5"
-              onClick={() => setInfoRound(round)}
-              aria-label={`About the ${round.round?.name} round`}
-            >
-              <MdInfoOutline size={16} />
-            </button>
+            <RoundInfoButton
+              roundName={round.round?.name ?? 'Interview round'}
+              badgeLabel={badge?.label}
+              description={round.description}
+              sections={getRoundInfoSections({
+                specialKind: roundType?.special_kind,
+                roundName: round.round?.name,
+                variants: [round.variant],
+                description: roundType?.description,
+              })}
+              ariaLabel={`About the ${round.round?.name} round`}
+            />
           </div>
           {round.description && (
             <p className="text-sm text-neutral-500 mt-1 truncate">{round.description}</p>
@@ -198,19 +201,6 @@ export const SortableInterviewRounds = ({
     );
   };
 
-  const infoModal = infoRound && (
-    <RoundInfoModal
-      roundName={infoRound.round?.name ?? 'Interview round'}
-      badgeLabel={getVariantBadge(infoRound.variant, variantLabelOverrides)?.label}
-      description={infoRound.description}
-      sections={getRoundInfoSections({
-        roundName: infoRound.round?.name,
-        variants: [infoRound.variant],
-      })}
-      onClose={() => setInfoRound(null)}
-    />
-  );
-
   if (isEditMode) {
     return (
       <>
@@ -219,7 +209,6 @@ export const SortableInterviewRounds = ({
             <div key={round.id}>{renderCardBody(round, index)}</div>
           ))}
         </div>
-        {infoModal}
       </>
     );
   }
@@ -245,7 +234,7 @@ export const SortableInterviewRounds = ({
               )}
             </DraggableItem>
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <DraggableItem
                 item={round}
                 index={index}
@@ -258,7 +247,6 @@ export const SortableInterviewRounds = ({
           </div>
         ))}
       </div>
-      {infoModal}
     </DndProvider>
   );
 };

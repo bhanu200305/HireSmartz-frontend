@@ -33,6 +33,7 @@ const EducationPreferencesTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
+    includeInactive: true,
   });
   const [create] = useCreatePlatformEducationPreferenceMutation();
   const [update] = useUpdatePlatformEducationPreferenceMutation();

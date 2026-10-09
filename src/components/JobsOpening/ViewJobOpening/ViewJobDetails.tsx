@@ -427,15 +427,15 @@ const ViewJobDetails = () => {
           <Field label="Communication Language" value={selectedLanguageNames.join(', ')} />
           <Field
             className="col-span-full"
-            label="Company Culture Intro"
+            label="Company Intro"
             info={
               <Tooltip
                 trigger={['hover', 'click']}
-                title={hasCultureInfo ? cultureInfoText : 'No company culture information provided'}
+                title={hasCultureInfo ? cultureInfoText : 'No company intro provided'}
               >
                 <button
                   type="button"
-                  aria-label="View company culture information"
+                  aria-label="View company intro"
                   className="inline-flex cursor-pointer items-center text-gray-400 hover:text-[var(--color-primary)]"
                 >
                   <InfoCircleOutlined />
@@ -444,7 +444,7 @@ const ViewJobDetails = () => {
             }
           >
             {data?.useCultureIntro
-              ? 'On - plays at the start of AI Audio Call and AI Video Interview'
+              ? 'On - plays at the start of AI Agent Call and AI Video Interview'
               : 'Off'}
           </Field>
         </Section>

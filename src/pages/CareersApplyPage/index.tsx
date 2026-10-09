@@ -68,7 +68,8 @@ export const CareersApplyPage = () => {
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [smsConsent, setSmsConsent] = useState(false);
+  // SMS is on unless the candidate opts out, so the box starts ticked.
+  const [smsConsent, setSmsConsent] = useState(true);
   const [tosConsent, setTosConsent] = useState(false);
   const [tosError, setTosError] = useState(false);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
@@ -402,9 +403,7 @@ export const CareersApplyPage = () => {
               reminders, and status updates from Careerforce Pro. Message frequency may vary.
               Message &amp; data rates may apply. Reply STOP to opt out.
               <br />
-              <span className="text-gray-400">
-                (Optional: you can apply without agreeing to SMS communication)
-              </span>
+              <span className="text-gray-400">(Uncheck if you don&apos;t want SMS updates)</span>
             </label>
           </div>
 

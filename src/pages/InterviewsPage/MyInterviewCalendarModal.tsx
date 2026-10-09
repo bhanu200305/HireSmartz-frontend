@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BsCalendar4Event } from 'react-icons/bs';
 import AntdCommonModal from '../../components/shared/ui/AntdCommonModal';
 import { BookingDetailDrawer } from './BookingDetailDrawer';
@@ -7,6 +7,10 @@ import { MyInterviewCalendar } from './MyInterviewCalendar';
 type MyInterviewCalendarModalProps = {
   open: boolean;
   onClose: () => void;
+  /** An interview to jump to and open (from an `?openCalendar=<booking_id>` link). */
+  focusBookingId?: string | null;
+  /** Called once that jump has been attempted, so it is not repeated. */
+  onFocusHandled?: () => void;
 };
 
 // Popup instead of a route — `/interviews/calendar` used to be a full page
@@ -14,8 +18,18 @@ type MyInterviewCalendarModalProps = {
 // own "Back" button always landing on /interviews was wrong whenever the
 // icon was clicked from somewhere else. A modal just closes back to
 // whatever page was already open underneath it.
-export const MyInterviewCalendarModal = ({ open, onClose }: MyInterviewCalendarModalProps) => {
+export const MyInterviewCalendarModal = ({
+  open,
+  onClose,
+  focusBookingId,
+  onFocusHandled,
+}: MyInterviewCalendarModalProps) => {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  // A booking's detail panel must not outlive the popup (it would stay open
+  // over the page a link inside it navigated to).
+  useEffect(() => {
+    if (!open) setSelectedBookingId(null);
+  }, [open]);
 
   return (
     <>
@@ -39,7 +53,11 @@ export const MyInterviewCalendarModal = ({ open, onClose }: MyInterviewCalendarM
           </div>
         </div>
 
-        <MyInterviewCalendar onSelectBooking={setSelectedBookingId} />
+        <MyInterviewCalendar
+          onSelectBooking={setSelectedBookingId}
+          focusBookingId={open ? focusBookingId : null}
+          onFocusHandled={onFocusHandled}
+        />
       </AntdCommonModal>
 
       <BookingDetailDrawer

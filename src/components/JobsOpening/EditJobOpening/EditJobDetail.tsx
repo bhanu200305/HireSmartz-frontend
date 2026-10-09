@@ -190,6 +190,27 @@ const asLocationId = (value: unknown): string | null => {
   return id === 'undefined' || id === 'null' ? null : id;
 };
 
+// Fields the fresh-data backfill (see `backfilledAtRef`) may fill when still
+// empty. Department, job title, location, skills and languages are left out
+// on purpose: each one drives other effects in this form when it changes.
+const BACKFILLABLE_JOB_FIELDS = [
+  'hiringManagers',
+  'recruiters',
+  'exemptionStatus',
+  'exemptMinSalary',
+  'exemptMaxSalary',
+  'nonExemptMinSalary',
+  'nonExemptMaxSalary',
+  'referralBonus',
+  'openings',
+  'minExperience',
+  'maxExperience',
+  'jobType',
+  'jobMode',
+  'shift',
+  'educationPreference',
+] as const;
+
 const EditJobDetail = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -433,6 +454,8 @@ const EditJobDetail = () => {
     data: jobData,
     refetch,
     isLoading: isFetchingJobData,
+    isFetching: isRefreshingJobData,
+    fulfilledTimeStamp: jobDataFetchedAt,
     // isError,
   } = useGetJobOpeningByIdQuery(
     { jobOpeningId: parsedJobId },
@@ -926,13 +949,9 @@ const EditJobDetail = () => {
   const nothingToSave = Boolean(initialFormValues) && !isFormDirty && !jdMissing;
   const nothingToSaveHint = 'No changes to save';
 
-  // Helper function to update form with job data
-  const updateFormWithJobData = (jobData: any) => {
-    if (!jobData?.data) return;
-
-    dispatch(setEditJobOpeningId(asJobId(jobData.data.id)));
-    dispatch(setAtsJobOpeningId(jobData.data.atsJobOpeningId || ''));
-
+  // The job's server data as this form's values — shared by the initial fill
+  // (updateFormWithJobData) and the backfill of still-empty fields below.
+  const toFormValues = (jobData: any) => {
     const locationData = jobData.data.location;
     const countryName = locationData?.country || '';
     const stateName = locationData?.state || '';
@@ -943,7 +962,7 @@ const EditJobDetail = () => {
             ?.map((item: any) => asLocationId(item?.id ?? item?.city?.id))
             .filter((locationId: string | null): locationId is string => locationId !== null) || [];
 
-    const processedData = {
+    return {
       ...jobData.data,
       jobTitle: catalogIdArray(jobData.data.jobTitle || []),
       jobType: catalogIdArray(jobData.data.jobType || []),
@@ -1005,6 +1024,16 @@ const EditJobDetail = () => {
       benefits: jobData.data.benefits || '',
       useCultureIntro: Boolean(jobData.data.useCultureIntro),
     };
+  };
+
+  // Helper function to update form with job data
+  const updateFormWithJobData = (jobData: any) => {
+    if (!jobData?.data) return;
+
+    dispatch(setEditJobOpeningId(asJobId(jobData.data.id)));
+    dispatch(setAtsJobOpeningId(jobData.data.atsJobOpeningId || ''));
+
+    const processedData = toFormValues(jobData);
 
     const descriptionData = {
       educationPreference:
@@ -1111,6 +1140,44 @@ const EditJobDetail = () => {
       initialLoadRef.current = true;
     };
   }, [parsedJobId, jobOpeningId, jobDetails, reset]);
+
+  // The fill above runs once per job, from whatever was on hand first — the
+  // Redux edit copy, or job data already cached — and the fresh server copy
+  // that lands right after (refetchOnMountOrArgChange) was never applied, so
+  // any field that first source lacked stayed blank (intermittently: it
+  // depended on what was on hand). Fills only fields still EMPTY and
+  // untouched from each fresh copy; a value already shown or typed is never
+  // replaced. Limited to fields with no follow-on effects of their own
+  // (department/job title/location/skills/languages each drive other logic).
+  const backfilledAtRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!parsedJobId || hasSyncedFormForJobIdRef.current !== parsedJobId) return;
+    if (justSavedRef.current || isRefreshingJobData || !jobDataFetchedAt) return;
+    if (!jobData?.data || asJobId(jobData.data.id) !== parsedJobId) return;
+    if (backfilledAtRef.current === jobDataFetchedAt) return;
+    backfilledAtRef.current = jobDataFetchedAt;
+
+    const fresh = toFormValues(jobData) as Record<string, unknown>;
+    const current = getValues() as Record<string, unknown>;
+    const isEmpty = (value: unknown) =>
+      value == null || value === '' || (Array.isArray(value) && value.length === 0);
+    const filled: Record<string, unknown> = {};
+    BACKFILLABLE_JOB_FIELDS.forEach((field) => {
+      if (!isEmpty(current[field]) || isEmpty(fresh[field])) return;
+      if ((dirtyFields as Record<string, unknown>)[field]) return;
+      filled[field] = fresh[field];
+    });
+    if (Object.keys(filled).length === 0) return;
+
+    Object.entries(filled).forEach(([field, value]) =>
+      setValue(field as keyof JobDetailsState, value as never, { shouldDirty: false })
+    );
+    // Part of the loaded baseline, not an edit: no unsaved-changes prompt.
+    setInitialFormValues((prev: Record<string, unknown> | null) =>
+      prev ? { ...prev, ...filled } : prev
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedJobId, jobData, jobDataFetchedAt, isRefreshingJobData, jobDetails]);
 
   // Pre-fills Job Details from an uploaded JD once its parse finishes. Generating or
   // regenerating the AI description never writes into Job Details.
@@ -2932,14 +2999,14 @@ const EditJobDetail = () => {
 
           <div className="mt-2 max-w-[33%]">
             <div className="flex items-center gap-2">
-              <span className="text-sm capitalize">Company Culture</span>
+              <span className="text-sm capitalize">Company Intro</span>
               <Tooltip
                 trigger={['hover', 'click']}
-                title={hasCultureInfo ? cultureInfoText : 'No company culture information provided'}
+                title={hasCultureInfo ? cultureInfoText : 'No company intro provided'}
               >
                 <button
                   type="button"
-                  aria-label="View company culture information"
+                  aria-label="View company intro"
                   className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)] cursor-pointer"
                 >
                   <InfoCircleOutlined />
@@ -2959,8 +3026,7 @@ const EditJobDetail = () => {
                 className="culture-switch"
               />
               <span className="text-sm text-gray-700 leading-5">
-                Play Company Culture Introduction at the start of AI Audio Call and AI Video
-                Interview
+                Play Company Intro at the start of AI Agent Call and AI Video Interview
               </span>
             </div>
           </div>

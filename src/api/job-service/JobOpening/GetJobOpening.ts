@@ -18,7 +18,8 @@ type ListJobOpeningsArgs = Partial<JobFilterRequest> & {
   sortDir?: string;
   globalSearchRequestDto?: { text: string; field: string };
   assignedToMe?: boolean;
-  locationId?: string;
+  /** Any of these offices (a job matching at least one is listed). */
+  locationIds?: string[];
 };
 
 // Maps UI sortKeys to job-service's sort_by values. Unmapped keys (e.g.
@@ -30,6 +31,16 @@ const SORT_BY_MAP: Record<string, string> = {
   createdAt: 'created_at',
   vacancies: 'vacancies',
   jobProfileCode: 'job_profile_code',
+};
+
+// `location_id` repeated once per office (`?location_id=a&location_id=b`): the
+// params object can't repeat a key, so it goes in the URL itself (RTK appends
+// the rest of the params with `&`).
+const locationQuery = (locationIds?: string[]): string => {
+  const ids = (locationIds ?? []).filter(Boolean);
+  return ids.length > 0
+    ? `?${ids.map((id) => `location_id=${encodeURIComponent(id)}`).join('&')}`
+    : '';
 };
 
 // Defaults to 'published' when no filter flag is set at all - a new caller
@@ -44,6 +55,27 @@ const resolveListStatus = (args: ListJobOpeningsArgs): JobListStatus | undefined
   return 'published';
 };
 
+// Every filter except paging and the free-text search (job-service's `text`
+// only matches `job_profile_code`, see getAllJobOpenings below).
+const listFilterParams = (args: ListJobOpeningsArgs) => {
+  const status = resolveListStatus(args);
+  const sortBy = args.sortBy ? SORT_BY_MAP[args.sortBy] : undefined;
+  return {
+    ...(status ? { status } : {}),
+    ...(args.startDateTime ? { open_date_from: args.startDateTime } : {}),
+    ...(args.endDateTime ? { open_date_to: args.endDateTime } : {}),
+    ...(sortBy ? { sort_by: sortBy } : {}),
+    ...(args.sortDir ? { sort_dir: String(args.sortDir).toLowerCase() } : {}),
+    ...(args.assignedToMe ? { assigned_to_me: true } : {}),
+    // `location_id` (one per office) is added to the URL, see `locationQuery`.
+  };
+};
+
+// job-service's list endpoint caps `page_size` at 100.
+const MAX_PAGE_SIZE = 100;
+// Safety stop for the all-pages loop below (100 × 50 = 5,000 jobs).
+const MAX_PAGES = 50;
+
 const extendedApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
     getJobOpenings: build.query<JobFilterResponse, ListJobOpeningsArgs>({
@@ -55,23 +87,15 @@ const extendedApi = jobApi.injectEndpoints({
           args.searchQuery?.trim() ||
           args.globalSearchRequestDto?.text?.trim() ||
           undefined;
-        const status = resolveListStatus(args);
-        const sortBy = args.sortBy ? SORT_BY_MAP[args.sortBy] : undefined;
 
         return {
-          url: '/job-openings',
+          url: `/job-openings${locationQuery(args.locationIds)}`,
           method: 'GET',
           params: {
             page,
             page_size: pageSize,
-            ...(status ? { status } : {}),
             ...(text ? { text } : {}),
-            ...(args.startDateTime ? { open_date_from: args.startDateTime } : {}),
-            ...(args.endDateTime ? { open_date_to: args.endDateTime } : {}),
-            ...(sortBy ? { sort_by: sortBy } : {}),
-            ...(args.sortDir ? { sort_dir: String(args.sortDir).toLowerCase() } : {}),
-            ...(args.assignedToMe ? { assigned_to_me: true } : {}),
-            ...(args.locationId ? { location_id: args.locationId } : {}),
+            ...listFilterParams(args),
           },
         };
       },
@@ -84,16 +108,46 @@ const extendedApi = jobApi.injectEndpoints({
       providesTags: [{ type: 'JobOpenings', id: 'LIST' }],
     }),
 
+    // Every job matching the list filters (status, dates, location, "my
+    // jobs", sort), all pages, no `text`. Backs the Job Openings search box:
+    // that box searches job TITLES, but job-service's `text` only matches
+    // `job_profile_code` (titles live in organization-service, so the list
+    // endpoint can't filter on them). The page filters these by resolved
+    // title name and paginates the matches itself.
+    getAllJobOpenings: build.query<JobFilterResponse, ListJobOpeningsArgs>({
+      async queryFn(args, _api, _extraOptions, baseQuery) {
+        const items: JobListResponse['items'] = [];
+        let total = 0;
+        for (let page = 1; page <= MAX_PAGES; page += 1) {
+          const result = await baseQuery({
+            url: `/job-openings${locationQuery(args.locationIds)}`,
+            method: 'GET',
+            params: { page, page_size: MAX_PAGE_SIZE, ...listFilterParams(args) },
+          });
+          if (result.error) return { error: result.error };
+          const response = result.data as JobListResponse;
+          const pageItems = response.items ?? [];
+          items.push(...pageItems);
+          total = response.total ?? items.length;
+          if (pageItems.length < MAX_PAGE_SIZE || items.length >= total) break;
+        }
+        const data = items.map(mapJobSummaryToListRow);
+        return {
+          data: { data, total: data.length, totalElements: data.length, success: true },
+        };
+      },
+      providesTags: [{ type: 'JobOpenings', id: 'LIST' }],
+    }),
+
     getJobStats: build.query<
       JobStatsResponse,
-      { assignedToMe?: boolean; locationId?: string } | void
+      { assignedToMe?: boolean; locationIds?: string[] } | void
     >({
       query: (args) => ({
-        url: '/job-openings/stats',
+        url: `/job-openings/stats${locationQuery(args?.locationIds)}`,
         method: 'GET',
         params: {
           ...(args?.assignedToMe ? { assigned_to_me: true } : {}),
-          ...(args?.locationId ? { location_id: args.locationId } : {}),
         },
       }),
       providesTags: ['JobStats'],
@@ -101,4 +155,5 @@ const extendedApi = jobApi.injectEndpoints({
   }),
 });
 
-export const { useGetJobOpeningsQuery, useGetJobStatsQuery } = extendedApi;
+export const { useGetJobOpeningsQuery, useGetAllJobOpeningsQuery, useGetJobStatsQuery } =
+  extendedApi;

@@ -336,7 +336,8 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
               key={option.id}
               value={option.id}
               className="truncate"
-              disabled={option.isDeleted}
+              // A switched-off option stays listed (to switch back on) but can't be picked.
+              disabled={option.isDeleted || option.isActive === false}
             >
               <div className="flex justify-between items-center w-full hover-actions-container group">
                 <div className="flex-1 flex items-center min-w-0 gap-1">

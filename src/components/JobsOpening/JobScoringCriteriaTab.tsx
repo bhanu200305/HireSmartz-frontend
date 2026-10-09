@@ -239,7 +239,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <ScoringWeightCard
           title="Resume Scoring Categories"
-          subtitle="Applies to Resume Screening"
+          subtitle="Applies to Resume Review"
           infoText="Resume categories are always evaluated. All categories must total exactly 100%."
           weights={resumeWeights}
           categoryMeta={RESUME_CATEGORY_META}
@@ -252,7 +252,7 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
 
         <ScoringWeightCard
           title="Interview Scoring Categories"
-          subtitle="Applies to AI Audio Call and AI Video Interview"
+          subtitle="Applies to AI Agent Call and AI Video Interview"
           infoText="If a category is not covered in an interview, its weight is redistributed proportionally"
           weights={interviewWeights}
           categoryMeta={INTERVIEW_CATEGORY_META}

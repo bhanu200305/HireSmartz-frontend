@@ -35,7 +35,7 @@ const AudioQuestionsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         Audio Questions
       </Typography>
       <Typography variant="body2" className="text-gray-400 mb-6">
-        This company&apos;s AI Audio Call question set.
+        This company&apos;s AI Agent Call question set.
       </Typography>
 
       <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">

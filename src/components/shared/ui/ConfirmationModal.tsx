@@ -30,7 +30,9 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
       <div className="app-modal-panel bg-white p-6 rounded-2xl shadow-lg border border-neutral-100 max-w-lg w-full relative">
         {/* Title section with proper text wrapping */}
         <div className="flex items-start justify-between mb-5 gap-3">
-          <h2 className="font-display text-lg font-semibold text-neutral-900 flex-1 break-words overflow-hidden">
+          {/* Same width as the close button, so the title is truly centred. */}
+          <span className="w-[30px] shrink-0" aria-hidden />
+          <h2 className="font-display text-lg font-semibold text-neutral-900 flex-1 break-words overflow-hidden text-center">
             {titleHasHtml(title) ? <span dangerouslySetInnerHTML={{ __html: title }} /> : title}
           </h2>
           <button

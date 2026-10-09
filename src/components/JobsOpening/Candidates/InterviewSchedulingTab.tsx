@@ -340,7 +340,7 @@ const RoundCard = ({
                   }
                 >
                   <span
-                    className={`ml-2 inline-block h-2.5 w-2.5 cursor-help rounded-full ${
+                    className={`ml-2 inline-block h-2.5 w-2.5 rounded-full ${
                       linkExpired ? 'bg-red-500' : 'bg-green-500'
                     }`}
                   />

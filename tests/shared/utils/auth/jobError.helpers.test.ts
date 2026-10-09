@@ -75,19 +75,19 @@ describe('getJobErrorMessage - interview round rules', () => {
 
   it('explains where the Intake Call can go', () => {
     expect(getJobErrorMessage(codeError('INTAKE_CALL_POSITION_INVALID'), 'fallback')).toBe(
-      'The Intake Call must be round 2, right after Resume Screening.'
+      'The Intake Call must be round 2, right after Resume Review.'
     );
   });
 
   it('explains that Resume is always round 1', () => {
     expect(getJobErrorMessage(codeError('RESUME_ROUND_POSITION_INVALID'), 'fallback')).toBe(
-      'Resume Screening must always be round 1.'
+      'Resume Review must always be round 1.'
     );
   });
 
   it('explains that Resume is required', () => {
     expect(getJobErrorMessage(codeError('RESUME_ROUND_CANNOT_BE_MODIFIED'), 'fallback')).toBe(
-      'Resume Screening is required and cannot be removed or changed.'
+      'Resume Review is required and cannot be removed or changed.'
     );
   });
 });

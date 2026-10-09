@@ -3125,18 +3125,14 @@ const JobDetails = () => {
                     <Form.Item
                       label={
                         <span className="inline-flex items-center gap-2">
-                          Company Culture
+                          Company Intro
                           <Tooltip
                             trigger={['hover', 'click']}
-                            title={
-                              hasCultureInfo
-                                ? cultureInfoText
-                                : 'No company culture information provided'
-                            }
+                            title={hasCultureInfo ? cultureInfoText : 'No company intro provided'}
                           >
                             <button
                               type="button"
-                              aria-label="View company culture information"
+                              aria-label="View company intro"
                               className="inline-flex items-center justify-center text-gray-500 hover:text-[var(--color-primary)] cursor-pointer"
                             >
                               <InfoCircleOutlined />
@@ -3158,8 +3154,7 @@ const JobDetails = () => {
                           className="culture-switch"
                         />
                         <span className="text-sm text-gray-700 leading-5">
-                          Play Company Culture Introduction at the start of AI Audio Call and AI
-                          Video Interview
+                          Play Company Intro at the start of AI Agent Call and AI Video Interview
                         </span>
                       </div>
                     </Form.Item>

@@ -1,10 +1,10 @@
 import { Form, Radio, Select } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, showToast } from '../../shared';
-import { MdClose, MdInfoOutline } from 'react-icons/md';
+import { MdClose } from 'react-icons/md';
 import TextArea from 'antd/es/input/TextArea';
 import { useState } from 'react';
-import RoundInfoModal from '../../shared/ui/RoundInfoModal';
+import RoundInfoButton from '../../shared/ui/RoundInfoButton';
 import { useSaveInterviewRoundMutation } from '../../../api/job-service/JobOpening/AddInterviewRound';
 import { SaveInterviewRoundRequest } from '../../../types';
 import { Controller, useForm } from 'react-hook-form';
@@ -69,7 +69,6 @@ const AddNewRound = () => {
   const addableInterviewRounds = addableRoundTypes(interviewRounds, jobHasIntake);
 
   const [selectedRoundType, setSelectedRoundType] = useState<JobOpeningDropdownOption | null>(null);
-  const [showRoundInfo, setShowRoundInfo] = useState(false);
   const isIntakeSelected = selectedRoundType?.special_kind === 'intake_call';
 
   const {
@@ -203,19 +202,22 @@ const AddNewRound = () => {
                 label={
                   <span className="flex items-center gap-1.5 text-sm font-semibold text-neutral-700">
                     Round Name <span className="required-asterisk">*</span>
-                    <button
-                      type="button"
+                    <RoundInfoButton
                       disabled={!selectedRoundType}
-                      onClick={() => setShowRoundInfo(true)}
-                      aria-label="About this round"
-                      className={`inline-flex p-0.5 ${
+                      roundName={selectedRoundType?.name ?? ''}
+                      description={selectedRoundType?.description}
+                      sections={
                         selectedRoundType
-                          ? 'text-neutral-400 hover:text-primary-600 cursor-pointer'
-                          : 'text-neutral-200 cursor-not-allowed'
-                      }`}
-                    >
-                      <MdInfoOutline size={16} />
-                    </button>
+                          ? getRoundInfoSections({
+                              specialKind: selectedRoundType.special_kind,
+                              roundName: selectedRoundType.name,
+                              variants: selectedRoundType.available_variants,
+                              description: selectedRoundType.description,
+                            })
+                          : []
+                      }
+                      ariaLabel="About this round"
+                    />
                   </span>
                 }
               >
@@ -300,7 +302,7 @@ const AddNewRound = () => {
 
               {/* Catalog-driven, not hardcoded to any one round type — shows
                   up for whichever round type has `available_variants` set
-                  (currently just Hiring Panel: Online/Offline), the same
+                  (currently just AI Video: Voice Agent/Avatar), the same
                   way this drives duration below. */}
               {!!selectedRoundType?.available_variants?.length && (
                 <Form.Item
@@ -351,7 +353,7 @@ const AddNewRound = () => {
               )}
 
               {/* Catalog-driven (`requires_duration`) — applies to Video,
-                  Hiring Panel and Audio rounds today, but shows for any
+                  Live Video, In-Person, AI Agent Call and AI Video today, but shows for any
                   round type the catalogue marks as needing one. */}
               {selectedRoundType?.requires_duration && (
                 <Form.Item
@@ -423,18 +425,6 @@ const AddNewRound = () => {
           </div>
         </div>
       </div>
-      {showRoundInfo && selectedRoundType && (
-        <RoundInfoModal
-          roundName={selectedRoundType.name}
-          description={selectedRoundType.description}
-          sections={getRoundInfoSections({
-            specialKind: selectedRoundType.special_kind,
-            roundName: selectedRoundType.name,
-            variants: selectedRoundType.available_variants,
-          })}
-          onClose={() => setShowRoundInfo(false)}
-        />
-      )}
     </>
   );
 };

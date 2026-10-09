@@ -29,6 +29,7 @@ import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/provider/store';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
+  useGetAllJobOpeningsQuery,
   useGetJobOpeningsQuery,
   useGetJobStatsQuery,
 } from '../../api/job-service/JobOpening/GetJobOpening';
@@ -85,6 +86,16 @@ const ALLOWED_JD_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 const ALLOWED_JD_EXTENSIONS = ['.pdf', '.docx'];
+
+// Columns job-service can't sort by: sorted on the page instead (see
+// `isLocalSort` below).
+const LOCAL_SORT_KEYS = [
+  'jobTitleName',
+  'interviewedCandidateCount',
+  'selectedCount',
+  'rejectedCount',
+] as const;
+type LocalSortKey = (typeof LOCAL_SORT_KEYS)[number];
 
 // HighlightText Component
 interface HighlightTextProps {
@@ -250,19 +261,47 @@ const JobsOpening = () => {
   // existed — "my jobs" is an opt-in, not the default.
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false);
   const isMyJobsFilterActive = canFilterToMyJobs && showMyJobsOnly;
-  const { data, isLoading, refetch } = useGetJobOpeningsQuery(
-    { ...filters, assignedToMe: isMyJobsFilterActive },
+  // The search box searches job TITLES only. job-service's `text` matches
+  // just `job_profile_code` (titles live in organization-service), so while a
+  // search is typed, every job matching the other filters is loaded and
+  // filtered by resolved title below, then paginated here. A hand-off from
+  // the global search keeps its own server-side search, unchanged.
+  const titleSearchTerm = filters.globalSearchRequestDto?.text?.trim()
+    ? ''
+    : (filters.text?.trim() ?? '');
+  const isTitleSearch = titleSearchTerm.length > 0;
+  // Same for these columns' sort: job-service can't sort by them (title is in
+  // organization-service; the three counts aren't sortable server-side), so
+  // the whole filtered list is loaded and sorted here.
+  const localSortKey = LOCAL_SORT_KEYS.includes(filters.sortBy as LocalSortKey)
+    ? (filters.sortBy as LocalSortKey)
+    : null;
+  const isLocalSort = localSortKey !== null && Boolean(filters.sortDir);
+  const usesLocalList = isTitleSearch || isLocalSort;
+  const listArgs = { ...filters, assignedToMe: isMyJobsFilterActive };
+  const pagedJobsQuery = useGetJobOpeningsQuery(listArgs, {
+    skip: !hasTenantContext || usesLocalList,
+    refetchOnMountOrArgChange: true,
+  });
+  const allJobsQuery = useGetAllJobOpeningsQuery(
     {
-      skip: !hasTenantContext,
-      refetchOnMountOrArgChange: true,
-    }
+      ...listArgs,
+      text: undefined,
+      searchQuery: undefined,
+      page: undefined,
+      size: undefined,
+      // A local sort is applied below; the server's own sort stays as-is.
+      ...(isLocalSort ? { sortBy: undefined, sortDir: undefined } : {}),
+    },
+    { skip: !hasTenantContext || !usesLocalList, refetchOnMountOrArgChange: true }
   );
+  const { data, isLoading, refetch } = usesLocalList ? allJobsQuery : pagedJobsQuery;
   const { data: jobStats } = useGetJobStatsQuery(
-    { locationId: filters.locationId },
+    { locationIds: filters.locationIds },
     { skip: !hasTenantContext }
   );
   const { data: myJobStats } = useGetJobStatsQuery(
-    { assignedToMe: true, locationId: filters.locationId },
+    { assignedToMe: true, locationIds: filters.locationIds },
     { skip: !hasTenantContext || !canFilterToMyJobs }
   );
   const { data: orgDepartments = [] } = useListTenantDepartmentsQuery(tenantId ?? '', {
@@ -273,7 +312,7 @@ const JobsOpening = () => {
   const { titleMap } = useJobTitleNameMap();
   const { data: orgUsers } = useListUsersQuery({ limit: 200 }, { skip: !hasTenantContext });
 
-  const listedJobs = useMemo((): Jobs[] => {
+  const resolvedJobs = useMemo((): Jobs[] => {
     const deptMap = Object.fromEntries(
       orgDepartments.map((department) => [department.org_department_id, department.name])
     );
@@ -306,6 +345,36 @@ const JobsOpening = () => {
     }));
   }, [data?.data, orgDepartments, jobTypes, titleMap, orgUsers]);
 
+  // Title search: match on the resolved job title only. Local sort: order by
+  // the chosen column. Either way the result is paged here.
+  const localJobs = useMemo(() => {
+    if (!usesLocalList) return resolvedJobs;
+    const term = titleSearchTerm.toLowerCase();
+    const matched = isTitleSearch
+      ? resolvedJobs.filter((job) => (job.jobTitleName ?? '').toLowerCase().includes(term))
+      : resolvedJobs;
+    if (!isLocalSort || !localSortKey) return matched;
+    const direction = filters.sortDir === 'desc' ? -1 : 1;
+    return [...matched].sort((a, b) =>
+      localSortKey === 'jobTitleName'
+        ? direction * (a.jobTitleName ?? '').localeCompare(b.jobTitleName ?? '')
+        : direction * ((a[localSortKey] ?? 0) - (b[localSortKey] ?? 0))
+    );
+  }, [
+    resolvedJobs,
+    usesLocalList,
+    isTitleSearch,
+    titleSearchTerm,
+    isLocalSort,
+    localSortKey,
+    filters.sortDir,
+  ]);
+  const pageSize = filters.size || 10;
+  const listedJobs = usesLocalList
+    ? localJobs.slice(filters.page * pageSize, (filters.page + 1) * pageSize)
+    : resolvedJobs;
+  const totalJobs = usesLocalList ? localJobs.length : (data?.totalElements ?? 0);
+
   // ArrowUp/ArrowDown moves focus between listed job rows below, Enter opens
   // the focused job — the same destination the title `<Link>` on each row
   // already navigates to.
@@ -323,7 +392,7 @@ const JobsOpening = () => {
   const jobStatCards: StatCardData[] = [
     {
       icon: <MdOutlineWorkOutline />,
-      label: 'Open Roles',
+      label: 'Active Jobs',
       value: statsForCards?.published_count,
       variant: 'blue',
       onClick: () => handleStatusChange('ACTIVE'),
@@ -390,7 +459,7 @@ const JobsOpening = () => {
           isDraft: undefined,
           isClosed: undefined,
           isAll: true,
-          locationId: undefined,
+          locationIds: undefined,
           startDateTime: '',
           endDateTime: '',
           sortBy: undefined,
@@ -404,37 +473,13 @@ const JobsOpening = () => {
   }, [location.state, dispatch, persistedGlobalSearchField]);
 
   useEffect(() => {
-    const internalTerm = filters.text?.trim();
     const globalTerm = filters.globalSearchRequestDto?.text?.trim();
 
+    // The search box only matches titles (always visible), so no row is
+    // expanded to reveal a match in its hidden details; a global-search
+    // hand-off still opens every row, as before.
     if (globalTerm && data?.data) {
       setCollapsedUsers(data.data.map((job) => job.jobOpeningId.toString()));
-    } else if (internalTerm && data?.data) {
-      const matchingJobIds = data.data
-        .filter((job) => {
-          const searchTerm = internalTerm.toLowerCase();
-          return (
-            job.jobProfileCode?.toLowerCase().includes(searchTerm) ||
-            job.departmentName?.toLowerCase().includes(searchTerm) ||
-            job.jobTypeName?.toLowerCase().includes(searchTerm) ||
-            job.openings?.toString().includes(searchTerm)
-          );
-        })
-        .map((job) => job.jobOpeningId.toString());
-
-      setCollapsedUsers((prev) => {
-        const updated = new Set(prev);
-        const allJobIds = new Set(data.data.map((job) => job.jobOpeningId.toString()));
-
-        matchingJobIds.forEach((id) => updated.add(id));
-        allJobIds.forEach((id) => {
-          if (!matchingJobIds.includes(id)) {
-            updated.delete(id);
-          }
-        });
-
-        return Array.from(updated);
-      });
     } else {
       setCollapsedUsers([]);
     }
@@ -701,10 +746,10 @@ const JobsOpening = () => {
     }
   };
 
-  const handleLocationChange = (value: string | undefined) => {
+  const handleLocationChange = (value: string[]) => {
     dispatch(
       setJobOpeningFilters({
-        locationId: value,
+        locationIds: value.length > 0 ? value : undefined,
         page: 0,
       })
     );
@@ -936,11 +981,13 @@ const JobsOpening = () => {
     return Array.from(new Set([globalQuery, internalQuery].filter(Boolean)));
   };
 
-  const renderHighlightedField = (text: string | number | null | undefined, _fieldName: string) => {
+  const renderHighlightedField = (text: string | number | null | undefined, fieldName: string) => {
     const value = text == null ? '' : String(text);
     const highlightTerms = getHighlightTerms();
 
-    if (!highlightTerms.length) {
+    // The search box matches job titles only, so only the title is marked;
+    // a global-search hand-off still marks every field, as before.
+    if (!highlightTerms.length || (isTitleSearch && fieldName !== 'jobTitleName')) {
       return <span>{value}</span>;
     }
 
@@ -1156,6 +1203,8 @@ const JobsOpening = () => {
               <div className="cfp-dropdown-trigger w-full sm:w-48 shrink-0">
                 <FilterSelectIcon />
                 <Select
+                  mode="multiple"
+                  maxTagCount="responsive"
                   placeholder="All Locations"
                   onChange={handleLocationChange}
                   allowClear
@@ -1164,7 +1213,7 @@ const JobsOpening = () => {
                   className="w-full custom-select"
                   popupMatchSelectWidth={false}
                   variant="borderless"
-                  value={filters.locationId}
+                  value={filters.locationIds ?? []}
                 >
                   {locations.map((loc) => (
                     <Option key={loc.id} value={loc.id}>
@@ -1257,7 +1306,7 @@ const JobsOpening = () => {
                     sortKey="locationName"
                     currentSortKey={currentSortKey}
                     onSort={handleSort}
-                    span={4}
+                    span={3}
                     className="px-4 text-xs font-bold text-neutral-900"
                   >
                     Location
@@ -1272,15 +1321,36 @@ const JobsOpening = () => {
                   >
                     Candidates
                   </COL>
-                  <Col span={3} className="px-4 text-xs font-bold text-neutral-900 break-words">
+                  <COL
+                    sortable
+                    sortKey="interviewedCandidateCount"
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    span={3}
+                    className="px-4 text-xs font-bold text-neutral-900 break-words"
+                  >
                     Interviewed
-                  </Col>
-                  <Col span={3} className="px-4 text-xs font-bold text-neutral-900 break-words">
+                  </COL>
+                  <COL
+                    sortable
+                    sortKey="selectedCount"
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    span={3}
+                    className="px-4 text-xs font-bold text-neutral-900 break-words"
+                  >
                     Selected
-                  </Col>
-                  <Col span={2} className="px-4 text-xs font-bold text-neutral-900">
+                  </COL>
+                  <COL
+                    sortable
+                    sortKey="rejectedCount"
+                    currentSortKey={currentSortKey}
+                    onSort={handleSort}
+                    span={3}
+                    className="px-4 text-xs font-bold text-neutral-900"
+                  >
                     Not Selected
-                  </Col>
+                  </COL>
                   <Col span={2} className="px-4 text-xs font-bold text-neutral-900">
                     Status
                   </Col>
@@ -1372,7 +1442,7 @@ const JobsOpening = () => {
                             </div>
                           )}
                         </Col>
-                        <Col span={4}>
+                        <Col span={3}>
                           <span className="roboto-font">
                             {renderHighlightedField(jobs.location?.name ?? '-', 'location.name')}
                           </span>
@@ -1424,7 +1494,7 @@ const JobsOpening = () => {
                             </span>
                           </Link>
                         </Col>
-                        <Col span={2}>
+                        <Col span={3}>
                           <Link
                             to={`/jobs/view/${jobs.jobOpeningId}/candidates?page=1&size=10`}
                             className="text-primary hover:underline roboto-font"
@@ -1458,8 +1528,8 @@ const JobsOpening = () => {
           </div>
           <MasterPagination
             current={filters.page + 1}
-            pageSize={filters.size || 10}
-            total={data?.totalElements ?? 0}
+            pageSize={pageSize}
+            total={totalJobs}
             itemLabel="job openings"
             onPageChange={(page) => handlePageChange(page - 1)}
           />
@@ -1738,7 +1808,10 @@ const JobsOpening = () => {
           // `overflowY: 'auto'` — leaving overflow-x at its default
           // `visible` while overflow-y isn't computes overflow-x to `auto`
           // too, opening a stray horizontal scrollbar of its own.
-          styles={{ body: { overflowX: 'hidden', paddingRight: 14 } }}
+          // paddingRight 38 = the 24px index.css's edge-scrollbar rule pads
+          // back + this modal's own 14px gutter (the inline value replaces
+          // that rule's padding, so both are spelled out here).
+          styles={{ body: { overflowX: 'hidden', paddingRight: 38 } }}
           classNames={{ body: 'thin-scrollbar' }}
         >
           <QrCodeCard

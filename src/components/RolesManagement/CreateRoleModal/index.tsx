@@ -131,8 +131,10 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       // margin pulls above its own top edge — that's what was cutting off
       // "Step X of Y" and crowding the close button once Step 2's matrix
       // needed a scroll cap. Zeroing the body padding here and letting the
-      // header own its own padding sidesteps that entirely.
-      styles={{ body: { padding: 0 } }}
+      // header own its own padding sidesteps that entirely. `marginRight: 0`
+      // opts out of index.css's edge-scrollbar rule for `.ant-modal-body`:
+      // this modal scrolls its own inner region, not the body.
+      styles={{ body: { padding: 0, marginRight: 0 } }}
       closeIcon={
         // A persistent dark chip behind the icon, not just white/80 text on
         // the bare gradient — at the header's accent-500 (light cyan) end
