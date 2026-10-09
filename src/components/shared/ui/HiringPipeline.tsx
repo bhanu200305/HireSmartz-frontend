@@ -48,9 +48,12 @@ const STAGE_TINTS = [
 const stageIcon = (label: string): React.ReactNode => {
   const key = label.trim().toLowerCase();
   if (key.includes('applied')) return <FiFileText />;
-  if (key.includes('audio')) return <FiMic />;
+  if (key.includes('audio') || key.includes('agent call')) return <FiMic />;
+  if (key.includes('panel') || key.includes('team') || key.includes('live video')) {
+    return <FiUsers />;
+  }
+  if (key.includes('in-person')) return <FiUsers />;
   if (key.includes('ai')) return <FiCpu />;
-  if (key.includes('panel') || key.includes('team')) return <FiUsers />;
   if (key.includes('intake') || key.includes('phone') || key.includes('call'))
     return <FiPhoneCall />;
   if (key.includes('schedul') || key.includes('interview')) return <FiCalendar />;

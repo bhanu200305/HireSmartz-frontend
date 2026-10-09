@@ -10,12 +10,10 @@ import {
   getRoundInfoSections,
   getSpecialKindFromRoundName,
 } from '../../../shared/utils/roundInfoContent';
-import RoundInfoModal from '../../shared/ui/RoundInfoModal';
-import { MdInfoOutline } from 'react-icons/md';
+import RoundInfoButton from '../../shared/ui/RoundInfoButton';
 
 const ViewInterviewRound = () => {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
-  const [showRoundInfo, setShowRoundInfo] = useState(false);
   const { id } = useParams();
   const jobId = asJobId(id);
   const { data: jobData, isLoading } = useGetJobOpeningByIdQuery(
@@ -47,7 +45,10 @@ const ViewInterviewRound = () => {
         : generalQuestions
             .filter((q) => String(q.interviewRoundId) === roundIdStr)
             .map((q) => ({ id: String(q.id), text: q.question }));
-      return { round, index, roundIdStr, isResume, specialKind, questions };
+      const typeDescription = roundTypes.find(
+        (type) => String(type.id) === String(round.round?.id)
+      )?.description;
+      return { round, index, roundIdStr, isResume, specialKind, typeDescription, questions };
     });
   }, [jobData, intakeData, roundTypes]);
 
@@ -96,14 +97,18 @@ const ViewInterviewRound = () => {
               {active.round.duration ? (
                 <span className="text-sm text-neutral-500">{active.round.duration} min</span>
               ) : null}
-              <button
-                type="button"
-                className="cursor-pointer p-0.5 text-neutral-400 hover:text-primary-600"
-                onClick={() => setShowRoundInfo(true)}
-                aria-label={`About the ${activeName} round`}
-              >
-                <MdInfoOutline size={16} />
-              </button>
+              <RoundInfoButton
+                roundName={activeName}
+                badgeLabel={activeBadge?.label}
+                description={active.round.description}
+                sections={getRoundInfoSections({
+                  specialKind: active.specialKind,
+                  roundName: activeName,
+                  variants: [active.round.variant],
+                  description: active.typeDescription,
+                })}
+                ariaLabel={`About the ${activeName} round`}
+              />
             </div>
 
             {active.round.description && (
@@ -142,19 +147,6 @@ const ViewInterviewRound = () => {
         )}
         <Outlet />
       </div>
-      {showRoundInfo && active && (
-        <RoundInfoModal
-          roundName={activeName}
-          badgeLabel={activeBadge?.label}
-          description={active.round.description}
-          sections={getRoundInfoSections({
-            specialKind: active.specialKind,
-            roundName: activeName,
-            variants: [active.round.variant],
-          })}
-          onClose={() => setShowRoundInfo(false)}
-        />
-      )}
     </>
   );
 };

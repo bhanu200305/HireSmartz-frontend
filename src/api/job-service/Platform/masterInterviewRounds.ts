@@ -5,7 +5,14 @@ import type { CatalogPage, SearchArgs } from '../JobOpening/catalogs';
 export type PlatformInterviewRoundType = {
   round_type_id: string;
   round_name: string;
-  special_kind: 'intake_call' | 'resume' | 'verification' | null;
+  special_kind:
+    | 'intake_call'
+    | 'resume'
+    | 'verification'
+    | 'audio_screening'
+    | 'live_video'
+    | 'in_person'
+    | null;
   is_mandatory: boolean;
   max_occurrences: number | null;
   requires_duration: boolean;

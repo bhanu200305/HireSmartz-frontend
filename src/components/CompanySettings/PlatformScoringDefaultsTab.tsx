@@ -295,7 +295,7 @@ const PlatformScoringDefaultsTab: React.FC = () => {
 
           <ScoringWeightCard
             title="Interview Scoring Categories"
-            subtitle="Applies to AI Audio Screening and AI Video Interview"
+            subtitle="Applies to AI Agent Call and AI Video Interview"
             infoText="If a category is not covered in an interview, its weight is redistributed proportionally across the remaining categories."
             weights={interviewWeights}
             categoryMeta={INTERVIEW_CATEGORY_META}

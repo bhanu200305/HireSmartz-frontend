@@ -124,7 +124,6 @@ import RoundCollapsibleSection from './RoundCollapsibleSection';
 import RoundDetailTabs from './RoundDetailTabs';
 import ScoringCriteriaModal, { type InterviewScoringRoundType } from './Modal/ScoringCriteriaModal';
 import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
-import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import CandidateMessageHistory from './CandidateMessageHistory';
 import { useCandidateNavigation } from './useCandidateNavigation';
 import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
@@ -141,6 +140,7 @@ import {
 import { roundLabel, formatCallIntent } from './roundDisplay';
 import {
   resolveCurrentRound,
+  isReadyForOverallScore,
   isRoundConcluded,
   isAiVideoRound,
   isAudioScreeningRound,
@@ -441,24 +441,6 @@ const CandidateDetails = () => {
   // organization's, else the platform default — the same weights ai-service
   // scores with), fetched only while a resume or interview popup is open;
   // the modal falls back to the platform defaults if they can't be loaded.
-  // The job's round plan — the only place a round's variant (AI Video:
-  // soundwave/avatar, Hiring Panel: online/offline) lives; the candidate's
-  // round view doesn't carry it. Matched by round_id + sequence, falling back
-  // to round_id alone when that round type occurs once in the plan.
-  const { data: jobRoundPlan } = useGetInterviewRoundsByJobIdQuery(parsedJobId ?? '', {
-    skip: !parsedJobId,
-  });
-  const variantForRound = (round: CandidateInterviewRoundView): string | null => {
-    if (!round.round_id) return null;
-    const plan = (jobRoundPlan ?? []) as Array<{
-      roundId?: string;
-      sequence?: number;
-      variant?: string | null;
-    }>;
-    const sameType = plan.filter((r) => r.roundId === round.round_id);
-    const exact = sameType.find((r) => r.sequence === round.sequence);
-    return (exact ?? (sameType.length === 1 ? sameType[0] : undefined))?.variant ?? null;
-  };
   const { data: jobScoringConfig } = useGetJobScoringConfigQuery(parsedJobId ?? '', {
     skip: !parsedJobId || !scoringCriteriaFor || scoringCriteriaFor.kind === 'intake',
   });
@@ -731,7 +713,7 @@ const CandidateDetails = () => {
   const isPanelRound = selectedRound
     ? selectedRound.round_type
       ? selectedRound.round_type === 'PANEL'
-      : Boolean(selectedRound.round_name?.toLowerCase().includes('panel'))
+      : /panel|live video|in-person/i.test(selectedRound.round_name ?? '')
     : false;
   // Job Service's question bank, grouped by round — matched back to the
   // SELECTED round by `sequence`, not `round_id`: a round TYPE (e.g.
@@ -1408,6 +1390,7 @@ const CandidateDetails = () => {
   // plan hasn't loaded/has no rounds yet, which would otherwise trivially
   // satisfy "nothing outstanding".
   const allRoundsCompleted = rounds.length > 0 && currentRound === null;
+  const overallScoreReady = isReadyForOverallScore(rounds);
   const isAdvanceLocked = currentRound !== null && currentRound.id === advancedFromRoundId;
   const nextRound = currentRound
     ? (rounds[rounds.findIndex((r) => r.id === currentRound.id) + 1] ?? null)
@@ -1604,9 +1587,9 @@ const CandidateDetails = () => {
       : null;
   };
   const overallRows = scoredRows.filter((row) => !row.excludeFromOverall);
-  // N/A (null) until every round is completed — a mid-pipeline average
-  // would read as a final verdict.
-  const overallScore = allRoundsCompleted
+  // N/A (null) until every round is done and the last has concluded — a
+  // mid-pipeline average would read as a final verdict.
+  const overallScore = overallScoreReady
     ? {
         ai: averageOf(overallRows.map((row) => row.ai)),
         human: averageOf(overallRows.map((row) => row.human)),
@@ -2659,7 +2642,7 @@ const CandidateDetails = () => {
                     <div
                       className="truncate pr-2"
                       title={
-                        allRoundsCompleted
+                        overallScoreReady
                           ? 'Average across rounds with a score (skipped rounds and the Intake Call consistency check not included)'
                           : 'Shown once all rounds are completed'
                       }
@@ -2991,7 +2974,6 @@ const CandidateDetails = () => {
                         resumeScore={candidate?.resume_score ?? null}
                         consistencyScore={candidate?.consistency_score ?? null}
                         jobId={parsedJobId || undefined}
-                        variant={variantForRound(round)}
                         onSelect={() => {
                           setIsResumeFallbackSelected(false);
                           setSelectedRound(round);
@@ -3186,7 +3168,7 @@ const CandidateDetails = () => {
             setAdvancedFromRoundId(currentRound?.id ?? null);
             void refetchRounds();
             refetchCandidate();
-            // Advancing into a Hiring Panel round without inviting it: remind
+            // Advancing into a panel round without inviting it: remind
             // the recruiter to pick the panel and invite. Shown once.
             if (newRound?.round_type === 'PANEL' && !inviteSent) setPanelPromptRound(newRound);
           }}
@@ -3196,7 +3178,7 @@ const CandidateDetails = () => {
         // Informational, never a gate: closing it any way (X, Escape, outside
         // click) is the same as Later. Shown once per advance.
         <AntdCommonModal
-          title="Next round: Hiring Panel"
+          title={`Next round: ${roundLabel(panelPromptRound)}`}
           open
           onClose={() => setPanelPromptRound(null)}
           modalProps={{ width: 480 }}
@@ -3324,7 +3306,7 @@ const CandidateDetails = () => {
                 : isAiVideoRound(selectedRound)
                   ? 'from the available AI Video Interview slots.'
                   : isAudioScreeningRound(selectedRound) || isIntakeCallRound(selectedRound)
-                    ? 'from the available AI Audio Screening slots.'
+                    ? 'from the available AI Agent Call slots.'
                     : 'from the available slots.'}
             </p>
             {isPanelRound && (

@@ -444,7 +444,7 @@ const ViewJobDetails = () => {
             }
           >
             {data?.useCultureIntro
-              ? 'On - plays at the start of AI Audio Screening and AI Video Interview'
+              ? 'On - plays at the start of AI Agent Call and AI Video Interview'
               : 'Off'}
           </Field>
         </Section>

@@ -18,7 +18,7 @@ import {
   roundLabel,
   formatRoundStatus,
   formatCallIntent,
-  formatRoundVariant,
+  formatDeliveryMode,
   roundReinviteState,
   roundStatusLabel,
 } from './roundDisplay';
@@ -35,8 +35,6 @@ type RoundSidebarItemProps = {
   roundScore: CandidateInterviewScoreView | undefined;
   resumeScore: number | null;
   consistencyScore: number | null;
-  /** The job round's configured variant (soundwave/avatar, online/offline). */
-  variant?: string | null;
   /** For a PANEL round's picked-but-not-yet-invited interviewers' calendar
    * status (job-scoped endpoint). */
   jobId?: string;
@@ -59,7 +57,6 @@ const RoundSidebarItem = ({
   roundScore,
   resumeScore,
   consistencyScore,
-  variant,
   jobId,
   onSelect,
 }: RoundSidebarItemProps) => {
@@ -124,11 +121,9 @@ const RoundSidebarItem = ({
   const rescheduleRequested =
     isVoiceCallRound && booking?.call_intent === 'reschedule_requested' && !isRoundSkipped(round);
   const { reinvitesUsed, maxReinvites, linkExpired } = roundReinviteState(round, booking);
-  // Hiring Panel only: Online / In-person, from the job's round plan, else
-  // the booking's own snapshot. AI Video's variant (soundwave/avatar) means
-  // something else entirely, so it doesn't get this tag.
+  // Panel rounds only: Online / In-person, from the booking's delivery mode.
   const deliveryModeTag = isPanelRound
-    ? formatRoundVariant(variant ?? booking?.round_snapshot?.delivery_mode)
+    ? formatDeliveryMode(booking?.round_snapshot?.delivery_mode)
     : null;
 
   // Side-bar colour = the round's state: green done, amber current stage,

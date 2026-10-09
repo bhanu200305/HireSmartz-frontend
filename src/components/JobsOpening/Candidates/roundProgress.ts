@@ -213,6 +213,24 @@ export const isRoundConcluded = (round: CandidateInterviewRoundView): boolean =>
   return bucket === 'done' || bucket === 'failed';
 };
 
+/** Whether the Overall Score may be shown: no round is outstanding except
+ * the last one, and that one has concluded. The last round can never be
+ * advanced, so `resolveCurrentRound` keeps it current until the candidate is
+ * selected or rejected; only this score uses the looser rule. Rounds that
+ * `resolveCurrentRound` ignores are ignored here too. */
+export const isReadyForOverallScore = (rounds: CandidateInterviewRoundView[]): boolean => {
+  if (rounds.length === 0) return false;
+  const lastId = rounds[rounds.length - 1].id;
+  return rounds
+    .filter(
+      (r) =>
+        !isStaleResumeRound(r) &&
+        !isRoundFinishedForProgress(r) &&
+        (r.stage_type !== 'resume' || r.due_at !== null)
+    )
+    .every((r) => r.id === lastId && isRoundConcluded(r));
+};
+
 /** Grace period after a round's `scheduled_at` before treating it as
  * overdue rather than "still due any moment." Long enough that a call
  * that's legitimately ringing or just wrapping up isn't flagged. */

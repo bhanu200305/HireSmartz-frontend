@@ -16,6 +16,6 @@ export interface GenerateQuestionsConsentModalProps {
   hasExistingQuestions?: boolean;
   /** False hides the question-count input (default true) - not every backend accepts a count. */
   showQuestionCount?: boolean;
-  /** Scoring-section picker, rendered only when non-empty (Hiring Panel only). */
+  /** Scoring-section picker, rendered only when non-empty (Live Video / In-Person only). */
   scoringSectionOptions?: ScoringSectionOption[];
 }

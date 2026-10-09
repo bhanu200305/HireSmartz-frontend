@@ -138,7 +138,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </ChartCard>
         <ChartCard
           title="Hiring Funnel"
-          subtitle="Applied → AI Audio Screening → AI Video Interview → Panel Interview → Selected / Rejected"
+          subtitle="Applied → AI Agent Call → AI Video Interview → Panel Interview → Selected / Rejected"
           span={2}
           available={false}
           unavailableLabel={COMING_SOON}
@@ -147,7 +147,7 @@ const MetricsPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         </ChartCard>
         <ChartCard
           title="Interviews by Status & Type"
-          subtitle="Status split by AI Audio Screening, AI Video Interview & Panel Interview"
+          subtitle="Status split by AI Agent Call, AI Video Interview & Panel Interview"
           tag="Grouped Bar"
           available={false}
           unavailableLabel={COMING_SOON}

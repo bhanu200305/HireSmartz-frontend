@@ -271,6 +271,19 @@ export type InterviewSequenceResponse = {
   rounds: InterviewRoundResponse[];
 };
 
+/** One bulk question-import file uploaded to a job. Counts are null for old files. */
+export type QuestionImportResponse = {
+  id: string;
+  interview_round_id: string | null;
+  file_name: string | null;
+  total_rows: number | null;
+  imported_count: number | null;
+  failed_count: number | null;
+  duplicate_count: number | null;
+  uploaded_by: string | null;
+  uploaded_at: string | null;
+};
+
 export type InterviewRoundType = {
   round_id: string;
   round_name: string;
@@ -281,7 +294,14 @@ export type InterviewRoundType = {
   is_audio_round?: boolean;
   // Marks the fixed anchor round types (Resume + Intake Call) the
   // Interview Rounds page keeps pinned to the top of the sequence.
-  special_kind?: 'intake_call' | 'resume' | 'verification' | null;
+  special_kind?:
+    | 'intake_call'
+    | 'resume'
+    | 'verification'
+    | 'audio_screening'
+    | 'live_video'
+    | 'in_person'
+    | null;
   // Display text per variant code.
   variant_labels?: Record<string, string> | null;
 };

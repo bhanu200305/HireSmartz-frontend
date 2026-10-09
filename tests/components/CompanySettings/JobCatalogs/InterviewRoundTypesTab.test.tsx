@@ -12,9 +12,9 @@ vi.mock('../../../../src/api/job-service/Platform/masterInterviewRounds', () => 
       items: [
         {
           round_type_id: 'rt-1',
-          round_name: 'Hiring Panel Round',
-          round_description: 'Human panel.',
-          variant_labels: { online: 'Online Round', offline: 'In-Person Round' },
+          round_name: 'AI Video Interview',
+          round_description: 'AI video.',
+          variant_labels: { soundwave: 'Voice Agent Round', avatar: 'Avatar Round' },
         },
       ],
     },
@@ -46,17 +46,16 @@ describe('InterviewRoundTypesTab', () => {
     await openEdit();
     expect((await screen.findByPlaceholderText('Name *')) as HTMLInputElement).toHaveProperty(
       'value',
-      'Hiring Panel Round'
+      'AI Video Interview'
     );
     expect(
-      (screen.getByPlaceholderText(/display text for "online"/i) as HTMLInputElement).value
-    ).toBe('Online Round');
-    expect(
-      (screen.getByPlaceholderText(/display text for "offline"/i) as HTMLInputElement).value
-    ).toBe('In-Person Round');
-    expect(
       (screen.getByPlaceholderText(/display text for "soundwave"/i) as HTMLInputElement).value
-    ).toBe('');
+    ).toBe('Voice Agent Round');
+    expect(
+      (screen.getByPlaceholderText(/display text for "avatar"/i) as HTMLInputElement).value
+    ).toBe('Avatar Round');
+    expect(screen.queryByPlaceholderText(/display text for "online"/i)).toBeNull();
+    expect(screen.queryByPlaceholderText(/display text for "offline"/i)).toBeNull();
   });
 
   it('saves the new name and only the labels that have text', async () => {
@@ -64,28 +63,28 @@ describe('InterviewRoundTypesTab', () => {
 
     const name = await screen.findByPlaceholderText('Name *');
     await user.clear(name);
-    await user.type(name, '  Panel Interview ');
-    const online = screen.getByPlaceholderText(/display text for "online"/i);
-    await user.clear(online);
-    await user.type(online, ' Remote Panel ');
-    await user.clear(screen.getByPlaceholderText(/display text for "offline"/i));
+    await user.type(name, '  AI Video ');
+    const soundwave = screen.getByPlaceholderText(/display text for "soundwave"/i);
+    await user.clear(soundwave);
+    await user.type(soundwave, ' Voice Round ');
+    await user.clear(screen.getByPlaceholderText(/display text for "avatar"/i));
 
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(updateRoundType).toHaveBeenCalledTimes(1));
     expect(updateRoundType).toHaveBeenCalledWith({
       roundTypeId: 'rt-1',
-      round_name: 'Panel Interview',
-      round_description: 'Human panel.',
-      variant_labels: { online: 'Remote Panel' },
+      round_name: 'AI Video',
+      round_description: 'AI video.',
+      variant_labels: { soundwave: 'Voice Round' },
     });
   });
 
   it('sends no labels at all when every label is cleared', async () => {
     const user = await openEdit();
 
-    await user.clear(await screen.findByPlaceholderText(/display text for "online"/i));
-    await user.clear(screen.getByPlaceholderText(/display text for "offline"/i));
+    await user.clear(await screen.findByPlaceholderText(/display text for "soundwave"/i));
+    await user.clear(screen.getByPlaceholderText(/display text for "avatar"/i));
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(updateRoundType).toHaveBeenCalledTimes(1));

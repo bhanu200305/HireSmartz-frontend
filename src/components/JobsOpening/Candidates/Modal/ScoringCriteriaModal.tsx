@@ -3,7 +3,7 @@ import { Modal } from 'antd';
 import { useModalCloseAttention } from '../../../shared/ui/useModalCloseAttention';
 
 /** ai-service scores each interview round type with a different prompt:
- * AI Audio Screening on answer quality, AI Video on alignment with the
+ * AI Agent Call on answer quality, AI Video on alignment with the
  * resume, and the interviewer-led Hiring Panel on consistency with the
  * earlier AI Video round. */
 export type InterviewScoringRoundType = 'audio' | 'ai_video' | 'panel';
@@ -271,7 +271,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
 
       <section>
         {sectionHeading('Formula')}
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono break-words">
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm break-words">
           Resume Score ={' '}
           {scoringBreakdown.map((metric) => `(${metric.label} × ${metric.max}%)`).join(' + ')}
         </div>
@@ -323,9 +323,9 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
             </li>
 
             <li>
-              <strong>AI Audio Screening Score: 20%</strong>
+              <strong>AI Agent Call Score: 20%</strong>
               <p className="ml-2">
-                Derived from candidate’s performance in the AI Audio Screening round.
+                Derived from candidate’s performance in the AI Agent Call round.
               </p>
             </li>
 
@@ -342,9 +342,9 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
 
       <section>
         <h3 className="text-lg font-semibold mb-2">Formula</h3>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono">
-          Overall AI Score = (Resume Score × 20%) + (AI Audio Screening Score × 20%) + (Average AI
-          Video Interview Scores × 60%)
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm">
+          Overall AI Score = (Resume Score × 20%) + (AI Agent Call Score × 20%) + (Average AI Video
+          Interview Scores × 60%)
         </div>
       </section>
     </div>
@@ -383,7 +383,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
 
       <section>
         <h3 className="text-lg font-semibold mb-2">Formula</h3>
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono">
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm">
           Overall Human Score = Sum of all interviewer ratings (Video + In-Person) / Total number of
           ratings
         </div>
@@ -493,7 +493,7 @@ const ScoringCriteriaModal: React.FC<ScoringCriteriaModalProps> = ({
 
         <section>
           {sectionHeading('Formula')}
-          <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm font-mono break-words">
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm break-words">
             Final Score = Sum of (answer score × category weight) ÷ Sum of the weights applied
           </div>
         </section>

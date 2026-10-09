@@ -95,6 +95,7 @@ export const jobApi = createApi({
     'JobScoring',
     'InterviewSequence',
     'JobQuestions',
+    'QuestionImports',
     'JobNotes',
     'JobStats',
     'JobTypes',
