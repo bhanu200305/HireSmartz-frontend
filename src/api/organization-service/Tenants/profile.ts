@@ -19,6 +19,8 @@ export type TenantProfile = {
   status: string;
   website_url: string | null;
   industry_id: string | null;
+  /** The industry's name, resolved by the server from `industry_id`. */
+  industry_name?: string | null;
   admin_contact: string | null;
   logo_url: string | null;
   email_banner_url: string | null;

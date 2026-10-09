@@ -26,6 +26,8 @@ import GlobalSearch, {
   isCfpStaffResult,
   type SearchResult,
 } from '../shared/GlobalSearch';
+import { calendarDisconnectErrorMessage } from '../../shared/utils/calendarDisconnectError';
+import type { InterviewApiError } from '../../api/interview-service/client';
 import { useGetCategoriesQuery } from '../../api/search-service/Dashboard/GlobalSearch';
 import {
   filterSearchCategories,
@@ -528,10 +530,15 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
       const result = await triggerGetNylasAuthUrl().unwrap();
       window.location.href = result.connect_url;
     } catch (err: unknown) {
-      const msg =
-        (err as { data?: { message?: string } })?.data?.message ??
-        'Failed to switch calendar. Please try again.';
-      showToast({ message: msg, type: 'error' });
+      // Interview-service errors are `InterviewApiError`s (message + code), not
+      // RTK `{ data }` objects; this also explains "you still have interviews".
+      showToast({
+        message: calendarDisconnectErrorMessage(
+          err as InterviewApiError,
+          'Failed to switch calendar. Please try again.'
+        ),
+        type: 'error',
+      });
     }
   };
 
@@ -545,10 +552,13 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
       await disconnectGrant().unwrap();
       showToast({ message: 'Calendar disconnected successfully.', type: 'success' });
     } catch (err: unknown) {
-      const msg =
-        (err as { data?: { message?: string } })?.data?.message ??
-        'Failed to disconnect calendar. Please try again.';
-      showToast({ message: msg, type: 'error' });
+      showToast({
+        message: calendarDisconnectErrorMessage(
+          err as InterviewApiError,
+          'Failed to disconnect calendar. Please try again.'
+        ),
+        type: 'error',
+      });
     }
   };
 

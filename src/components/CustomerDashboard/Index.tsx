@@ -32,10 +32,11 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
 /**
  * Super Admin's "Companies" screen — GET /v1/platform/tenants. Filters/sort
  * kept to what the real endpoint supports: status, a substring search on
- * company name (`q`, server-side), server-side sort by Company/Joined
+ * company name (`q`, server-side), server-side sort by company name
  * (`sort_by`/`sort_order`), and offset pagination — no date-range filter, no
- * recruiter/interview counts, no impersonation-from-this-screen (none of
- * those exist on this contract or endpoint).
+ * interview counts, no impersonation-from-this-screen (none of those exist on
+ * this contract or endpoint). Email, website, address, signup source and join
+ * date sit in each row's expandable section.
  */
 const CustomerTable = () => {
   const navigate = useNavigate();
@@ -100,7 +101,7 @@ const CustomerTable = () => {
 
   const columns: TableProps<TenantRow>['columns'] = [
     {
-      title: 'Company',
+      title: 'Company Details',
       dataIndex: 'company_name',
       key: 'company_name',
       sorter: true,
@@ -110,21 +111,34 @@ const CustomerTable = () => {
       ),
     },
     {
-      title: 'Admin Email',
-      dataIndex: 'admin_email',
-      key: 'admin_email',
+      title: 'Primary Location',
+      key: 'primary_location',
       render: (_: unknown, tenant: TenantRow) => (
-        <span className="text-sm text-gray-600 truncate" title={tenant.admin_email}>
-          {tenant.admin_email}
-        </span>
+        <span className="text-sm text-gray-600">{tenant.primary_location || '-'}</span>
       ),
     },
     {
-      title: 'Signup Source',
-      dataIndex: 'signup_source',
-      key: 'signup_source',
+      title: 'Primary Contact',
+      key: 'primary_contact',
       render: (_: unknown, tenant: TenantRow) => (
-        <span className="text-sm text-gray-600 capitalize">{tenant.signup_source}</span>
+        <div className="flex flex-col text-sm">
+          <span className="text-gray-800">{tenant.primary_contact_name || '-'}</span>
+          <span className="text-gray-500">{tenant.admin_contact || '-'}</span>
+        </div>
+      ),
+    },
+    {
+      title: 'Recruiters',
+      key: 'recruiters_count',
+      render: (_: unknown, tenant: TenantRow) => (
+        <span className="text-sm text-gray-700">{tenant.recruiters_count ?? '-'}</span>
+      ),
+    },
+    {
+      title: 'Hiring Manager',
+      key: 'hiring_managers_count',
+      render: (_: unknown, tenant: TenantRow) => (
+        <span className="text-sm text-gray-700">{tenant.hiring_managers_count ?? '-'}</span>
       ),
     },
     {
@@ -132,23 +146,6 @@ const CustomerTable = () => {
       key: 'status',
       render: (_: unknown, tenant: TenantRow) => (
         <Badge status={STATUS_BADGE[tenant.status] || 'neutral'}>{tenant.status}</Badge>
-      ),
-    },
-    {
-      title: 'Joined',
-      key: 'created_at',
-      sorter: true,
-      sortOrder: sortOrderFor('created_at'),
-      render: (_: unknown, tenant: TenantRow) => (
-        <span className="text-sm text-gray-500">
-          {tenant.created_at
-            ? new Date(tenant.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })
-            : '-'}
-        </span>
       ),
     },
     {
@@ -267,6 +264,44 @@ const CustomerTable = () => {
           <CustomTable<TenantRow>
             columns={columns}
             dataSource={dataSource}
+            expandable={{
+              // Details that used to be their own columns, one click away.
+              expandedRowRender: (tenant: TenantRow) => (
+                <div className="flex flex-col gap-1 pl-4 text-sm text-gray-600">
+                  <div>
+                    Email:{' '}
+                    <a href={`mailto:${tenant.admin_email}`} className="text-primary-600">
+                      {tenant.admin_email}
+                    </a>
+                  </div>
+                  {tenant.website_url && (
+                    <div>
+                      Website Link:{' '}
+                      <a
+                        href={tenant.website_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary-600"
+                      >
+                        {tenant.website_url}
+                      </a>
+                    </div>
+                  )}
+                  {tenant.address && <div>Address: {tenant.address}</div>}
+                  <div className="capitalize">Signup Source: {tenant.signup_source}</div>
+                  <div>
+                    Joined:{' '}
+                    {tenant.created_at
+                      ? new Date(tenant.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                      : '-'}
+                  </div>
+                </div>
+              ),
+            }}
             onRow={(tenant) => ({
               onClick: () => navigate(`/view-company?companyId=${tenant.tenant_id}`),
               className: 'cursor-pointer',

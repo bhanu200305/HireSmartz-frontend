@@ -18,13 +18,41 @@ export const tenantDetailsSchema = z
     // currently wired to a legacy backend that isn't part of this stack (see
     // StepCompanyDetails.tsx), so forcing a selection would be a dead end.
     industryId: z.string(),
+    // Kept as a string in the form (like the profile screen's own field) and
+    // turned into a number only when submitting. Optional.
+    companySize: z
+      .string()
+      .optional()
+      .refine((v) => !v || (Number.isFinite(Number(v)) && Number(v) >= 1), {
+        message: 'Company size must be a positive number.',
+      }),
+    // Primary Contact. Their email and phone are `adminEmail` / `adminContact*`.
+    primaryContactFirstName: z.string().trim().nonempty('First name is required.'),
+    primaryContactLastName: z.string().trim().nonempty('Last name is required.'),
+    primaryContactTitle: z.string().nonempty('Title is required.'),
     adminEmail: emailValidation(),
     adminContactCountryCode: z.string().nonempty('Country code is required.'),
     adminContactPhone: z.string(),
+    // Secondary Contact: everything optional, with its own country code.
+    secondaryContactFirstName: z.string().optional(),
+    secondaryContactLastName: z.string().optional(),
+    secondaryContactCountryCode: z.string().optional(),
+    secondaryContactPhone: z.string().optional(),
+    secondaryContactEmail: z
+      .string()
+      .email('Enter a valid email address.')
+      .optional()
+      .or(z.literal('')),
+    secondaryContactTitle: z.string().optional(),
+    secondaryContactRole: z.string().optional(),
   })
   // Cross-field: the digit count a phone number needs is different per
   // country, so this can't be a per-field `.regex()` — see phoneValidation.ts.
-  .superRefine(phoneWithCountry('adminContactCountryCode', 'adminContactPhone'));
+  .superRefine(phoneWithCountry('adminContactCountryCode', 'adminContactPhone'))
+  // The Secondary Contact's phone is only checked when something is typed.
+  .superRefine(
+    phoneWithCountry('secondaryContactCountryCode', 'secondaryContactPhone', { required: false })
+  );
 
 export type TenantDetailsFormValues = z.infer<typeof tenantDetailsSchema>;
 

@@ -88,6 +88,10 @@ export interface BookingView {
    * ~24h after the last one). `true` means a Reinvite is offered. Added with
    * the 2026-10-04 reinvite change; absent on older responses. */
   link_expired?: boolean;
+  /** Set by the server (UTC): true once `end_time` has passed, false before it and
+   * for a booking with no end time yet. Absent on older responses. Read it as is;
+   * never compare `end_time` with the browser's own clock. */
+  has_ended?: boolean;
   /** Reinvites already used for this booking, out of `max_reinvite_count`. */
   reinvite_count?: number;
   /** The live server limit on reinvites; absent on older responses (use
@@ -203,6 +207,9 @@ export interface CallNowView {
    * scheduled and question generation starts, and the real call fires a short
    * time later — "We'll call you shortly", never "calling now". */
   questions_pending?: boolean;
+  /** The LiveKit join URL; present only for AI_VIDEO, where "now" means joining
+   * the interview room (nobody is called). */
+  session_url?: string;
 }
 
 /** `GET /scheduling/{token}/slots` — PANEL only. Deliberately NOT a real

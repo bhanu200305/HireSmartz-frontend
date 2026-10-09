@@ -3,12 +3,16 @@ import {
   tenantDetailsSchema,
   tenantProfileSchema,
 } from '../../../src/components/TenantOnboarding/TenantOnboardingSchema';
+import type { TenantDetailsFormValues } from '../../../src/components/TenantOnboarding/TenantOnboardingSchema';
 import { PHONE_VALIDATION_MESSAGE } from '../../../src/shared/utils/validation/phoneValidation';
 
 const baseDetails = {
   companyName: 'Acme Inc',
   websiteUrl: 'acme.com',
   industryId: '3',
+  primaryContactFirstName: 'Jane',
+  primaryContactLastName: 'Doe',
+  primaryContactTitle: 'Ms',
   adminEmail: 'founder@acme.com',
   adminContactCountryCode: '+1',
   adminContactPhone: '(555) 123-4567',
@@ -79,5 +83,67 @@ describe('tenantProfileSchema', () => {
         'Keep the description under 1000 characters.'
       );
     }
+  });
+});
+
+describe('tenantDetailsSchema: Primary and Secondary Contact', () => {
+  const fieldError = (values: Record<string, unknown>, field: keyof TenantDetailsFormValues) => {
+    const result = tenantDetailsSchema.safeParse(values);
+    return result.success ? null : (result.error.flatten().fieldErrors[field]?.[0] ?? null);
+  };
+
+  it('requires the Primary Contact first name, last name and title', () => {
+    expect(
+      fieldError({ ...baseDetails, primaryContactFirstName: '' }, 'primaryContactFirstName')
+    ).toBe('First name is required.');
+    expect(
+      fieldError({ ...baseDetails, primaryContactLastName: '  ' }, 'primaryContactLastName')
+    ).toBe('Last name is required.');
+    expect(fieldError({ ...baseDetails, primaryContactTitle: '' }, 'primaryContactTitle')).toBe(
+      'Title is required.'
+    );
+  });
+
+  it('requires the Primary Contact phone number', () => {
+    expect(fieldError({ ...baseDetails, adminContactPhone: '' }, 'adminContactPhone')).toBe(
+      'Phone Number is required.'
+    );
+  });
+
+  it('lets the Secondary Contact be left completely empty', () => {
+    expect(tenantDetailsSchema.safeParse(baseDetails).success).toBe(true);
+    expect(
+      tenantDetailsSchema.safeParse({
+        ...baseDetails,
+        secondaryContactFirstName: '',
+        secondaryContactPhone: '',
+        secondaryContactEmail: '',
+      }).success
+    ).toBe(true);
+  });
+
+  it('lets the Secondary Contact be partly filled in', () => {
+    expect(
+      tenantDetailsSchema.safeParse({ ...baseDetails, secondaryContactFirstName: 'Sam' }).success
+    ).toBe(true);
+  });
+
+  it('checks the Secondary Contact email and phone only when filled in', () => {
+    expect(
+      fieldError({ ...baseDetails, secondaryContactEmail: 'nope' }, 'secondaryContactEmail')
+    ).toBe('Enter a valid email address.');
+    expect(
+      fieldError(
+        { ...baseDetails, secondaryContactCountryCode: '+1', secondaryContactPhone: '555' },
+        'secondaryContactPhone'
+      )
+    ).toBe(PHONE_VALIDATION_MESSAGE);
+    expect(
+      tenantDetailsSchema.safeParse({
+        ...baseDetails,
+        secondaryContactCountryCode: '+1',
+        secondaryContactPhone: '(555) 123-4567',
+      }).success
+    ).toBe(true);
   });
 });

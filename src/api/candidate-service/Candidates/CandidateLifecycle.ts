@@ -165,6 +165,14 @@ export type ResumeUploadView = {
   last_name: string | null;
   email_id: string | null;
   contact_no: string | null;
+  /** Whether `contact_no` already carries a country code, from the AI extraction.
+   * `true`: do not add another. `false`: a number was found without one.
+   * `null`: no phone was found. */
+  contact_no_has_country_code?: boolean | null;
+  /** The number pre-split for the country-code box and the number box (null
+   * together when it was too garbled to split). Use these, never `contact_no`. */
+  contact_no_dial_code?: string | null;
+  contact_no_national_number?: string | null;
 };
 
 export type UploadCandidateResumeArgs = {
@@ -201,7 +209,12 @@ export type ApplyRequest = {
  * candidate still exists either way. Set by `POST /candidates` (a call is
  * attempted right after the candidate is created, when a phone number was
  * given). */
-export type ApplyResultView = { id: string; call_placed: boolean };
+export type ApplyResultView = {
+  id: string;
+  call_placed: boolean;
+  /** Set the moment the candidate is saved; informational, never blocks the save. */
+  phone_number_issue?: PhoneNumberIssue | null;
+};
 
 /** `UpdateCandidateRequest` — every field optional (partial update).
  * Exactly the six fields candidate-service's own `UpdateCandidateRequest`
@@ -215,7 +228,11 @@ export type UpdateCandidateRequest = Partial<{
   address: string;
 }>;
 
-export type UpdateCandidateResultView = { id: string };
+export type UpdateCandidateResultView = {
+  id: string;
+  /** Set the moment the candidate is edited; informational, never blocks the save. */
+  phone_number_issue?: PhoneNumberIssue | null;
+};
 
 export type BulkUploadResumesArgs = {
   organizationId: string;

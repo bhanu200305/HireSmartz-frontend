@@ -70,6 +70,13 @@ const T = {
     callNowPromptBody:
       'Press the button below and we’ll call you right away. Please make sure you’re somewhere quiet with your phone nearby.',
     callNowPromptButton: 'Call me now',
+    videoNowButton: 'Start my interview now instead',
+    videoNowHint: "Don't want to wait for a slot? You can start your interview right away.",
+    videoNowConfirm: 'Joining your interview…',
+    videoNowPromptTitle: 'Ready for your interview?',
+    videoNowPromptBody:
+      'Press the button below to join your video interview right away. Please make sure you’re somewhere quiet with your camera and microphone ready.',
+    videoNowPromptButton: 'Start my interview',
     pickTimeInstead: 'Pick a time instead',
     callAlreadyPlaced: 'We’re already calling you. Please keep your phone nearby.',
     callNowQueuedTitle: "We'll call you shortly",
@@ -133,6 +140,13 @@ const T = {
     callNowPromptBody:
       'Presiona el botón de abajo y te llamaremos de inmediato. Asegúrate de estar en un lugar tranquilo y con tu teléfono cerca.',
     callNowPromptButton: 'Llámame ahora',
+    videoNowButton: 'Iniciar mi entrevista ahora',
+    videoNowHint: '¿No quieres esperar a un horario? Puedes iniciar tu entrevista de inmediato.',
+    videoNowConfirm: 'Entrando a tu entrevista…',
+    videoNowPromptTitle: '¿Listo para tu entrevista?',
+    videoNowPromptBody:
+      'Presiona el botón de abajo para unirte a tu entrevista en video de inmediato. Asegúrate de estar en un lugar tranquilo y con tu cámara y micrófono listos.',
+    videoNowPromptButton: 'Iniciar mi entrevista',
     pickTimeInstead: 'Elegir un horario',
     callAlreadyPlaced: 'Ya te estamos llamando. Por favor, mantén tu teléfono cerca.',
     callNowQueuedTitle: 'Te llamaremos en breve',
@@ -307,14 +321,18 @@ const AiCallSchedulePage = () => {
     skip: !token,
   });
   const isPanel = schedulingLink?.interview_type === 'panel';
-  // "Call me now" exists for both phone-call rounds: the Intake Call ('audio')
-  // and Audio Screening ('audio_screening'). The invite email adds
-  // `&action=call_now` for both (interview-service `_scheduling_link.py`) and
-  // `POST /scheduling/{token}/call-now` accepts both; for Audio Screening it
-  // answers `questions_pending` and the call follows shortly.
+  // "Now" exists for the two phone-call rounds, the Intake Call ('audio') and
+  // Audio Screening ('audio_screening'), and for the AI Video round
+  // ('ai_video'). The invite email adds `&action=call_now` and
+  // `POST /scheduling/{token}/call-now` accepts all three. Audio Screening
+  // answers `questions_pending` and the call follows shortly. AI Video never
+  // calls anyone: the answer carries `session_url` and we send the candidate
+  // straight into the interview room.
+  const isAiVideoRound = schedulingLink?.interview_type === 'ai_video';
   const offersCallNow =
     schedulingLink?.interview_type === 'audio' ||
-    schedulingLink?.interview_type === 'audio_screening';
+    schedulingLink?.interview_type === 'audio_screening' ||
+    isAiVideoRound;
   const {
     data: panelInfo,
     error: panelInfoError,
@@ -438,6 +456,16 @@ const AiCallSchedulePage = () => {
     if (callAlreadyPlaced || contactUnavailable || callNowScheduledElsewhere) return;
     try {
       const result = await callNow(token).unwrap();
+      if (isAiVideoRound) {
+        // AI Video: join the room. Without a URL, never fall into the phone-call
+        // screen ("Your phone should ring"), which would be wrong for this round.
+        if (result?.session_url) {
+          window.location.href = result.session_url;
+        } else {
+          showToast({ message: t.callNowError, type: 'error' });
+        }
+        return;
+      }
       // AUDIO_SCREENING only schedules the slot and starts question
       // generation; the call itself fires shortly after (never "calling now").
       setCallNowQueued(Boolean(result?.questions_pending));
@@ -612,9 +640,15 @@ const AiCallSchedulePage = () => {
         <div className="min-h-screen bg-[#f0f4f8] flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center">
             <LuPhone className="text-(--primary) w-14 h-14 mx-auto mb-4" />
-            <h1 className="text-2xl font-semibold text-gray-800 mb-2">{t.callNowPromptTitle}</h1>
+            <h1 className="text-2xl font-semibold text-gray-800 mb-2">
+              {isAiVideoRound ? t.videoNowPromptTitle : t.callNowPromptTitle}
+            </h1>
             <p className="text-gray-500 text-sm mb-6">
-              {callAlreadyPlaced ? t.callAlreadyPlaced : t.callNowPromptBody}
+              {callAlreadyPlaced
+                ? t.callAlreadyPlaced
+                : isAiVideoRound
+                  ? t.videoNowPromptBody
+                  : t.callNowPromptBody}
             </p>
             <button
               type="button"
@@ -623,10 +657,14 @@ const AiCallSchedulePage = () => {
               className="block w-full py-3 rounded-full bg-(--primary) text-white font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {callNowState.isLoading
-                ? t.callNowConfirm
+                ? isAiVideoRound
+                  ? t.videoNowConfirm
+                  : t.callNowConfirm
                 : callAlreadyPlaced
                   ? t.callNowConfirm
-                  : t.callNowPromptButton}
+                  : isAiVideoRound
+                    ? t.videoNowPromptButton
+                    : t.callNowPromptButton}
             </button>
             <button
               type="button"
@@ -909,7 +947,9 @@ const AiCallSchedulePage = () => {
                           ? t.callNowNotAvailable
                           : contactUnavailable
                             ? t.contactUnavailable
-                            : t.callNowHint}
+                            : isAiVideoRound
+                              ? t.videoNowHint
+                              : t.callNowHint}
                     </p>
                     <button
                       onClick={handleCallNow}
@@ -921,7 +961,13 @@ const AiCallSchedulePage = () => {
                       }
                       className="w-full py-2.5 rounded-full border border-(--primary) text-(--primary) text-sm font-semibold hover:bg-(--primary)/5 transition disabled:opacity-60 flex items-center justify-center gap-2 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      {callNowState.isLoading ? t.callNowConfirm : t.callNowButton}
+                      {callNowState.isLoading
+                        ? isAiVideoRound
+                          ? t.videoNowConfirm
+                          : t.callNowConfirm
+                        : isAiVideoRound
+                          ? t.videoNowButton
+                          : t.callNowButton}
                     </button>
                   </div>
                 )}

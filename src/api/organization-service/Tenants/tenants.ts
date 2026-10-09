@@ -14,7 +14,23 @@ export type CreateTenantRequest = {
   website_url?: string;
   industry_id?: string;
   admin_email: string;
-  admin_contact?: string;
+  // The Primary Contact's phone (required now).
+  admin_contact: string;
+  // Primary Contact: first name, last name and a courtesy title ("Mr", "Dr"),
+  // not a job title. Their email is `admin_email`, their phone `admin_contact`.
+  primary_contact_first_name: string;
+  primary_contact_last_name: string;
+  primary_contact_title: string;
+  // Secondary Contact: all optional, reference details only (no login). The
+  // role is a free-text label such as "IT Admin", not a permission role.
+  secondary_contact_first_name?: string;
+  secondary_contact_last_name?: string;
+  secondary_contact_phone?: string;
+  secondary_contact_email?: string;
+  secondary_contact_title?: string;
+  secondary_contact_role?: string;
+  // Optional, a whole number of 1 or more.
+  company_size?: number;
   // Set when this tenant is being created from an approved "Book a Demo"
   // lead (GuestOrganizations screen) — see organization-service's
   // CreateTenantUseCase. Omitted for the ordinary manual-entry path.

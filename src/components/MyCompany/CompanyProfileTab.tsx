@@ -674,6 +674,18 @@ const CompanyProfileTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
             )}
           </div>
         ))}
+        {/* Industry is managed elsewhere (master data), so it is read-only here. */}
+        <div className="min-w-0 p-4 rounded-xl border border-gray-100 bg-white">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-7 h-7 shrink-0 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+              <MdBusiness size={16} />
+            </span>
+            <p className="text-xs font-semibold tracking-wide text-gray-400">Industry</p>
+          </div>
+          <Typography variant="body1" className="break-words text-gray-800">
+            {profile?.industry_name || '-'}
+          </Typography>
+        </div>
       </div>
 
       {isEditMode && scrapePreview && (

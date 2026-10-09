@@ -154,6 +154,9 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
     booking.end_time && dayjs(booking.end_time).isValid() ? dayjs(booking.end_time) : null;
   const ModeIcon = MODE_ICON[booking.interview_type] ?? LuPhone;
   const deliveryMode = booking.round_snapshot?.delivery_mode;
+  // A past interview reads struck through (the server's `has_ended`); the status
+  // badge stays as is, since it says why it is in the past (no-show, rescheduled...).
+  const struck = booking.has_ended === true ? 'line-through' : '';
   const profileHref = jobOpeningId
     ? buildCandidateDetailsPath(jobOpeningId, booking.candidate_id)
     : null;
@@ -183,14 +186,16 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
                 state={fromCalendar}
                 onClick={(e) => e.stopPropagation()}
                 title="Open this candidate's full profile"
-                className="truncate font-semibold text-brand-700 underline decoration-transparent underline-offset-2 transition-colors hover:text-brand-800 hover:decoration-brand-400"
+                className={`truncate font-semibold text-brand-700 underline decoration-transparent underline-offset-2 transition-colors hover:text-brand-800 hover:decoration-brand-400 ${struck}`}
               >
                 {name}
               </Link>
             ) : (
-              <p className="truncate font-semibold text-neutral-900">{name}</p>
+              <p className={`truncate font-semibold text-neutral-900 ${struck}`}>{name}</p>
             )}
-            {jobTitle && <p className="truncate text-xs text-neutral-500">{jobTitle}</p>}
+            {jobTitle && (
+              <p className={`truncate text-xs text-neutral-500 ${struck}`}>{jobTitle}</p>
+            )}
           </div>
           <Badge status={bookingStatusBadge(booking.status)} dot={false} className="shrink-0">
             {bookingStatusLabel(booking.status)}
@@ -198,12 +203,12 @@ const AgendaCard = ({ booking, onOpen }: { booking: BookingView; onOpen: () => v
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
-          <span className="flex items-center gap-1">
+          <span className={`flex items-center gap-1 ${struck}`}>
             <LuClock size={13} />
             {start ? start.format('h:mm A') : 'Time TBD'}
             {end ? ` – ${end.format('h:mm A')}` : ''}
           </span>
-          <span className="flex items-center gap-1">
+          <span className={`flex items-center gap-1 ${struck}`}>
             <ModeIcon size={13} />
             {roundLabel(booking)}
             {deliveryMode && ` · ${deliveryMode === 'offline' ? 'In person' : 'Online'}`}

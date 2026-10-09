@@ -4,6 +4,7 @@ import {
   useUpdateCandidateMutation,
   type CandidateView,
 } from '../../../api/candidate-service/Candidates/CandidateLifecycle';
+import { phoneNumberIssueMessage } from './phoneNumberIssue';
 import { FORM_EMAIL_REGEX } from '../../../constants/app.constants';
 import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateError.helpers';
 import {
@@ -124,8 +125,12 @@ const CandidateDetailsForm = ({
     }
 
     try {
-      await updateCandidate({ candidateId: candidate.id, body }).unwrap();
+      const result = await updateCandidate({ candidateId: candidate.id, body }).unwrap();
       showToast({ message: 'Candidate updated.', type: 'success' });
+      // The phone is flagged right away if it can't be called or texted. The
+      // save already went through; this is only a heads-up.
+      const phoneWarning = phoneNumberIssueMessage(result?.phone_number_issue);
+      if (phoneWarning) showToast({ message: phoneWarning, type: 'warning' });
       onDone();
     } catch (e) {
       showToast({

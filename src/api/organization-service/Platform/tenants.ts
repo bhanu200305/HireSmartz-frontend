@@ -14,6 +14,17 @@ export type PlatformTenantSummary = {
   created_at: string | null;
   /** `null` until a real activity signal exists — see the backend entity's own docstring. */
   last_active_at: string | null;
+  website_url?: string | null;
+  /** The Primary Contact's phone. */
+  admin_contact?: string | null;
+  /** `null` if never captured (nothing is made up). */
+  primary_contact_name?: string | null;
+  /** City of the earliest active office; `null` until the company has one. */
+  primary_location?: string | null;
+  /** That same office, fully formatted; `null` alongside `primary_location`. */
+  address?: string | null;
+  recruiters_count?: number;
+  hiring_managers_count?: number;
 };
 
 export type ListPlatformTenantsArgs = {

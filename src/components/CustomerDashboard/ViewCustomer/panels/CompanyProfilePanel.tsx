@@ -371,6 +371,12 @@ const CompanyProfilePanel: React.FC<{ tenantId: string; readOnly?: boolean }> = 
             disabled={!isEditMode}
           />
         </Field>
+        {/* Industry is managed on the Industry master-data screen, so it is read-only here. */}
+        <Field label="Industry">
+          <ReadOnlyPill>
+            <span className="truncate">{profile.industry_name || '-'}</span>
+          </ReadOnlyPill>
+        </Field>
 
         <Field label="Status">
           <ReadOnlyPill>

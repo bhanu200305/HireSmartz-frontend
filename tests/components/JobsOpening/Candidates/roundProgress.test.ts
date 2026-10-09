@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  bucketForStatus,
+  isOverdue,
   isReadyForOverallScore,
+  isRoundConcluded,
   resolveCurrentRound,
 } from '../../../../src/components/JobsOpening/Candidates/roundProgress';
+import { roundStatusLabel } from '../../../../src/components/JobsOpening/Candidates/roundDisplay';
 
 type Round = Parameters<typeof resolveCurrentRound>[0][number];
 
@@ -72,5 +76,21 @@ describe('isReadyForOverallScore', () => {
 
   it('is not ready for a candidate with no rounds', () => {
     expect(isReadyForOverallScore([])).toBe(false);
+  });
+});
+
+describe('a failed round (interview-service could not dial the candidate)', () => {
+  it('is a concluded round, so Advance is not blocked and it is not flagged as overdue', () => {
+    const failed = round('1', {
+      status: 'failed',
+      scheduled_at: '2026-10-01T10:00:00Z',
+    });
+    expect(bucketForStatus('failed')).toBe('failed');
+    expect(isRoundConcluded(failed)).toBe(true);
+    expect(isOverdue(failed)).toBe(false);
+  });
+
+  it('reads as Failed', () => {
+    expect(roundStatusLabel('failed')).toBe('Failed');
   });
 });

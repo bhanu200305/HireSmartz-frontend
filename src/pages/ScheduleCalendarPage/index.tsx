@@ -4,6 +4,7 @@ import { NylasScheduling } from '@nylas/react';
 import type { LANGUAGE_CODE } from '@nylas/react';
 import { useSearchParams } from 'react-router-dom';
 import { NYLAS_SCHEDULER_API_URL, NYLAS_CLIENT_ID } from '../../constants/app.constants';
+import { skipsAiConsent } from './consentRule';
 import InterviewConsentModal from '../../components/shared/ui/InterviewConsentModal';
 
 type LangCode = 'en' | 'es';
@@ -120,7 +121,7 @@ const ScheduleCalendarPage = () => {
   const roundTypeParam = (
     searchParams.get('roundtype') || searchParams.get('roundType')
   )?.toLowerCase();
-  const [hasConsent, setHasConsent] = useState(roundTypeParam === 'inperson');
+  const [hasConsent, setHasConsent] = useState(skipsAiConsent(roundTypeParam));
 
   const configId = searchParams.get('config_id') ?? '';
   const candidateName = searchParams.get('name') ?? '';

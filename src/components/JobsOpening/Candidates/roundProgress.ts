@@ -43,6 +43,10 @@ const ROUND_STATUS_BUCKET: Record<string, RoundBucket> = {
   interviewer_no_show: 'failed',
   cancelled: 'failed',
   aborted: 'failed',
+  // interview-service marks a booking `failed` when it can't dial the candidate
+  // (e.g. no phone number on file). A real, known outcome: the round counts as
+  // concluded (Advance is allowed) and is not flagged as "may not have gone through".
+  failed: 'failed',
 };
 
 /** True when the round was skipped. A skip leaves `skip_reason` / `skipped_at`
