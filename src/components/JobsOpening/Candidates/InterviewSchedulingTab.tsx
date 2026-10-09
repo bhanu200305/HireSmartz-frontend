@@ -395,16 +395,22 @@ const RoundCard = ({
         )}
 
         <div className="mt-auto flex flex-col gap-2">
-          {isPanel && canManageRoundInterviewers(round) && mayManage && (
-            <Button
-              type="button"
-              className={`${actionButton} border border-primary text-primary`}
-              disabled={isBusy || bookingsClosed}
-              onClick={() => onSelectInterviewers(round)}
-            >
-              {interviewers.length > 0 ? 'Change Interviewers' : 'Select Interviewers'}
-            </Button>
-          )}
+          {/* Only until a panel is picked: changing an existing panel happens
+              in the Re-invite / Reschedule popup ("Choose Different
+              Interviewers"), not from a standalone button. */}
+          {isPanel &&
+            canManageRoundInterviewers(round) &&
+            mayManage &&
+            interviewers.length === 0 && (
+              <Button
+                type="button"
+                className={`${actionButton} border border-primary text-primary`}
+                disabled={isBusy || bookingsClosed}
+                onClick={() => onSelectInterviewers(round)}
+              >
+                Select Interviewers
+              </Button>
+            )}
 
           {canInvite && (
             <Tooltip

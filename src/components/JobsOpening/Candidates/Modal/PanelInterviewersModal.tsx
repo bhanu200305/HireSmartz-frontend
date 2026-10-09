@@ -48,6 +48,11 @@ type PanelInterviewersModalProps = {
   currentInterviewerIds: string[];
   /** The job, for each interviewer's calendar status (green/red tag). */
   jobId?: string;
+  /** The round is due and not yet invited — offers "send invite" with the save. */
+  canSendInvite?: boolean;
+  /** Sends the round's invite once the roster is saved. Gets the names of
+   * selected interviewers whose calendar isn't connected yet. */
+  onSendInvite?: (missingCalendarNames: string[]) => Promise<boolean>;
 };
 
 const PanelInterviewersModal = ({
@@ -58,6 +63,8 @@ const PanelInterviewersModal = ({
   roundName,
   currentInterviewerIds,
   jobId,
+  canSendInvite = false,
+  onSendInvite,
 }: PanelInterviewersModalProps) => {
   const {
     data: interviewers,
@@ -83,8 +90,16 @@ const PanelInterviewersModal = ({
   );
   const [setPanelInterviewers, { isLoading: isSaving }] = useSetPanelInterviewersMutation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Off by default, so saving alone keeps today's flow (invite later from
+  // the scheduling tab's Invite button). Needs at least one interviewer:
+  // inviting a panel with none falls back to an untested auto-composed panel.
+  const [sendInvite, setSendInvite] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
+  const offersInvite = canSendInvite && Boolean(onSendInvite);
+  const willSendInvite = offersInvite && sendInvite && selected.size > 0;
 
   useEffect(() => {
+    if (open) setSendInvite(false);
     if (open) setSelected(new Set(currentInterviewerIds));
     // Only re-seed when the modal actually opens — not on every parent
     // re-render, so a candidate mid-edit doesn't get their in-progress
@@ -110,6 +125,22 @@ const PanelInterviewersModal = ({
         roundId,
         interviewerIds: Array.from(selected),
       }).unwrap();
+      if (willSendInvite && onSendInvite) {
+        // The invite's own toast reports the outcome (incl. any interviewer
+        // still missing a calendar); a failed invite leaves the roster saved
+        // and the Invite button on the scheduling tab to retry from.
+        const missingCalendarNames = (interviewers ?? [])
+          .filter((i) => selected.has(i.id) && calendarConnectedById.get(String(i.id)) === false)
+          .map((i) => i.display_name);
+        setIsInviting(true);
+        try {
+          await onSendInvite(missingCalendarNames);
+        } finally {
+          setIsInviting(false);
+        }
+        onClose();
+        return;
+      }
       showToast({
         message:
           result.interviewer_ids.length > 0
@@ -202,14 +233,35 @@ const PanelInterviewersModal = ({
           </div>
         )}
 
+        {offersInvite && (
+          <div className="flex flex-col gap-1">
+            <Checkbox
+              checked={sendInvite && selected.size > 0}
+              disabled={selected.size === 0 || isSaving || isInviting}
+              onChange={(e) => setSendInvite(e.target.checked)}
+            >
+              <span className="text-sm text-gray-700">
+                Send the interview invite now (to the candidate and the selected interviewers)
+              </span>
+            </Checkbox>
+            <p className="m-0 pl-6 text-xs text-gray-500">
+              {selected.size === 0
+                ? 'Select at least one interviewer to send the invite.'
+                : 'Left unticked, send it later with the Invite button on the Interview Scheduling tab.'}
+            </p>
+          </div>
+        )}
+
         <Button
           type="button"
           onClick={() => void handleSave()}
-          disabled={isSaving || isLoading}
+          disabled={isSaving || isInviting || isLoading}
           className="w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white disabled:opacity-50"
         >
-          {isSaving ? (
+          {isSaving || isInviting ? (
             <Loader />
+          ) : willSendInvite ? (
+            `SAVE & SEND INVITE (${selected.size})`
           ) : selected.size > 0 ? (
             `SAVE (${selected.size})`
           ) : (
