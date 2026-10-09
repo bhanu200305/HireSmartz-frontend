@@ -384,7 +384,7 @@ const AiQuestionsSetup = () => {
 
   const generationNotice = questionsData?.generation_notice;
 
-  // "10 questions added" for an append, "25 questions generated" for a replace.
+  // "10 questions added" for an append, "18 questions generated" for a replace.
   const generatedToastMessage = (roundQuestionCount: number) => {
     const isAppend = generationModeRef.current === 'ADD';
     const count = isAppend

@@ -7,7 +7,7 @@ import clsx from 'clsx';
 
 const DEFAULT_QUESTION_COUNT = 10;
 const MIN_QUESTION_COUNT = 1;
-const MAX_QUESTION_COUNT = 25;
+const MAX_QUESTION_COUNT = 18;
 
 const GenerateQuestionsConsentModal: FC<GenerateQuestionsConsentModalProps> = ({
   open,
