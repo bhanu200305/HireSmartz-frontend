@@ -257,8 +257,8 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
       <div className="border-wrapper dropdown-focus-ring border border-[var(--border)] p-1 w-full rounded-3xl relative">
         <Select
           ref={selectRef}
-          // Hide the value while loading so it doesn't flash a raw id.
-          value={loading ? (mode === 'multiple' ? [] : undefined) : value}
+          // Hidden during the first load (no raw-id flash), not while searching (no flicker).
+          value={loading && !searchValue ? (mode === 'multiple' ? [] : undefined) : value}
           onChange={handleChange}
           className={`w-full capitalize ${className}`}
           popupClassName="custom-select-jobs-dropdown"

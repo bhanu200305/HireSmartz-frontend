@@ -448,8 +448,8 @@ const JobDescriptionPanel = forwardRef<JobDescriptionPanelHandle, JobDescription
           <div className="w-full p-6 bg-[#FAFAFA] border border-dashed border-[#E2E2E2] rounded-lg text-center">
             <p className="text-gray-400 text-sm mb-4">
               {isJdStillGenerating
-                ? 'Generating your AI job description from the fields you filled in…'
-                : "No description yet - generate one from the Job Info, Skills, and Education Preference you've filled in on the left."}
+                ? 'Generating your AI job description from the job details you filled in…'
+                : 'No description yet. Generate one from the job details you have filled in.'}
             </p>
             <Button
               className="text-white bg-button rounded-3xl px-6 py-2 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"

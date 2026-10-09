@@ -1527,6 +1527,12 @@ const EditJobDetail = () => {
     const addType = type || openModalFor;
     if (!addType) return;
 
+    const rejectInactive = (name: string) =>
+      showToast({
+        message: `"${name}" is deactivated, so it can't be used. Ask an admin to activate it.`,
+        type: 'error',
+      });
+
     const typeMapping: Record<string, string> = {
       jobTitle: 'JOB_TITLE',
       department: 'DEPARTMENT',
@@ -1580,6 +1586,10 @@ const EditJobDetail = () => {
           (department) => department.name.trim().toLowerCase() === normalizedValue
         );
         if (existingDepartment) {
+          if (existingDepartment.is_active === false) {
+            rejectInactive(existingDepartment.name);
+            return;
+          }
           setValue('department', [existingDepartment.org_department_id], { shouldValidate: true });
           return;
         }
@@ -1622,6 +1632,12 @@ const EditJobDetail = () => {
           (jobTitle) => jobTitle.name.toLowerCase() === formattedValue.toLowerCase()
         );
         if (existingTitle) {
+          if (existingTitle.is_active === false) {
+            rejectInactive(existingTitle.name);
+            setJobTitleSearchText('');
+            setDebouncedJobTitleSearch('');
+            return;
+          }
           const existingTitleFormId = tenantJobTitleFormId(existingTitle);
           const alreadyMappedToDepartment = departmentJobTitlesData.some((jobTitle) =>
             idsMatch(tenantJobTitleFormId(jobTitle), existingTitleFormId)
@@ -1682,6 +1698,10 @@ const EditJobDetail = () => {
           (item) => item.education_preference_name.toLowerCase() === normalizedValue
         );
         if (existingPreference) {
+          if (existingPreference.is_active === false) {
+            rejectInactive(existingPreference.education_preference_name);
+            return;
+          }
           setValue('educationPreference', [existingPreference.id], { shouldValidate: true });
           return;
         }
@@ -1701,6 +1721,13 @@ const EditJobDetail = () => {
         const existingSkill = [...mandatorySkills, ...optionalSkills].find(
           (skill) => skill.name.toLowerCase() === normalizedValue
         );
+        const inactiveSkill = (allSkillsInclInactive ?? []).find(
+          (skill) => skill.is_deleted && skill.skill_label.trim().toLowerCase() === normalizedValue
+        );
+        if (!existingSkill && inactiveSkill) {
+          rejectInactive(inactiveSkill.skill_label);
+          return;
+        }
         if (existingSkill) {
           // The picker's filter only hides skills already on the other list from
           // selection, not from a typed exact-name match - block that case explicitly.
@@ -1732,6 +1759,10 @@ const EditJobDetail = () => {
           (item) => item.job_type_name.toLowerCase() === normalizedValue
         );
         if (existingJobType) {
+          if (existingJobType.is_active === false) {
+            rejectInactive(existingJobType.job_type_name);
+            return;
+          }
           setValue('jobType', [existingJobType.id], { shouldValidate: true });
           return;
         }
@@ -1750,6 +1781,10 @@ const EditJobDetail = () => {
           (item) => item.job_mode_name.toLowerCase() === normalizedValue
         );
         if (existingJobMode) {
+          if (existingJobMode.is_active === false) {
+            rejectInactive(existingJobMode.job_mode_name);
+            return;
+          }
           setValue('jobMode', [existingJobMode.id], { shouldValidate: true });
           return;
         }

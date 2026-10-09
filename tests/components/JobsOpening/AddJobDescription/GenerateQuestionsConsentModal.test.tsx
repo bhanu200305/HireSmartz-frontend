@@ -17,22 +17,22 @@ const setup = () => {
 };
 
 describe('GenerateQuestionsConsentModal question count', () => {
-  it('caps the field at 25', () => {
+  it('caps the field at 18', () => {
     const { input } = setup();
-    expect(input.max).toBe('25');
+    expect(input.max).toBe('18');
   });
 
-  it('refuses a typed value above 25', () => {
+  it('refuses a typed value above 18', () => {
     const { input } = setup();
-    fireEvent.change(input, { target: { value: '26' } });
+    fireEvent.change(input, { target: { value: '19' } });
     expect(input.value).toBe('10');
   });
 
-  it('accepts exactly 25 and sends it', () => {
+  it('accepts exactly 18 and sends it', () => {
     const { input, onConfirm } = setup();
-    fireEvent.change(input, { target: { value: '25' } });
+    fireEvent.change(input, { target: { value: '18' } });
     fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
-    expect(onConfirm).toHaveBeenCalledWith('REPLACE', 25, null);
+    expect(onConfirm).toHaveBeenCalledWith('REPLACE', 18, null);
   });
 
   it('falls back to 1 when the field is left empty', () => {

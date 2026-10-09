@@ -901,6 +901,29 @@ const CandidateDetails = () => {
   const hasRecording = Boolean(
     bookingArtifacts?.artifacts.some((artifact) => artifact.kind === 'recording')
   );
+  // The in-person recording can only exist once the interview has started, so
+  // the upload stays greyed out until the booking's start time — and switches
+  // on by itself at that moment (no refresh), via the timer below. A booking
+  // with no time picked yet has no start, so it stays off too.
+  const interviewStartMs = selectedBooking?.start_time
+    ? dayjs(selectedBooking.start_time).valueOf()
+    : null;
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (interviewStartMs == null || Number.isNaN(interviewStartMs)) return;
+    const wait = interviewStartMs - Date.now();
+    if (wait <= 0) {
+      // Already started: catch `nowMs` up once (it can predate the start if
+      // the page was opened earlier); no further updates are needed.
+      if (nowMs < interviewStartMs) setNowMs(Date.now());
+      return;
+    }
+    // setTimeout caps at ~24.8 days; a longer wait just re-arms on wake-up.
+    const timer = setTimeout(() => setNowMs(Date.now()), Math.min(wait + 500, 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [interviewStartMs, nowMs]);
+  const hasInterviewStarted =
+    interviewStartMs != null && !Number.isNaN(interviewStartMs) && interviewStartMs <= nowMs;
   const [uploadOfflineRecording, { isLoading: isUploadingAudio }] =
     useUploadOfflineRecordingMutation();
   const audioFileInputRef = useRef<HTMLInputElement>(null);
@@ -1278,36 +1301,69 @@ const CandidateDetails = () => {
                 (eligibleInterviewers ?? []).find((i) => i.id === id)?.display_name ?? 'Interviewer'
             )
         : [];
-      showToast({
-        message:
-          missingInterviewers.length > 0
-            ? `Invitation created. The candidate will be emailed once all interviewers have connected their calendars (waiting on ${missingInterviewers.join(', ')}).`
-            : sent.invite_sent
-              ? 'Invitation sent to the candidate.'
-              : 'An invitation for this round was just sent.',
-        type: missingInterviewers.length > 0 || !sent.invite_sent ? 'info' : 'success',
-      });
+      reportInviteSent(sent, missingInterviewers);
       return true;
     } catch (error) {
-      // candidate-service's own refusals (409/422: the resume stage has no
-      // invite, no round is awaiting one, the round is already booked) carry a
-      // readable message; the 'already selected' case still closes bookings.
-      if (isAlreadySelectedError(error)) {
-        setBookingsClosed(true);
-        showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
-        return false;
-      }
-      // A stale screen can still offer Invite after the number was flagged.
-      if (isPhoneNumberUnusableError(error)) {
-        showToast({ message: PHONE_BLOCKED_INVITE_MESSAGE, type: 'error' });
-        void refetchCandidate();
-        return false;
-      }
-      showToast({
-        message: getCandidateErrorMessage(error, 'Could not send the invitation.'),
-        type: 'error',
-      });
+      reportInviteError(error);
+      return false;
+    } finally {
+      setIsCreatingBooking(false);
+    }
+  };
+
+  // How a sent invite is reported — shared by the invite dialog above and the
+  // Panel Interviewers picker's "send invite" box, so both read the same.
+  // A panel round's candidate mail goes out only once every selected
+  // interviewer has a connected calendar: `missingInterviewers` names them.
+  function reportInviteSent(sent: { invite_sent: boolean }, missingInterviewers: string[]) {
+    showToast({
+      message:
+        missingInterviewers.length > 0
+          ? `Invitation created. The candidate will be emailed once all interviewers have connected their calendars (waiting on ${missingInterviewers.join(', ')}).`
+          : sent.invite_sent
+            ? 'Invitation sent to the candidate.'
+            : 'An invitation for this round was just sent.',
+      type: missingInterviewers.length > 0 || !sent.invite_sent ? 'info' : 'success',
+    });
+  }
+
+  function reportInviteError(error: unknown) {
+    // candidate-service's own refusals (409/422: the resume stage has no
+    // invite, no round is awaiting one, the round is already booked) carry a
+    // readable message; the 'already selected' case still closes bookings.
+    if (isAlreadySelectedError(error)) {
+      setBookingsClosed(true);
+      showToast({ message: ALREADY_SELECTED_MESSAGE, type: 'info' });
+      return;
+    }
+    // A stale screen can still offer Invite after the number was flagged.
+    if (isPhoneNumberUnusableError(error)) {
+      showToast({ message: PHONE_BLOCKED_INVITE_MESSAGE, type: 'error' });
+      void refetchCandidate();
+      return;
+    }
+    showToast({
+      message: getCandidateErrorMessage(error, 'Could not send the invitation.'),
+      type: 'error',
+    });
+    void refetchRounds();
+  }
+
+  // The Panel Interviewers picker's "send invite" box: the roster is already
+  // saved by the picker, so this only sends the due round's invite (same
+  // `POST /candidates/{id}/send-invite` as the Invite button — the saved
+  // interviewers ride along). Once sent, the round is no longer "not
+  // invited", so the scheduling tab's Invite button goes away by itself.
+  const sendInviteFromPanelPicker = async (missingInterviewers: string[]): Promise<boolean> => {
+    if (!candidateId || bookingsClosed) return false;
+    setIsCreatingBooking(true);
+    try {
+      const sent = await sendRoundInvite(candidateId).unwrap();
       void refetchRounds();
+      reportInviteSent(sent, missingInterviewers);
+      return true;
+    } catch (error) {
+      reportInviteError(error);
       return false;
     } finally {
       setIsCreatingBooking(false);
@@ -1861,25 +1917,22 @@ const CandidateDetails = () => {
             // card used to offer it; the invite icon sits next to Scoring
             // Criteria.
             <>
-              {canManageRoundInterviewers(selectedRound) && (
-                // Saves the panel roster to the round (PanelInterviewersModal).
-                <Tooltip
-                  title={
-                    (selectedRound.interviewer_ids ?? []).length > 0
-                      ? `Interviewers (${(selectedRound.interviewer_ids ?? []).length})`
-                      : 'Set Interviewers'
-                  }
-                >
-                  <button
-                    type="button"
-                    aria-label="Set interviewers"
-                    className={`${candidateHeaderIconCircle} shrink-0`}
-                    onClick={() => setInterviewersModalFor(selectedRound)}
-                  >
-                    <LuUsers size={18} strokeWidth={2} aria-hidden />
-                  </button>
-                </Tooltip>
-              )}
+              {canManageRoundInterviewers(selectedRound) &&
+                // Only until a panel is picked — an existing panel is changed
+                // from the Re-invite / Reschedule popup instead.
+                (selectedRound.interviewer_ids ?? []).length === 0 && (
+                  // Saves the panel roster to the round (PanelInterviewersModal).
+                  <Tooltip title="Set Interviewers">
+                    <button
+                      type="button"
+                      aria-label="Set interviewers"
+                      className={`${candidateHeaderIconCircle} shrink-0`}
+                      onClick={() => setInterviewersModalFor(selectedRound)}
+                    >
+                      <LuUsers size={18} strokeWidth={2} aria-hidden />
+                    </button>
+                  </Tooltip>
+                )}
               {isPanelRound &&
                 (showsOwnConnectCalendarAction && calendarGrantStatus?.connected ? (
                   <Tooltip
@@ -1922,21 +1975,27 @@ const CandidateDetails = () => {
                           ? 'Uploading…'
                           : hasRecording
                             ? 'Audio already uploaded for this round.'
-                            : 'Upload Audio Recording'
+                            : !hasInterviewStarted
+                              ? interviewStartMs != null
+                                ? `Available once the interview starts (${dayjs(interviewStartMs).format('MMM D, YYYY · h:mm A')}).`
+                                : 'Available once the interview is scheduled and has started.'
+                              : 'Upload Audio Recording'
                       }
                     >
                       <span className="inline-flex">
                         <button
                           type="button"
                           aria-label="Upload audio recording"
-                          className={`${candidateHeaderIconCircle} shrink-0 ${hasRecording ? '!border-green-200 !bg-green-50 !text-green-700' : ''}`}
-                          disabled={isUploadingAudio || hasRecording}
+                          // Larger than the other round icons (h-9) so the
+                          // in-person upload is easy to spot.
+                          className={`${candidateHeaderIconCircle} !h-11 !w-11 shrink-0 ${hasRecording ? '!border-green-200 !bg-green-50 !text-green-700' : ''} ${!hasRecording && !hasInterviewStarted ? '!bg-gray-100 !text-gray-400' : ''}`}
+                          disabled={isUploadingAudio || hasRecording || !hasInterviewStarted}
                           onClick={() => audioFileInputRef.current?.click()}
                         >
                           {hasRecording ? (
-                            <LuCircleCheck size={18} strokeWidth={2} aria-hidden />
+                            <LuCircleCheck size={22} strokeWidth={2} aria-hidden />
                           ) : (
-                            <LuUpload size={18} strokeWidth={2} aria-hidden />
+                            <LuUpload size={22} strokeWidth={2} aria-hidden />
                           )}
                         </button>
                       </span>
@@ -3446,6 +3505,17 @@ const CandidateDetails = () => {
           roundName={roundLabel(interviewersModalFor)}
           currentInterviewerIds={interviewersModalFor.interviewer_ids ?? []}
           jobId={parsedJobId || undefined}
+          // Same conditions as the scheduling tab's Invite button: the round
+          // is due now and hasn't been invited or booked yet.
+          canSendInvite={
+            !isTerminal &&
+            !bookingsClosed &&
+            currentRound?.id === interviewersModalFor.id &&
+            normaliseRoundStatus(interviewersModalFor.status) === 'to_be_scheduled' &&
+            !interviewersModalFor.invite_sent_at &&
+            !interviewersModalFor.interview_booking_id
+          }
+          onSendInvite={sendInviteFromPanelPicker}
         />
       )}
       {scoreModalFor && candidateId && (
