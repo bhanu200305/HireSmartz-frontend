@@ -16,7 +16,6 @@ import {
   usePasteVideoInterviewQuestionsMutation,
   useUploadVideoInterviewQuestionsExcelMutation,
   useDeleteAllVideoInterviewQuestionsMutation,
-  useDownloadVideoInterviewQuestionsTemplateMutation,
 } from '../../../api/interview-service/VideoInterviewQuestions/VideoInterviewQuestion';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
@@ -79,8 +78,6 @@ const VideoQuestionsSetup = () => {
   const [uploadExcel, { isLoading: isUploadingExcel }] =
     useUploadVideoInterviewQuestionsExcelMutation();
   const [deleteAllQuestions] = useDeleteAllVideoInterviewQuestionsMutation();
-  const [downloadTemplate, { isLoading: isDownloadingTemplate }] =
-    useDownloadVideoInterviewQuestionsTemplateMutation();
 
   const { jobOpeningDropdown: categoryOptions, loading: categoryLoading } = useJobOpeningDropdown(
     'AI_QUESTION_CATEGORIES',
@@ -194,22 +191,6 @@ const VideoQuestionsSetup = () => {
       }
     } catch (err) {
       showToast({ message: get(err, 'data.message', 'Error generating questions'), type: 'error' });
-    }
-  };
-
-  const handleDownloadTemplate = async () => {
-    try {
-      const blob = await downloadTemplate().unwrap();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'video_questions_template.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch {
-      showToast({ message: 'Failed to download template', type: 'error' });
     }
   };
 
@@ -414,7 +395,6 @@ const VideoQuestionsSetup = () => {
           isLoadingRounds ||
           isGenerating ||
           isUploadingExcel ||
-          isDownloadingTemplate ||
           isDeleteInProgress ||
           isEditSubmitting ||
           isInlineSubmitting) && <Loader />}
@@ -447,7 +427,7 @@ const VideoQuestionsSetup = () => {
         </div>
 
         <UploadAndGenerateHeader
-          description="Use the controls below to import questions via Excel, auto-generate default questions, or manually add questions scoped to their specific categories."
+          description="Use the controls below to import questions from a file, auto-generate default questions, or manually add questions scoped to their specific categories."
           onGenerate={() => {
             const hasNoQuestions = categoryBlocks.every((block) => block.questions.length === 0);
             if (hasNoQuestions) {
@@ -457,7 +437,6 @@ const VideoQuestionsSetup = () => {
             }
           }}
           onUpload={handleFileUpload}
-          onDownloadTemplate={handleDownloadTemplate}
           uploadedFileName={uploadedFileName}
           importedCount={importedCount}
           failedCount={skippedCount}
@@ -468,7 +447,6 @@ const VideoQuestionsSetup = () => {
           }}
           isGenerating={isGenerating}
           isUploading={isUploadingExcel}
-          isDownloading={isDownloadingTemplate}
         />
 
         <div className="flex flex-col gap-6">

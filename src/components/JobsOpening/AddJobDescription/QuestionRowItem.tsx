@@ -3,9 +3,15 @@ import { Tooltip } from 'antd';
 import { Typography } from '../../shared';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { MdEdit } from 'react-icons/md';
+import AiAnswerBadge from './AiAnswerBadge';
 
 interface QuestionRowItemProps {
-  question: { id: string | number; question: string };
+  question: {
+    id: string | number;
+    question: string;
+    answer?: string | null;
+    isAnswerAiGenerated?: boolean;
+  };
   /** 1-based position in the list, derived from the render order so it never goes stale. */
   number?: number;
   checked: boolean;
@@ -40,9 +46,20 @@ export const QuestionRowItem = ({
           {number}.
         </span>
       )}
-      <Typography variant="body2" className="m-0 min-w-0 flex-1 leading-normal text-gray-800">
-        {question.question}
-      </Typography>
+      <div className="min-w-0 flex-1">
+        <Typography variant="body2" className="m-0 break-words leading-normal text-gray-800">
+          {question.question}
+        </Typography>
+        {question.answer && (
+          <div className="mt-1.5 flex flex-wrap items-start gap-x-2 gap-y-1">
+            <p className="m-0 min-w-0 flex-1 basis-48 break-words text-xs leading-relaxed text-gray-500 line-clamp-2">
+              <span className="font-semibold text-gray-600">Answer: </span>
+              {question.answer}
+            </p>
+            {question.isAnswerAiGenerated && <AiAnswerBadge />}
+          </div>
+        )}
+      </div>
       <div className="flex shrink-0 items-center gap-3">
         <Tooltip title="Edit Question">
           <button

@@ -322,6 +322,9 @@ export type QuestionResponse = {
   // master_question_source id: 0 manual, 1 AI generated.
   source_id: number;
   answer_text: string | null;
+  /** True when AI wrote the answer because the uploaded document had none.
+   * The backend clears it once a user saves an edited answer. */
+  is_answer_ai_generated?: boolean;
   interview_round_id: string;
   scoring_sections: string[];
 };

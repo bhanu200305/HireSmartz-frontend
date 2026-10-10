@@ -22,7 +22,6 @@ import {
   useBulkImportJobQuestionsMutation,
   useGetQuestionImportFormatsQuery,
   useGetQuestionImportsQuery,
-  useLazyGetQuestionImportTemplateQuery,
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
@@ -107,21 +106,6 @@ const getRoundIdsMissingQuestions = (err: unknown): string[] =>
     ? ((getJobErrorDetails(err)?.round_ids_missing_questions as string[] | undefined) ?? [])
     : [];
 
-/** Plain-language reason for a row the import rejected (job-service's wording, reworded). */
-const describeImportError = (error: string): string => {
-  if (/question text is required/i.test(error)) return 'The row contains no text';
-  const tooLong = (label: string, regex: RegExp) => {
-    const limit = error.match(regex)?.[1];
-    return limit ? `${label} is too long - the limit is ${limit} characters` : null;
-  };
-  return (
-    tooLong('The question', /question text exceeds (\d+)/i) ??
-    tooLong('The answer', /answer text exceeds (\d+)/i) ??
-    tooLong('The topic/skill', /topic\/skill exceeds (\d+)/i) ??
-    error.charAt(0).toUpperCase() + error.slice(1)
-  );
-};
-
 /** Friendlier copy for NO_ELIGIBLE_INTERVIEW_ROUNDS than the backend's own wording. */
 const describeGenerateQuestionsError = (err: unknown, fallback: string): string => {
   if (getJobErrorCode(err) === 'NO_ELIGIBLE_INTERVIEW_ROUNDS') {
@@ -186,6 +170,7 @@ const AiQuestionsSetup = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuestionResponse | null>(null);
   const [editedQuestionText, setEditedQuestionText] = useState('');
+  const [editedAnswerText, setEditedAnswerText] = useState('');
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
   const [inlineInputText, setInlineInputText] = useState('');
@@ -198,6 +183,7 @@ const AiQuestionsSetup = () => {
   const [duplicateRowCount, setDuplicateRowCount] = useState<number>(0);
   const [importedCount, setImportedCount] = useState<number>(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [hasAiWrittenAnswers, setHasAiWrittenAnswers] = useState(false);
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -268,8 +254,6 @@ const AiQuestionsSetup = () => {
   const [regenerateJobQuestions] = useRegenerateJobQuestionsMutation();
   const [bulkImportJobQuestions, { isLoading: isUploadingExcel }] =
     useBulkImportJobQuestionsMutation();
-  const [downloadTemplate, { isLoading: isDownloadingTemplate }] =
-    useLazyGetQuestionImportTemplateQuery();
   const [validateForPublish] = useLazyValidateForPublishQuery();
   const [publishJob, { isLoading: isPublishing }] = usePublishJobMutation();
   // Covers both the initial request and the polling wait after it.
@@ -544,21 +528,6 @@ const AiQuestionsSetup = () => {
     }
   };
 
-  const handleDownloadTemplate = async () => {
-    try {
-      const result = await downloadTemplate().unwrap();
-      if (result?.download_url) {
-        window.open(result.download_url, '_blank');
-        showToast({ message: 'Template downloaded successfully', type: 'success' });
-      }
-    } catch (err) {
-      showToast({
-        message: getJobErrorMessage(err, 'Failed to download template'),
-        type: 'error',
-      });
-    }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeJobOpeningId) return;
@@ -569,6 +538,11 @@ const AiQuestionsSetup = () => {
         interview_round_id: activeRoundInstanceId,
       }).unwrap();
       setUploadedFileName(file.name);
+      const aiAnswered = (res.questions ?? []).some((q) => q.is_answer_ai_generated);
+      setHasAiWrittenAnswers(aiAnswered);
+      const aiAnswerNote = aiAnswered
+        ? ' Some answers were written by AI. Please review them.'
+        : '';
       setImportedCount(res.imported_count || 0);
       setFailedRowCount(res.failed_rows?.length || 0);
       setDuplicateRowCount(res.skipped_duplicate_rows?.length || 0);
@@ -577,7 +551,8 @@ const AiQuestionsSetup = () => {
           (row): ImportWarningItem => ({
             type: 'error',
             row: row.row_number,
-            reason: describeImportError(row.error),
+            // Backend wording, shown as it comes.
+            reason: row.error,
             questionText: row.question_text,
           })
         ),
@@ -605,11 +580,11 @@ const AiQuestionsSetup = () => {
         });
       } else if (skipped > 0) {
         showToast({
-          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.`,
+          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.${aiAnswerNote}`,
           type: 'warning',
         });
       } else {
-        showToast({ message: 'Questions uploaded successfully', type: 'success' });
+        showToast({ message: `Questions uploaded successfully.${aiAnswerNote}`, type: 'success' });
       }
     } catch (err) {
       showToast({
@@ -713,6 +688,7 @@ const AiQuestionsSetup = () => {
     setIsEditModalOpen(false);
     setEditingQuestion(null);
     setEditedQuestionText('');
+    setEditedAnswerText('');
   };
 
   const handleEditSave = async () => {
@@ -738,7 +714,16 @@ const AiQuestionsSetup = () => {
     try {
       const next = questions.map((q) =>
         q.id === editingQuestion.id
-          ? { ...toQuestionRequest(q), question_text: normalizedQuestion }
+          ? {
+              ...toQuestionRequest(q),
+              question_text: normalizedQuestion,
+              // Untouched answers go back as-is so the backend doesn't treat
+              // them as edited (that clears the AI-written flag).
+              answer_text:
+                editedAnswerText === (q.answer_text ?? '')
+                  ? q.answer_text
+                  : editedAnswerText.trim() || null,
+            }
           : toQuestionRequest(q)
       );
       await persistQuestions(next);
@@ -1001,14 +986,14 @@ const AiQuestionsSetup = () => {
   return (
     <>
       <div className="flex flex-col gap-3 py-2">
-        {(isLoadingQuestions ||
-          isGenerating ||
-          isUploadingExcel ||
-          isDownloadingTemplate ||
-          isDeleteInProgress ||
-          isEditSubmitting ||
-          isInlineSubmitting ||
-          isPublishing) && <Loader />}
+        {isUploadingExcel && <Loader message="Reading your file… this can take up to a minute." />}
+        {!isUploadingExcel &&
+          (isLoadingQuestions ||
+            isGenerating ||
+            isDeleteInProgress ||
+            isEditSubmitting ||
+            isInlineSubmitting ||
+            isPublishing) && <Loader />}
 
         <div className="flex items-center gap-2">
           <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
@@ -1161,12 +1146,18 @@ const AiQuestionsSetup = () => {
                           <QuestionRowItem
                             key={q.id}
                             number={index + 1}
-                            question={{ id: q.id, question: q.question_text }}
+                            question={{
+                              id: q.id,
+                              question: q.question_text,
+                              answer: q.answer_text,
+                              isAnswerAiGenerated: q.is_answer_ai_generated,
+                            }}
                             checked={selectedIds.includes(q.id)}
                             onCheckChange={(checked) => handleSelectOne(q.id, checked)}
                             onEdit={() => {
                               setEditingQuestion(q);
                               setEditedQuestionText(q.question_text);
+                              setEditedAnswerText(q.answer_text ?? '');
                               setIsEditModalOpen(true);
                             }}
                             onDelete={() => {
@@ -1191,12 +1182,12 @@ const AiQuestionsSetup = () => {
                       description="Or add questions faster here:"
                       onGenerate={() => setShowGenerateConsentModal(true)}
                       onUpload={handleFileUpload}
-                      onDownloadTemplate={handleDownloadTemplate}
                       acceptedExtensions={importFormats?.extensions}
                       uploadedFileName={uploadedFileName}
                       importedCount={importedCount}
                       failedCount={failedRowCount}
                       duplicateCount={duplicateRowCount}
+                      hasAiWrittenAnswers={hasAiWrittenAnswers}
                       warnings={importWarnings}
                       uploadedFiles={uploadedFiles}
                       onClearDetails={() => {
@@ -1204,11 +1195,11 @@ const AiQuestionsSetup = () => {
                         setImportWarnings([]);
                         setFailedRowCount(0);
                         setDuplicateRowCount(0);
+                        setHasAiWrittenAnswers(false);
                       }}
                       isGenerating={isGenerating}
                       generateDisabled={noEligibleRound}
                       isUploading={isUploadingExcel}
-                      isDownloading={isDownloadingTemplate}
                     />
                   </div>
                 </div>
@@ -1246,6 +1237,9 @@ const AiQuestionsSetup = () => {
           submitLabel="Save"
           isSubmitting={isEditSubmitting}
           onQuestionChange={setEditedQuestionText}
+          answerText={editedAnswerText}
+          onAnswerChange={setEditedAnswerText}
+          isAnswerAiGenerated={Boolean(editingQuestion?.is_answer_ai_generated)}
           onSubmit={handleEditSave}
           onClose={closeEditModal}
           disableSubmit={!editedQuestionText.trim()}

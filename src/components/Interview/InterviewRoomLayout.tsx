@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ParticipantTile,
   DisconnectButton,
   TrackToggle,
   useTracks,
@@ -10,12 +9,13 @@ import {
   LayoutContextProvider,
   type TrackReference,
 } from '@livekit/components-react';
-import { Track, ParticipantEvent } from 'livekit-client';
+import { Track, ParticipantEvent, type Participant } from 'livekit-client';
 import { MdChatBubbleOutline, MdOutlineSettings, MdListAlt } from 'react-icons/md';
 import { SoundwaveTile } from './soundwave/SoundwaveTile';
 import { useSpotlight } from './shared/useSpotlight';
 import { PinButton } from './shared/PinButton';
 import { TileLabel } from './shared/TileLabel';
+import { CameraTile, NoCameraTile } from './shared/CameraTile';
 import { SpotlightStage, type SpotlightSide } from './shared/SpotlightStage';
 import { ChatPanel, useUnreadChatCount } from './shared/ChatPanel';
 import { SettingsPanel } from './shared/SettingsPanel';
@@ -54,6 +54,16 @@ import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture'
 // becomes real. Panel rounds can have 3+ human interviewers on the call —
 // `SpotlightStage` handles that by falling back to a filmstrip of small
 // tiles instead of a single PIP once there's more than one non-pinned side.
+// interview-service gives every person in this room a UUID identity (or the
+// legacy "interviewer-link"); ai-service's interviewer joins as a plain
+// participant under a configured name ("Iris"), not as a LiveKit agent. So
+// anything that isn't a person's identity is the AI — the only participant
+// that should get the soundwave, since it never has a camera.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isAiInterviewer = (participant: Participant): boolean =>
+  participant.isAgent ||
+  !(UUID_RE.test(participant.identity) || participant.identity === 'interviewer-link');
+
 const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean }) => {
   const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
@@ -115,14 +125,18 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
       }
     : undefined;
 
+  const localName = localParticipant.name || 'You';
+
   const localTile = (
     <div className="relative h-full w-full">
       {localCameraTrackRef ? (
-        <ParticipantTile trackRef={localCameraTrackRef} className="h-full w-full rounded-2xl" />
+        <CameraTile
+          trackRef={localCameraTrackRef}
+          participant={localParticipant}
+          name={localName}
+        />
       ) : (
-        <div className="flex h-full w-full items-center justify-center rounded-2xl bg-neutral-900 text-sm text-neutral-500">
-          Camera Off
-        </div>
+        <NoCameraTile participant={localParticipant} name={localName} />
       )}
       <PinButton
         pinned={isPinned(localParticipant.identity, Track.Source.Camera)}
@@ -151,15 +165,19 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
           );
           const pinRef: TrackReference | undefined = cameraRef ?? micRef;
           const source = cameraRef ? Track.Source.Camera : Track.Source.Microphone;
+          const name = participant.name || participant.identity || 'Interviewer';
           const node = (
             <div className="relative h-full w-full">
               {cameraRef ? (
-                <ParticipantTile trackRef={cameraRef} className="h-full w-full rounded-2xl" />
-              ) : (
+                <CameraTile trackRef={cameraRef} participant={participant} name={name} />
+              ) : isAiInterviewer(participant) ? (
                 <>
                   <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
-                  <TileLabel>{participant.name || participant.identity || 'Interviewer'}</TileLabel>
+                  <TileLabel>{name}</TileLabel>
                 </>
+              ) : (
+                // A person with their camera off: initials, not a soundwave.
+                <NoCameraTile participant={participant} name={name} />
               )}
               {pinRef && (
                 <PinButton
@@ -194,10 +212,14 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
             others={allSides.filter((s) => s.key !== pinnedSide.key)}
           />
         ) : showEmptyState ? (
-          <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="min-h-[220px]">{localTile}</div>
-            <div className="min-h-[220px]">
-              <SoundwaveTile audioTrackRef={undefined} label="Waiting to join…" />
+          // Alone in the room: just your own tile, full size. Nobody else's
+          // card appears until they actually join.
+          <div className="relative h-full min-h-[220px]">
+            {localTile}
+            <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
+              <span className="rounded-full bg-black/60 px-3 py-1.5 text-center text-xs font-medium text-white backdrop-blur-sm sm:text-sm">
+                Waiting for others to join…
+              </span>
             </div>
           </div>
         ) : (

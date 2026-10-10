@@ -8,8 +8,8 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
-import { MdClose, MdDownload } from 'react-icons/md';
-import { FALLBACK_EXTENSIONS, joinExtensions } from './uploadFormats';
+import { MdClose } from 'react-icons/md';
+import { FALLBACK_EXTENSIONS } from './uploadFormats';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
@@ -39,18 +39,18 @@ interface UploadAndGenerateHeaderProps {
   description: string;
   onGenerate: () => void;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onDownloadTemplate: () => void;
   uploadedFileName?: string;
   importedCount?: number;
   failedCount?: number;
   duplicateCount?: number;
+  /** Some imported questions came back with an AI-written answer. */
+  hasAiWrittenAnswers?: boolean;
   warnings?: ImportWarningItem[];
   /** Files uploaded to this round before, newest first. */
   uploadedFiles?: UploadedFileItem[];
   onClearDetails?: () => void;
   isGenerating?: boolean;
   isUploading?: boolean;
-  isDownloading?: boolean;
   generateDisabled?: boolean;
   /** Forces description-above-buttons layout for narrow-column callers. */
   stacked?: boolean;
@@ -62,17 +62,16 @@ export const UploadAndGenerateHeader = ({
   description,
   onGenerate,
   onUpload,
-  onDownloadTemplate,
   uploadedFileName = '',
   importedCount = 0,
   failedCount = 0,
   duplicateCount = 0,
+  hasAiWrittenAnswers = false,
   warnings = [],
   uploadedFiles = [],
   onClearDetails,
   isGenerating = false,
   isUploading = false,
-  isDownloading = false,
   generateDisabled = false,
   acceptedExtensions,
 }: UploadAndGenerateHeaderProps) => {
@@ -103,7 +102,7 @@ export const UploadAndGenerateHeader = ({
       className={`bg-primary hover:bg-brand-700 text-white flex items-center gap-1.5 px-3.5 py-1.5 font-semibold text-sm rounded-full shadow-sm cursor-pointer ${uploadDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <HiOutlineUpload className="text-base" />
-      Upload File
+      {isUploading ? 'Reading file…' : 'Upload File'}
       <input
         type="file"
         accept={extensions.join(',')}
@@ -120,20 +119,16 @@ export const UploadAndGenerateHeader = ({
         <Tooltip title="Generates questions from the job description and this round's focus areas.">
           <span>{generateButton}</span>
         </Tooltip>
-        <Tooltip title={`Import questions from an ${joinExtensions(extensions)} file.`}>
+        <Tooltip title="Upload your questions in any Excel, CSV, Word, PDF or text file.">
           <span>{uploadLabel}</span>
         </Tooltip>
-        <Tooltip title="Download the .xlsx import template.">
-          <button
-            type="button"
-            className="border border-primary text-primary hover:bg-gray-50 bg-white p-2.5 rounded-full flex items-center justify-center shadow-sm cursor-pointer disabled:cursor-not-allowed"
-            onClick={onDownloadTemplate}
-            disabled={isDownloading}
-            aria-label="Download template"
-          >
-            <MdDownload className="text-base" />
-          </button>
-        </Tooltip>
+      </div>
+      <div className="flex flex-col gap-0.5 text-xs text-gray-500">
+        <span>Upload your questions in any Excel, CSV, Word, PDF or text file.</span>
+        <span>
+          Tip: include answers and topics in the file — we&apos;ll write any missing answers for
+          you.
+        </span>
       </div>
 
       {uploadedFiles.length > 0 && (
@@ -204,6 +199,11 @@ export const UploadAndGenerateHeader = ({
               )}
             </span>
           </Typography>
+          {hasAiWrittenAnswers && importedCount > 0 && (
+            <Typography variant="body2" className="m-0 text-amber-800">
+              Some answers were written by AI. Please review them.
+            </Typography>
+          )}
           {warnings.length > 0 && (
             <button
               type="button"

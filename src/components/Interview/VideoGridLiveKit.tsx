@@ -11,7 +11,6 @@ import {
   FocusLayoutContainer,
   FocusLayout,
   CarouselLayout,
-  VideoTrack,
   useRemoteParticipants,
   useLocalParticipant,
   useTracks,
@@ -28,6 +27,7 @@ import { PinButton } from './shared/PinButton';
 import { SpotlightStage, type SpotlightSide } from './shared/SpotlightStage';
 import { SoundwaveTile } from './soundwave/SoundwaveTile';
 import { TileLabel } from './shared/TileLabel';
+import { CameraTile, NoCameraTile } from './shared/CameraTile';
 import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
 
 interface VideoGridProps {
@@ -96,13 +96,23 @@ const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName })
       }
     : undefined;
 
+  const localName = localParticipant.name || localParticipant.identity || 'You';
+
   const localSide: SpotlightSide & { identity: string; source: Track.Source } = {
     key: `${localParticipant.identity}-${Track.Source.Camera}`,
     identity: localParticipant.identity,
     source: Track.Source.Camera,
     node: (
       <div className="relative h-full w-full">
-        <ParticipantTile trackRef={localCameraTrackRef} className="h-full w-full" />
+        {localCameraTrackRef ? (
+          <CameraTile
+            trackRef={localCameraTrackRef}
+            participant={localParticipant}
+            name={localName}
+          />
+        ) : (
+          <NoCameraTile participant={localParticipant} name={localName} />
+        )}
         <PinButton
           pinned={isPinned(localParticipant.identity, Track.Source.Camera)}
           onClick={() =>
@@ -142,20 +152,19 @@ const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName })
         node: (
           <div className="relative h-full w-full">
             {cameraRef ? (
-              // Explicit children, not the bare `<ParticipantTile trackRef=.../>`
-              // this used to be — LiveKit's own default template renders its
-              // built-in `ParticipantName` from `participant.name`/`.identity`
-              // directly (no prop to override it), which is exactly the
-              // generic "candidate" text this tile exists to fix.
-              <ParticipantTile trackRef={cameraRef} className="h-full w-full">
-                <VideoTrack trackRef={cameraRef} />
-                <TileLabel>{displayName}</TileLabel>
-              </ParticipantTile>
-            ) : (
+              // Explicit TileLabel, not LiveKit's default template — that one
+              // renders `participant.name`/`.identity` directly (no override),
+              // which is the generic "candidate" text this tile exists to fix.
+              <CameraTile trackRef={cameraRef} participant={participant} name={displayName} />
+            ) : participant.isAgent ? (
+              // Only the AI interviewer gets the soundwave — it has no camera.
               <>
                 <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
                 <TileLabel>{displayName}</TileLabel>
               </>
+            ) : (
+              // A person with their camera off: initials, not a soundwave.
+              <NoCameraTile participant={participant} name={displayName} />
             )}
             {pinRef && (
               <PinButton

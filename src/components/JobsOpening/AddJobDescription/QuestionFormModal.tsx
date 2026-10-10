@@ -3,6 +3,7 @@ import TextArea from 'antd/es/input/TextArea';
 import { MdClose } from 'react-icons/md';
 import { Button } from '../../shared';
 import AntdCommonModal from '../../shared/ui/AntdCommonModal';
+import AiAnswerBadge from './AiAnswerBadge';
 
 type QuestionCategoryOption = {
   id: string | number;
@@ -27,6 +28,11 @@ type QuestionFormModalProps = {
   isCategoryLoading?: boolean;
   categoryOptions?: QuestionCategoryOption[];
   onCategoryChange?: (value: string | number) => void;
+  /** Shows an optional Answer field when given. */
+  answerText?: string;
+  onAnswerChange?: (value: string) => void;
+  answerMaxLength?: number;
+  isAnswerAiGenerated?: boolean;
 };
 
 const QuestionFormModal = ({
@@ -47,6 +53,10 @@ const QuestionFormModal = ({
   isCategoryLoading = false,
   categoryOptions = [],
   onCategoryChange,
+  answerText = '',
+  onAnswerChange,
+  answerMaxLength = 5000,
+  isAnswerAiGenerated = false,
 }: QuestionFormModalProps) => {
   const showCategoryField = Boolean(onCategoryChange);
 
@@ -131,6 +141,26 @@ const QuestionFormModal = ({
               className="w-full p-2 mt-1 bg-white border rounded-lg border-[var(--border)]"
             />
           </Form.Item>
+
+          {onAnswerChange && (
+            <Form.Item
+              label={
+                <span className="flex flex-wrap items-center gap-2">
+                  Answer
+                  {isAnswerAiGenerated && <AiAnswerBadge />}
+                </span>
+              }
+            >
+              <TextArea
+                value={answerText}
+                onChange={(event) => onAnswerChange(event.target.value)}
+                placeholder="Type the expected answer here (optional)..."
+                rows={4}
+                maxLength={answerMaxLength}
+                className="w-full p-2 mt-1 bg-white border rounded-lg border-[var(--border)]"
+              />
+            </Form.Item>
+          )}
 
           <Button
             className={`${

@@ -10,7 +10,6 @@ import EducationPreferencesTab from './JobCatalogs/EducationPreferencesTab';
 import SkillCategoriesTab from './JobCatalogs/SkillCategoriesTab';
 import SkillTypesTab from './JobCatalogs/SkillTypesTab';
 import SkillsTab from './JobCatalogs/SkillsTab';
-import QuestionImportTemplateTab from './JobCatalogs/QuestionImportTemplateTab';
 
 /**
  * "Job Catalogs" — Super Admin's master-data hub for job-service, mirroring
@@ -80,11 +79,6 @@ const JobCatalogsTab: React.FC = () => {
           key: 'skills',
           label: 'Skills',
           children: <SkillsTab />,
-        },
-        {
-          key: 'question-import-template',
-          label: 'Question Import Template',
-          children: <QuestionImportTemplateTab />,
         },
       ]}
     />
