@@ -865,6 +865,12 @@ const EditJobDetail = () => {
     });
   };
 
+  // Opening a saved job adds nothing; suggestions are added once the job title is changed.
+  const loadedJobTitleIdRef = useRef<string | undefined>(undefined);
+  if (loadedJobTitleIdRef.current === undefined && initialFormValues) {
+    loadedJobTitleIdRef.current = String(initialFormValues.jobTitle?.[0] ?? '');
+  }
+
   useEffect(() => {
     // Selected suggested skills count as offered, so a removal sticks.
     suggestedSkills.forEach((skill) => {
@@ -874,6 +880,12 @@ const EditJobDetail = () => {
       }
     });
     if (unaddedSuggestedSkills.length === 0) return;
+    if (
+      loadedJobTitleIdRef.current === undefined ||
+      String(selectedJobTitleId ?? '') === loadedJobTitleIdRef.current
+    ) {
+      return;
+    }
     handleAddAllSuggestedSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unaddedSuggestedSkills]);
@@ -934,8 +946,14 @@ const EditJobDetail = () => {
     idsMatch(office.office_id, selectedOfficeLocationId)
   );
 
+  // The "not set up yet" banner list is derived, not something the user edited.
+  const withoutDerivedFields = (values: Record<string, unknown>) => {
+    const { unresolvedAiSuggestions: _unresolved, ...rest } = values;
+    return rest;
+  };
   const isFormDirty = initialFormValues
-    ? JSON.stringify(formValues) !== JSON.stringify(initialFormValues)
+    ? JSON.stringify(withoutDerivedFields(formValues)) !==
+      JSON.stringify(withoutDerivedFields(initialFormValues))
     : false;
 
   const { isBlocked, confirmNavigation, cancelNavigation } = useNavigationBlocker(

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Select, Tooltip } from 'antd';
 import { MdCheck, MdInfoOutline } from 'react-icons/md';
 import { HiOutlineTrash } from 'react-icons/hi';
@@ -27,6 +27,8 @@ type Props = {
   embedded?: boolean;
   /** Reports whether an edit or a typed question is still waiting to be saved. */
   onUnsavedChange?: (hasUnsaved: boolean) => void;
+  /** The company has no intake questions in its settings, so there was nothing to copy. */
+  companyHasNoQuestions?: boolean;
 };
 
 type FieldOption = { value: string; label: string };
@@ -144,6 +146,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
   onToggle,
   embedded = false,
   onUnsavedChange,
+  companyHasNoQuestions = false,
 }) => {
   const [dirtyRowIds, setDirtyRowIds] = useState<string[]>([]);
   const setRowDirty = useCallback((questionId: string, dirty: boolean) => {
@@ -153,7 +156,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
       return dirty ? [...prev, questionId] : prev.filter((id) => id !== questionId);
     });
   }, []);
-  const { data, isFetching } = useGetJobIntakeQuestionsQuery(jobOpeningId, {
+  const { data, isFetching, isError, refetch } = useGetJobIntakeQuestionsQuery(jobOpeningId, {
     skip: !jobOpeningId,
   });
   const [importQuestions, { isLoading: importing }] = useImportJobIntakeQuestionsMutation();
@@ -163,6 +166,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
   const [deleteQuestion] = useDeleteJobIntakeQuestionMutation();
   const [checkRelevance, { isLoading: checkingRelevance }] =
     useCheckJobIntakeQuestionsRelevanceMutation();
+  const [copiedNothing, setCopiedNothing] = useState(false);
   const [newQuestionText, setNewQuestionText] = useState('');
   const [newQuestionFieldId, setNewQuestionFieldId] = useState<string | null>(null);
   const { data: fieldsData } = useListResumeTemplateFieldsQuery();
@@ -179,22 +183,17 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
     return () => onUnsavedChange?.(false);
   }, [hasUnsaved, onUnsavedChange]);
 
-  // Auto-imports once per job when there's nothing here yet.
-  const hasAutoImportedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!jobOpeningId || !canManage || isFetching) return;
-    if (questions.length > 0) return;
-    if (hasAutoImportedRef.current === jobOpeningId) return;
-    hasAutoImportedRef.current = jobOpeningId;
-    importQuestions(jobOpeningId)
-      .unwrap()
-      .catch((err) => {
-        showToast({
-          message: getJobErrorMessage(err, 'Failed to import questions.'),
-          type: 'error',
-        });
+  const handleImport = async () => {
+    try {
+      const result = await importQuestions(jobOpeningId).unwrap();
+      setCopiedNothing(result.questions.length === 0);
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Failed to import intake questions.'),
+        type: 'error',
       });
-  }, [jobOpeningId, canManage, isFetching, questions.length, importQuestions]);
+    }
+  };
 
   const handleCheckRelevance = async () => {
     try {
@@ -258,12 +257,36 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
 
       {isFetching || importing ? (
         <Loader />
+      ) : isError && questions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 px-6 py-8 text-center">
+          <p className="m-0 text-sm font-semibold text-red-700">Could not load intake questions</p>
+          <button
+            type="button"
+            className="mt-3 rounded-full border border-primary px-4 py-1.5 text-sm font-semibold text-primary hover:bg-gray-50 cursor-pointer"
+            onClick={() => void refetch()}
+          >
+            Try again
+          </button>
+        </div>
       ) : questions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center">
           <p className="m-0 text-sm font-semibold text-gray-700">No intake questions yet</p>
           <p className="m-0 mt-1 text-sm text-gray-500">
-            Company questions are copied in automatically when available.
+            {canManage
+              ? companyHasNoQuestions || copiedNothing
+                ? 'Your company has no intake questions in settings yet. Add your own below.'
+                : 'Copy your company questions in, or add your own below.'
+              : 'No questions have been added for this job.'}
           </p>
+          {canManage && (
+            <button
+              type="button"
+              className="mt-3 rounded-full border border-primary px-4 py-1.5 text-sm font-semibold text-primary hover:bg-gray-50 cursor-pointer"
+              onClick={() => void handleImport()}
+            >
+              Copy company questions
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

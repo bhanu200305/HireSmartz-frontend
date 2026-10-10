@@ -163,8 +163,6 @@ describe('UploadAndGenerateHeader uploaded files', () => {
   });
 });
 
-import { joinExtensions } from '../../../../src/components/JobsOpening/AddJobDescription/uploadFormats';
-
 describe('UploadAndGenerateHeader file types', () => {
   const acceptOf = (extensions?: string[]) => {
     const { container } = render(
@@ -183,14 +181,8 @@ describe('UploadAndGenerateHeader file types', () => {
     expect(acceptOf(['.xlsx', '.csv', '.docx', '.txt'])).toBe('.xlsx,.csv,.docx,.txt');
   });
 
-  it('falls back to the template types until the list arrives', () => {
-    expect(acceptOf(undefined)).toBe('.xlsx,.csv');
-    expect(acceptOf([])).toBe('.xlsx,.csv');
-  });
-
-  it('words the list for the tooltip', () => {
-    expect(joinExtensions(['.xlsx'])).toBe('.xlsx');
-    expect(joinExtensions(['.xlsx', '.csv'])).toBe('.xlsx or .csv');
-    expect(joinExtensions(['.xlsx', '.csv', '.docx', '.txt'])).toBe('.xlsx, .csv, .docx or .txt');
+  it('accepts any file until the list arrives', () => {
+    expect(acceptOf(undefined)).toBeNull();
+    expect(acceptOf([])).toBeNull();
   });
 });

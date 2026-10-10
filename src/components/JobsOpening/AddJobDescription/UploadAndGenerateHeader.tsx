@@ -9,7 +9,6 @@ import {
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
 import { MdClose } from 'react-icons/md';
-import { FALLBACK_EXTENSIONS } from './uploadFormats';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
@@ -75,7 +74,8 @@ export const UploadAndGenerateHeader = ({
   generateDisabled = false,
   acceptedExtensions,
 }: UploadAndGenerateHeaderProps) => {
-  const extensions = acceptedExtensions?.length ? acceptedExtensions : FALLBACK_EXTENSIONS;
+  // The backend's list; until it arrives any file can be picked and the server decides.
+  const accept = acceptedExtensions?.length ? acceptedExtensions.join(',') : undefined;
   const skippedCount = failedCount + duplicateCount;
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [filesOpen, setFilesOpen] = React.useState(false);
@@ -105,7 +105,7 @@ export const UploadAndGenerateHeader = ({
       {isUploading ? 'Reading file…' : 'Upload File'}
       <input
         type="file"
-        accept={extensions.join(',')}
+        accept={accept}
         className="hidden"
         onChange={onUpload}
         disabled={uploadDisabled}

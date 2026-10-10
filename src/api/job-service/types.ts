@@ -327,6 +327,10 @@ export type QuestionResponse = {
   is_answer_ai_generated?: boolean;
   interview_round_id: string;
   scoring_sections: string[];
+  // Only selected questions are asked in the round.
+  is_selected?: boolean;
+  // Place within the round, from 0.
+  question_order?: number;
 };
 
 export type RoundQuestionsResponse = {
@@ -357,6 +361,10 @@ export type QuestionRequest = {
   answer_text?: string | null;
   interview_round_id?: string | null;
   scoring_sections?: string[];
+  // Only selected questions are asked in the round. Left out keeps the saved value.
+  is_selected?: boolean;
+  // Place within the round, from 0. Left out: after the ones that have one.
+  question_order?: number;
 };
 
 export type AudioQuestionResponse = {

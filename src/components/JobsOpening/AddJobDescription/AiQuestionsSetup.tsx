@@ -15,6 +15,7 @@ import QuestionFormModal from './QuestionFormModal';
 import JobIntakeQuestionsSection from './JobIntakeQuestionsSection';
 import {
   useGetJobIntakeQuestionsQuery,
+  useImportJobIntakeQuestionsMutation,
   useGetJobQuestionsQuery,
   useSaveJobQuestionsMutation,
   useGenerateJobQuestionsMutation,
@@ -54,7 +55,6 @@ import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGene
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { isRepeat, splitRepeats } from './questionRepeats';
-import { INTAKE_SECTION, emptySections } from './emptySections';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 
@@ -113,6 +113,13 @@ const describeGenerateQuestionsError = (err: unknown, fallback: string): string 
   }
   return getJobErrorMessage(err, fallback);
 };
+
+const joinWithAnd = (items: string[]): string =>
+  items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+
+const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
 type RoundNavItemProps = {
   label: string;
@@ -471,9 +478,10 @@ const AiQuestionsSetup = () => {
   // lands even if the follow-up refetch doesn't land in time.
   const persistQuestions = async (next: QuestionRequest[]) => {
     if (!activeJobOpeningId) return;
+    // Every question stays selected (asked) until the page can unselect them.
     const res = await saveJobQuestions({
       jobOpeningId: activeJobOpeningId,
-      questions: next,
+      questions: next.map((question) => ({ ...question, is_selected: true })),
     }).unwrap();
     dispatch(jobQuestionsApi.util.upsertQueryData('getJobQuestions', activeJobOpeningId, res));
     await refetchQuestions();
@@ -868,10 +876,43 @@ const AiQuestionsSetup = () => {
     );
     return jobRounds.some((round) => intakeTypeIds.has(String(round.round?.id ?? '')));
   }, [roundTypes, jobRounds]);
-  const { data: intakeData } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
+  const {
+    data: intakeData,
+    isFetching: isFetchingIntake,
+    isError: intakeFailed,
+  } = useGetJobIntakeQuestionsQuery(activeJobOpeningId, {
     skip: !activeJobOpeningId || !jobHasIntakeRound,
   });
   const intakeCount = intakeData?.questions?.length ?? 0;
+  // Company intake questions are copied in as soon as the job has an Intake Call, so
+  // they are already there (and counted) before the tab is opened.
+  const [importIntakeQuestions] = useImportJobIntakeQuestionsMutation();
+  const autoImportedIntakeForRef = useRef<string | null>(null);
+  const [companyHasNoIntakeQuestions, setCompanyHasNoIntakeQuestions] = useState(false);
+  useEffect(() => {
+    if (!activeJobOpeningId || !jobHasIntakeRound || !isAssignedToThisJob) return;
+    if (isFetchingIntake || intakeFailed || !intakeData || intakeCount > 0) return;
+    if (autoImportedIntakeForRef.current === activeJobOpeningId) return;
+    autoImportedIntakeForRef.current = activeJobOpeningId;
+    importIntakeQuestions(activeJobOpeningId)
+      .unwrap()
+      .then((result) => setCompanyHasNoIntakeQuestions(result.questions.length === 0))
+      .catch((err) => {
+        showToast({
+          message: getJobErrorMessage(err, 'Failed to import intake questions.'),
+          type: 'error',
+        });
+      });
+  }, [
+    activeJobOpeningId,
+    jobHasIntakeRound,
+    isAssignedToThisJob,
+    isFetchingIntake,
+    intakeFailed,
+    intakeData,
+    intakeCount,
+    importIntakeQuestions,
+  ]);
   const questionCountByRound = useMemo(() => {
     const counts: Record<string, number> = {};
     questions.forEach((q) => {
@@ -891,13 +932,16 @@ const AiQuestionsSetup = () => {
   // Warn only for unsent text or empty rounds on a published job.
   const unsentDraft = inlineInputText.trim().length > 0;
   const roundsLeftEmpty = isEditingAlreadyPublishedJob
-    ? jdRounds.filter((r) => !questionCountByRound[r.round_instance_id]).map((r) => r.round_name)
+    ? jdRounds
+        .filter((r) => !questionCountByRound[r.round_instance_id])
+        .map((r) => r.round_name ?? 'Interview Round')
     : [];
   const leaveIssues = [
-    unsentDraft && "a question you haven't added",
-    intakeUnsaved && 'unsaved intake changes',
-    roundsLeftEmpty.length > 0 && `empty rounds: ${roundsLeftEmpty.join(', ')}`,
-  ].filter(Boolean);
+    unsentDraft && "the question you typed hasn't been added",
+    intakeUnsaved && "your intake question changes aren't saved",
+    roundsLeftEmpty.length > 0 &&
+      `${joinWithAnd(roundsLeftEmpty)} ${roundsLeftEmpty.length > 1 ? 'have' : 'has'} no questions`,
+  ].filter(Boolean) as string[];
   const { isBlocked, confirmNavigation, cancelNavigation } = useNavigationBlocker(
     true,
     leaveIssues.length > 0
@@ -933,34 +977,6 @@ const AiQuestionsSetup = () => {
   );
   const nextSectionKey = activeSectionIndex >= 0 ? sectionKeys[activeSectionIndex + 1] : undefined;
   const isLastSection = nextSectionKey === undefined;
-  // Save & Next and Save & Finish wait until the rounds have questions, so nobody
-  // walks to the last tab just to be told a round is empty.
-  const sectionsLoaded =
-    !!questionsData && !isLoadingQuestions && (!jobHasIntakeRound || !!intakeData);
-  const emptySectionList = sectionsLoaded
-    ? emptySections(
-        jdRounds,
-        questionCountByRound,
-        jobHasIntakeRound ? { count: intakeCount } : null
-      )
-    : [];
-  const activeSection = isIntakeActive
-    ? INTAKE_SECTION
-    : activeRound
-      ? { key: activeRound.round_instance_id, name: activeRound.round_name }
-      : null;
-  const activeSectionIsEmpty =
-    !!activeSection && emptySectionList.some((section) => section.key === activeSection.key);
-  const nextButtonHint = !sectionsLoaded
-    ? 'Loading questions…'
-    : activeSectionIsEmpty
-      ? `Add at least one question to ${activeSection?.name} to continue.`
-      : 'Questions are saved. Continue to the next round.';
-  const finishBlockedHint = !sectionsLoaded
-    ? 'Loading questions…'
-    : emptySectionList.length > 0
-      ? `Add at least one question to: ${emptySectionList.map((section) => section.name).join(', ')}.`
-      : null;
   const canPublishHere = isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob);
   const handleSaveAndNext = () => {
     if (!nextSectionKey) return;
@@ -1060,6 +1076,7 @@ const AiQuestionsSetup = () => {
                 <JobIntakeQuestionsSection
                   jobOpeningId={activeJobOpeningId}
                   canManage={isAssignedToThisJob}
+                  companyHasNoQuestions={companyHasNoIntakeQuestions}
                   embedded
                   onUnsavedChange={setIntakeUnsaved}
                 />
@@ -1267,7 +1284,7 @@ const AiQuestionsSetup = () => {
           <ConfirmationModal
             onClose={cancelNavigation}
             onConfirm={confirmNavigation}
-            title={`Leave this page? Still pending: ${leaveIssues.join(', ')}.`}
+            title={`Leave this page? ${capitalize(joinWithAnd(leaveIssues))}.`}
             confirmText="Leave Page"
           />
         )}
@@ -1301,39 +1318,33 @@ const AiQuestionsSetup = () => {
               </Tooltip>
             )}
             {!isLastSection ? (
-              <Tooltip title={nextButtonHint}>
-                <span>
-                  <Button
-                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleSaveAndNext}
-                    disabled={!sectionsLoaded || activeSectionIsEmpty}
-                  >
-                    Save &amp; Next
-                  </Button>
-                </span>
+              <Tooltip title="Questions are saved. Continue to the next round.">
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  onClick={handleSaveAndNext}
+                >
+                  Save &amp; Next
+                </Button>
               </Tooltip>
             ) : (
               <Tooltip
                 title={
-                  finishBlockedHint ??
-                  (isEditingAlreadyPublishedJob
+                  isEditingAlreadyPublishedJob
                     ? 'Save changes to this published job.'
-                    : 'Publish this job opening live.')
+                    : 'Publish this job opening live.'
                 }
               >
-                <span>
-                  <Button
-                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => void handlePublishOrFinish()}
-                    disabled={isPublishing || !activeJobOpeningId || finishBlockedHint !== null}
-                  >
-                    {isPublishing
-                      ? 'Publishing…'
-                      : isEditingAlreadyPublishedJob
-                        ? 'Save & Finish'
-                        : 'Publish Job Opening'}
-                  </Button>
-                </span>
+                <Button
+                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => void handlePublishOrFinish()}
+                  disabled={isPublishing || !activeJobOpeningId}
+                >
+                  {isPublishing
+                    ? 'Publishing…'
+                    : isEditingAlreadyPublishedJob
+                      ? 'Save & Finish'
+                      : 'Publish Job Opening'}
+                </Button>
               </Tooltip>
             )}
           </div>

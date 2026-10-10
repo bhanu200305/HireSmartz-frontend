@@ -1130,7 +1130,13 @@ const JobDetails = () => {
   const useCultureIntroValue = Boolean(watch('useCultureIntro'));
 
   const excludeFieldsForDirtyCheck = (obj: Partial<JobDetailsState>) => {
-    const { jobProfileCode: _jobProfileCode, openDate: _openDate, ...rest } = obj;
+    // The "not set up yet" banner list is derived, not something the user edited.
+    const {
+      jobProfileCode: _jobProfileCode,
+      openDate: _openDate,
+      unresolvedAiSuggestions: _unresolved,
+      ...rest
+    } = obj;
     return rest;
   };
 

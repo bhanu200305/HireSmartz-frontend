@@ -212,8 +212,12 @@ const CandidatesListing = () => {
 
   const isDraft = jobOpeningData?.data?.isDraft || false;
   const isClosed = jobOpeningData?.data?.isClosed || false;
-  // Same rule as the list's Edit action; here only a draft can be edited.
-  const canEditDraft = isDraft && !!jobOpeningData && canWriteJobNotes;
+  // Same rule as the list's Edit action: edit permission, assigned to the job, not closed.
+  const canEditJob =
+    !!jobOpeningData &&
+    !isClosed &&
+    canWriteJobNotes &&
+    hasFeatureAccess('job_opening', 'edit', role, effectivePermissions);
 
   // Opened via "Upload Resume" from the job openings list actions menu -
   // consume the flag once so it doesn't reopen on a later back/forward nav.
@@ -483,10 +487,17 @@ const CandidatesListing = () => {
                 </Button>
               )}
 
-              {canEditDraft && (
+              {canEditJob && (
                 <Button
                   className="box-border flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-full border border-primary bg-white px-5 font-semibold text-primary"
-                  onClick={() => navigate(`/jobs/edit/${parsedJobId}/details`)}
+                  onClick={() =>
+                    navigate(`/jobs/edit/${parsedJobId}/details`, {
+                      state: {
+                        interviewedCandidateCount:
+                          jobOpeningData?.data?.interviewedCandidateCount ?? 0,
+                      },
+                    })
+                  }
                 >
                   <MdEdit size={18} />
                   <span>Edit</span>

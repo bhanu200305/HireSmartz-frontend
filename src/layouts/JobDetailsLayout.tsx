@@ -2,7 +2,8 @@ import BackButton from '../components/shared/ui/BackButton';
 import { Button } from '../components/shared';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
-import { useSelector } from 'react-redux';
+import { shallowEqual, useSelector } from 'react-redux';
+import { MdEdit } from 'react-icons/md';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../redux/provider/store';
 import { sanitizedPath } from '../shared/utils/business-logic';
@@ -12,6 +13,9 @@ import {
   useGetWizardStateQuery,
 } from '../api/job-service/JobOpening/GetJobOpeningById';
 import { asJobId } from '../api/job-service/jobId';
+import { useGetJobScoringConfigQuery } from '../api/job-service/JobOpening/jobScoringConfig';
+import useEffectivePermissions from '../hooks/useEffectivePermissions';
+import { hasFeatureAccess, isAssignedToJob } from '../shared/utils/auth/getAccess';
 import { JobDetailsHeaderSlotContext } from './jobDetailsHeaderSlot';
 
 interface JobDetailsLayoutProps {
@@ -41,6 +45,39 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const reduxJobOpeningId = useSelector((state: RootState) => state.JobSlice.jobOpeningId);
 
   const isCreateMode = !isViewMode && !isEditMode;
+
+  // View mode: an Edit button at the top right opens this tab's edit page. Shown
+  // only to users who may edit the job (permission, assignment, not closed).
+  const { role, userId } = useSelector((state: RootState) => state.LoginSlice, shallowEqual);
+  const effectivePermissions = useEffectivePermissions();
+  const viewJobId = isViewMode && id ? id : '';
+  const { data: viewJob } = useGetJobOpeningByIdQuery(
+    { jobOpeningId: asJobId(viewJobId) },
+    { skip: !viewJobId }
+  );
+  const canEditViewedJob =
+    !!viewJob &&
+    !viewJob.data?.isClosed &&
+    hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) &&
+    isAssignedToJob(
+      {
+        hiringManagerIds: viewJob.details?.hiring_manager_ids,
+        recruiterIds: viewJob.details?.recruiter_ids,
+        createdById: viewJob.details?.created_by,
+      },
+      userId,
+      role,
+      effectivePermissions
+    );
+  const isScoringViewTab = isViewMode && location.pathname.includes('/scoring-criteria');
+  const { data: viewScoring } = useGetJobScoringConfigQuery(asJobId(viewJobId), {
+    skip: !viewJobId || !isScoringViewTab || !canEditViewedJob,
+  });
+  const isViewScoringLocked = Boolean(viewScoring?.data?.isLocked);
+  const viewScoringLockedHint =
+    viewScoring?.data?.lockedReason === 'organization'
+      ? 'Scoring criteria is locked by your organization admin.'
+      : 'Scoring criteria cannot be changed once a candidate has applied to this job.';
 
   // Gate on saved details: the server flag, or the id set on save (the refetch lags).
   const resolvedJobId = asJobId(reduxJobOpeningId);
@@ -186,6 +223,20 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   const returnTo =
     isCandidateDetailsPage && returnState?.returnTo?.startsWith('/') ? returnState.returnTo : null;
 
+  // The edit page matching the open view tab. Interview Setup opens the job's
+  // edit mode there, and Next leads on to the questions.
+  const editPathForViewTab = (): string | null => {
+    const path = location.pathname;
+    if (!id) return null;
+    if (path.includes('/AiJobDescription')) return `/jobs/edit/${id}/AiJobDescription/${id}`;
+    if (path.includes('/scoring-criteria')) return `/jobs/edit/${id}/scoring-criteria`;
+    if (path.includes('/interview')) return `/jobs/edit/${id}/interview`;
+    if (path.includes('/details') || path.includes('/description')) {
+      return `/jobs/edit/${id}/details`;
+    }
+    return null;
+  };
+  const viewEditPath = canEditViewedJob && !isCandidatePage ? editPathForViewTab() : null;
   const handleBackNavigation = () => {
     if (returnTo) {
       // From the calendar popup: land back on the page it was opened from, with
@@ -293,6 +344,26 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
         <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <BackButton onClick={handleBackNavigation} label="Back" />
           <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
+          {viewEditPath && (
+            <Tooltip title={isScoringViewTab && isViewScoringLocked ? viewScoringLockedHint : ''}>
+              <span className="ml-auto">
+                <Button
+                  className="box-border flex h-10 items-center justify-center gap-2 rounded-full border border-primary bg-white px-5 font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isScoringViewTab && isViewScoringLocked}
+                  onClick={() =>
+                    navigate(viewEditPath, {
+                      state: {
+                        interviewedCandidateCount: viewJob?.data?.interviewedCandidateCount ?? 0,
+                      },
+                    })
+                  }
+                >
+                  <MdEdit size={18} />
+                  <span>Edit</span>
+                </Button>
+              </span>
+            </Tooltip>
+          )}
         </div>
       )}
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
