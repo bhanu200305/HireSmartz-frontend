@@ -119,17 +119,13 @@ export const UploadAndGenerateHeader = ({
         <Tooltip title="Generates questions from the job description and this round's focus areas.">
           <span>{generateButton}</span>
         </Tooltip>
-        <Tooltip title="Upload your questions in any Excel, CSV, Word, PDF or text file.">
+        <Tooltip title="Upload an Excel, CSV, Word, PDF or text file of questions.">
           <span>{uploadLabel}</span>
         </Tooltip>
       </div>
-      <div className="flex flex-col gap-0.5 text-xs text-gray-500">
-        <span>Upload your questions in any Excel, CSV, Word, PDF or text file.</span>
-        <span>
-          Tip: include answers and topics in the file — we&apos;ll write any missing answers for
-          you.
-        </span>
-      </div>
+      <p className="m-0 text-xs text-gray-500">
+        Excel, CSV, Word, PDF or text. Missing answers are written for you.
+      </p>
 
       {uploadedFiles.length > 0 && (
         <button

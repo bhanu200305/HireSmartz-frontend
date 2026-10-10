@@ -14,6 +14,7 @@ import {
 } from '../api/job-service/JobOpening/GetJobOpeningById';
 import { asJobId } from '../api/job-service/jobId';
 import { useGetJobScoringConfigQuery } from '../api/job-service/JobOpening/jobScoringConfig';
+import { useValidateForPublishQuery } from '../api/job-service/JobOpening/CloseJob';
 import useEffectivePermissions from '../hooks/useEffectivePermissions';
 import { hasFeatureAccess, isAssignedToJob } from '../shared/utils/auth/getAccess';
 import { JobDetailsHeaderSlotContext } from './jobDetailsHeaderSlot';
@@ -93,6 +94,14 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     { skip: !editJobId }
   );
   const isEditingDraft = editJob?.is_draft === true;
+  // A published job whose rounds have no questions can't be interviewed in them.
+  const isPublishedJob =
+    (isViewMode && !!viewJob && !viewJob.data?.isDraft) ||
+    (isEditMode && editJob?.is_draft === false);
+  const { data: readiness } = useValidateForPublishQuery(asJobId(id ?? ''), {
+    skip: !id || !isPublishedJob,
+  });
+  const roundsWithoutQuestions = readiness?.rounds_missing_questions ?? [];
   const { data: editJd } = useGetJobDescriptionByIdQuery(
     { jobOpeningId: asJobId(editJobId) },
     { skip: !isEditingDraft }
@@ -363,6 +372,27 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
                 </Button>
               </span>
             </Tooltip>
+          )}
+        </div>
+      )}
+      {isPublishedJob && roundsWithoutQuestions.length > 0 && !isCandidatePage && (
+        <div
+          role="alert"
+          className="mb-3 flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <span>
+            {roundsWithoutQuestions.join(', ')} {roundsWithoutQuestions.length > 1 ? 'have' : 'has'}{' '}
+            no questions yet, so candidates can&apos;t be interviewed in{' '}
+            {roundsWithoutQuestions.length > 1 ? 'them' : 'it'} until some are added.
+          </span>
+          {(isEditMode || canEditViewedJob) && !location.pathname.includes('/editAiQuestions') && (
+            <button
+              type="button"
+              className="cursor-pointer font-semibold text-amber-900 underline"
+              onClick={() => navigate(`/jobs/edit/${id}/editAiQuestions`)}
+            >
+              Add questions
+            </button>
           )}
         </div>
       )}
