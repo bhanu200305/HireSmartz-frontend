@@ -55,6 +55,7 @@ import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGene
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
 import { isRepeat, splitRepeats } from './questionRepeats';
+import { INTAKE_SECTION, emptySections } from './emptySections';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 
@@ -947,6 +948,34 @@ const AiQuestionsSetup = () => {
   );
   const nextSectionKey = activeSectionIndex >= 0 ? sectionKeys[activeSectionIndex + 1] : undefined;
   const isLastSection = nextSectionKey === undefined;
+  // Save & Next and Save & Finish wait until the rounds have questions, so nobody
+  // walks to the last tab just to be told a round is empty.
+  const sectionsLoaded =
+    !!questionsData && !isLoadingQuestions && (!jobHasIntakeRound || !!intakeData);
+  const emptySectionList = sectionsLoaded
+    ? emptySections(
+        jdRounds,
+        questionCountByRound,
+        jobHasIntakeRound ? { count: intakeCount } : null
+      )
+    : [];
+  const activeSection = isIntakeActive
+    ? INTAKE_SECTION
+    : activeRound
+      ? { key: activeRound.round_instance_id, name: activeRound.round_name }
+      : null;
+  const activeSectionIsEmpty =
+    !!activeSection && emptySectionList.some((section) => section.key === activeSection.key);
+  const nextButtonHint = !sectionsLoaded
+    ? 'Loading questions…'
+    : activeSectionIsEmpty
+      ? `Add at least one question to ${activeSection?.name} to continue.`
+      : 'Questions are saved. Continue to the next round.';
+  const finishBlockedHint = !sectionsLoaded
+    ? 'Loading questions…'
+    : emptySectionList.length > 0
+      ? `Add at least one question to: ${emptySectionList.map((section) => section.name).join(', ')}.`
+      : null;
   const canPublishHere = isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob);
   const handleSaveAndNext = () => {
     if (!nextSectionKey) return;
@@ -1278,33 +1307,39 @@ const AiQuestionsSetup = () => {
               </Tooltip>
             )}
             {!isLastSection ? (
-              <Tooltip title="Questions are saved. Continue to the next round.">
-                <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-                  onClick={handleSaveAndNext}
-                >
-                  Save &amp; Next
-                </Button>
+              <Tooltip title={nextButtonHint}>
+                <span>
+                  <Button
+                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSaveAndNext}
+                    disabled={!sectionsLoaded || activeSectionIsEmpty}
+                  >
+                    Save &amp; Next
+                  </Button>
+                </span>
               </Tooltip>
             ) : (
               <Tooltip
                 title={
-                  isEditingAlreadyPublishedJob
+                  finishBlockedHint ??
+                  (isEditingAlreadyPublishedJob
                     ? 'Save changes to this published job.'
-                    : 'Publish this job opening live.'
+                    : 'Publish this job opening live.')
                 }
               >
-                <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => void handlePublishOrFinish()}
-                  disabled={isPublishing || !activeJobOpeningId}
-                >
-                  {isPublishing
-                    ? 'Publishing…'
-                    : isEditingAlreadyPublishedJob
-                      ? 'Save & Finish'
-                      : 'Publish Job Opening'}
-                </Button>
+                <span>
+                  <Button
+                    className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => void handlePublishOrFinish()}
+                    disabled={isPublishing || !activeJobOpeningId || finishBlockedHint !== null}
+                  >
+                    {isPublishing
+                      ? 'Publishing…'
+                      : isEditingAlreadyPublishedJob
+                        ? 'Save & Finish'
+                        : 'Publish Job Opening'}
+                  </Button>
+                </span>
               </Tooltip>
             )}
           </div>

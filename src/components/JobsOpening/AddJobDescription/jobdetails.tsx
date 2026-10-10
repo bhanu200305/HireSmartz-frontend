@@ -27,7 +27,12 @@ import {
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DropdownWithAddOption from '../../shared/ui/DropdownWithAddOption';
 import FillWithAiWidget from './FillWithAiWidget';
-import { planFieldFills, type FieldSuggestions } from '../../../shared/utils/fieldSuggestions';
+import {
+  planFieldFills,
+  skillLabelEntries,
+  unresolvedFieldNames,
+  type FieldSuggestions,
+} from '../../../shared/utils/fieldSuggestions';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { useGetPermittedOfficesQuery } from '../../../api/job-service/JobOpening/GetPermittedOffices';
@@ -497,6 +502,30 @@ const JobDetails = () => {
     if (plan.officeId && offices.some((office) => idsMatch(office.office_id, plan.officeId))) {
       handleLocationChange(plan.officeId);
       plan.labels.push('Location');
+    }
+    // The dropdowns only know skills they have loaded, so give them the labels.
+    const filledSkillIds = plan.fills
+      .filter(({ field }) => field === 'mandatorySkills' || field === 'optionalSkills')
+      .flatMap(({ value }) => value as string[]);
+    const skillLabels = skillLabelEntries(filledSkillIds, suggestions.skill_labels);
+    if (skillLabels.length > 0) {
+      setExtraSuggestedSkillOptions((prev) => [...prev, ...skillLabels]);
+      persistSkillLabels(skillLabels);
+      filledSkillIds.forEach((id) => offeredSuggestedSkills.add(id));
+    }
+    // Names that matched nothing go to the same "create it?" banner the JD upload uses.
+    const unresolved = unresolvedFieldNames(suggestions);
+    if (Object.keys(unresolved).length > 0) {
+      setValue(
+        'unresolvedAiSuggestions',
+        { ...(getValues('unresolvedAiSuggestions') ?? {}), ...unresolved },
+        { shouldDirty: true }
+      );
+      setDismissedUnresolvedAiFields((prev) => {
+        const next = new Set(prev);
+        Object.keys(unresolved).forEach((key) => next.delete(`${resolvedJobId}:${key}`));
+        return next;
+      });
     }
     return plan.labels.length > 0
       ? `Filled: ${plan.labels.join(', ')}. Review before saving.`

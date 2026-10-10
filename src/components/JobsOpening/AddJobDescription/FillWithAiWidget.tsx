@@ -5,7 +5,7 @@ import {
   useRequestFieldSuggestionsMutation,
 } from '../../../api/job-service/JobOpening/SuggestJobFields';
 import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers';
-import type { FieldSuggestions } from '../../../shared/utils/fieldSuggestions';
+import { fieldErrorMessages, type FieldSuggestions } from '../../../shared/utils/fieldSuggestions';
 
 interface FillWithAiWidgetProps {
   jobOpeningId: string;
@@ -41,6 +41,9 @@ const FillWithAiWidget = ({ jobOpeningId, onSuggestions }: FillWithAiWidgetProps
     if (result.status === 'READY' && result.suggestions) {
       setIsWaiting(false);
       showToast({ message: onSuggestionsRef.current(result.suggestions), type: 'success' });
+      fieldErrorMessages(result.suggestions).forEach((message) =>
+        showToast({ message, type: 'error' })
+      );
       setPromptText('');
       setIsOpen(false);
     } else if (result.status === 'FAILED') {
