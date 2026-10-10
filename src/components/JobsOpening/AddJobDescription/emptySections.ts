@@ -8,12 +8,12 @@ export const INTAKE_SECTION: SectionRef = { key: 'intake', name: 'the Intake Cal
  * this is empty for the tab being left.
  */
 export const emptySections = (
-  rounds: { round_instance_id: string; round_name: string }[],
+  rounds: { round_instance_id: string; round_name: string | null }[],
   countByRound: Record<string, number>,
   intake: { count: number } | null
 ): SectionRef[] => [
   ...(intake && intake.count === 0 ? [INTAKE_SECTION] : []),
   ...rounds
     .filter((round) => !countByRound[round.round_instance_id])
-    .map((round) => ({ key: round.round_instance_id, name: round.round_name })),
+    .map((round) => ({ key: round.round_instance_id, name: round.round_name || 'this round' })),
 ];

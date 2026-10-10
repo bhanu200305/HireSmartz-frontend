@@ -24,6 +24,10 @@ export type ValidateInvitationResponse = {
   // AcceptInvitation/index.tsx's prefill effect). Optional/null for invite
   // paths that don't capture a name.
   invited_name?: string | null;
+  // Set for invites made from an Add User / Add CFP User form, which collect the
+  // two names separately; use these before splitting `invited_name`.
+  first_name?: string | null;
+  last_name?: string | null;
 };
 
 // Wire shape of every error this endpoint (and validateInvitation) returns —

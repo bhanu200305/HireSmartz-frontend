@@ -14,7 +14,7 @@ interface FillWithAiWidgetProps {
 }
 
 // Matches the backend limit on the description.
-const TEXT_MAX_LENGTH = 2000;
+const TEXT_MAX_LENGTH = 5000;
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 60_000;
 
@@ -95,14 +95,15 @@ const FillWithAiWidget = ({ jobOpeningId, onSuggestions }: FillWithAiWidgetProps
             </button>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Describe the role and AI fills the empty fields below it can find. Anything you have
-            already typed stays as it is, and nothing is saved until you press Save &amp; Next.
+            Describe the role or paste a full prompt, and AI fills the empty fields it can find.
+            Anything you have already typed stays as it is, and nothing is saved until you press
+            Save &amp; Next.
           </p>
           <Textarea
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
-            placeholder="e.g. Senior Backend Engineer, 5+ years, 2 openings, hybrid in Bangalore, $90-130k..."
-            rows={4}
+            placeholder="Describe the job or paste a full prompt: title, department, work mode, salary, responsibilities, skills, benefits…"
+            rows={6}
             maxLength={TEXT_MAX_LENGTH}
             disabled={isSubmitting || isWaiting}
             noAutoCapitalize

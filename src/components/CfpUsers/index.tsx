@@ -21,9 +21,10 @@ import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import { RowsPerPageSelect } from '../shared/ui/RowsPerPageSelect';
 import { usePersistedPageSize } from '../../hooks/usePersistedPageSize';
 import { PAGE_SIZE_OPTIONS } from '../../constants/app.constants';
-import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
+import useHasAccess from '../../hooks/useHasAccess';
+import { Authorities } from '../../constants/authorities.constant';
 import {
-  useListPlatformStaffQuery,
+  useListPlatformStaffWithInvitationsQuery,
   useListPlatformDepartmentsQuery,
   useCreatePlatformDepartmentMutation,
   useOffboardPlatformStaffMutation,
@@ -32,23 +33,25 @@ import {
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import InvitePlatformMemberModal from './InvitePlatformMemberModal';
 import StaffBulkImport from './StaffBulkImport';
+import { buildStaffRows, filterStaffRows, platformRoleLabel, type StaffListRow } from './staffRows';
 
 const STATUS_BADGE: Record<string, BadgeStatus> = {
   active: 'success',
   pending: 'warning',
+  invited: 'info',
   offboarded: 'neutral',
 };
 
-type StaffRow = PlatformStaffMember & { key: string };
-type SortKey = 'email' | 'role' | 'department_name' | 'status';
+type StaffRow = StaffListRow;
+type SortKey = 'name' | 'email' | 'role' | 'department' | 'status';
 
-// Fully client-side, same as DepartmentsTab — `useListPlatformStaffQuery`
-// has no list endpoint of its own to page or sort against, it just returns
-// every internal staff row at once.
+// Fully client-side, same as DepartmentsTab: the endpoint returns every
+// internal staff row (and every waiting invitation) at once.
 const SORT_COMPARATORS: Record<SortKey, (a: StaffRow, b: StaffRow) => number> = {
+  name: (a, b) => a.name.localeCompare(b.name),
   email: (a, b) => a.email.localeCompare(b.email),
-  role: (a, b) => a.role.localeCompare(b.role),
-  department_name: (a, b) => (a.department_name ?? '').localeCompare(b.department_name ?? ''),
+  role: (a, b) => platformRoleLabel(a.role).localeCompare(platformRoleLabel(b.role)),
+  department: (a, b) => a.department.localeCompare(b.department),
   status: (a, b) => a.status.localeCompare(b.status),
 };
 
@@ -64,7 +67,11 @@ const SORT_COMPARATORS: Record<SortKey, (a: StaffRow, b: StaffRow) => number> = 
  * composing page owns that.
  */
 const CfpUsers: React.FC = () => {
-  const { data: staff, isLoading } = useListPlatformStaffQuery();
+  const { data: staffList, isLoading } = useListPlatformStaffWithInvitationsQuery();
+  // Superadmin only (platform:write / platform:update): Admin gets the list and
+  // can add a Support User, but not import staff or offboard anyone.
+  const canBulkImport = useHasAccess(Authorities.PLATFORM_INVITE);
+  const canOffboard = useHasAccess(Authorities.PLATFORM_MANAGE_DEPARTMENTS);
   const { data: departments, isLoading: isDepartmentsLoading } = useListPlatformDepartmentsQuery();
   const [createDepartment, { isLoading: isCreatingDepartment }] =
     useCreatePlatformDepartmentMutation();
@@ -86,7 +93,7 @@ const CfpUsers: React.FC = () => {
   const [departmentName, setDepartmentName] = useState('');
   const [staffToOffboard, setStaffToOffboard] = useState<PlatformStaffMember | null>(null);
   const [searchText, setSearchText] = useState(globalSearchQuery || '');
-  const [sortBy, setSortBy] = useState<SortKey>('email');
+  const [sortBy, setSortBy] = useState<SortKey>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = usePersistedPageSize('cfp_users', 10);
@@ -115,30 +122,25 @@ const CfpUsers: React.FC = () => {
     }
   };
 
-  const allStaffRows: (PlatformStaffMember & { key: string })[] = (staff || []).map((member) => ({
-    ...member,
-    key: member.membership_id,
-  }));
+  const allStaffRows = useMemo(
+    () => buildStaffRows(staffList?.staff ?? [], staffList?.pendingInvitations ?? []),
+    [staffList]
+  );
 
+  // Members only: a waiting invitation is not yet part of a department.
   const departmentMemberCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    allStaffRows.forEach((member) => {
+    (staffList?.staff ?? []).forEach((member) => {
       if (!member.department_id) return;
       counts[member.department_id] = (counts[member.department_id] ?? 0) + 1;
     });
     return counts;
-  }, [allStaffRows]);
+  }, [staffList]);
 
-  const staffRows = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    if (!q) return allStaffRows;
-    return allStaffRows.filter(
-      (member) =>
-        member.email.toLowerCase().includes(q) ||
-        member.role.toLowerCase().includes(q) ||
-        (member.department_name ?? '').toLowerCase().includes(q)
-    );
-  }, [allStaffRows, searchText]);
+  const staffRows = useMemo(
+    () => filterStaffRows(allStaffRows, searchText),
+    [allStaffRows, searchText]
+  );
 
   const sortedStaffRows = useMemo(() => {
     const sorted = [...staffRows].sort(SORT_COMPARATORS[sortBy]);
@@ -152,7 +154,7 @@ const CfpUsers: React.FC = () => {
     const active = Array.isArray(sorter) ? sorter[0] : (sorter as SorterResult<StaffRow>);
     setPage(0);
     if (!active?.order || !active.columnKey) {
-      setSortBy('email');
+      setSortBy('name');
       setSortOrder('asc');
       return;
     }
@@ -164,15 +166,31 @@ const CfpUsers: React.FC = () => {
 
   const staffColumns: TableProps<StaffRow>['columns'] = [
     {
+      title: 'Name',
+      key: 'name',
+      sorter: true,
+      sortOrder: sortOrderFor('name'),
+      render: (_: unknown, row) => (
+        <span className="text-sm font-medium text-gray-900">{row.name || '-'}</span>
+      ),
+    },
+    {
       title: 'Email',
       dataIndex: 'email',
       sorter: true,
       sortOrder: sortOrderFor('email'),
       key: 'email',
-      render: (_: unknown, member) => (
-        <span className="text-sm text-gray-800 truncate" title={member.email}>
-          {member.email}
+      render: (_: unknown, row) => (
+        <span className="text-sm text-gray-800 truncate" title={row.email}>
+          {row.email}
         </span>
+      ),
+    },
+    {
+      title: 'Phone',
+      key: 'phone',
+      render: (_: unknown, row) => (
+        <span className="text-sm text-gray-600">{row.phone || '-'}</span>
       ),
     },
     {
@@ -181,18 +199,17 @@ const CfpUsers: React.FC = () => {
       key: 'role',
       sorter: true,
       sortOrder: sortOrderFor('role'),
-      render: (_: unknown, member) => (
-        <span className="text-sm text-gray-600">{systemRoleLabel(member.role)}</span>
+      render: (_: unknown, row) => (
+        <span className="text-sm text-gray-600">{platformRoleLabel(row.role)}</span>
       ),
     },
     {
       title: 'Department',
-      dataIndex: 'department_name',
-      key: 'department_name',
+      key: 'department',
       sorter: true,
-      sortOrder: sortOrderFor('department_name'),
-      render: (_: unknown, member) => (
-        <span className="text-sm text-gray-600">{member.department_name || '-'}</span>
+      sortOrder: sortOrderFor('department'),
+      render: (_: unknown, row) => (
+        <span className="text-sm text-gray-600">{row.department || '-'}</span>
       ),
     },
     {
@@ -200,32 +217,35 @@ const CfpUsers: React.FC = () => {
       key: 'status',
       sorter: true,
       sortOrder: sortOrderFor('status'),
-      render: (_: unknown, member) => (
-        <Badge status={STATUS_BADGE[member.status.toLowerCase()] || 'neutral'}>
-          {member.status}
-        </Badge>
+      render: (_: unknown, row) => (
+        <Badge status={STATUS_BADGE[row.status.toLowerCase()] || 'neutral'}>{row.status}</Badge>
       ),
     },
-    {
-      title: 'Actions',
-      key: 'actions',
-      align: 'right',
-      render: (_: unknown, member) =>
-        member.status.toLowerCase() === 'active' ? (
-          <Tooltip title="Offboard">
-            <button
-              type="button"
-              aria-label="Offboard"
-              className="group p-2 hover:bg-danger-bg rounded-full transition-colors cursor-pointer"
-              onClick={() => setStaffToOffboard(member)}
-            >
-              <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
-            </button>
-          </Tooltip>
-        ) : (
-          <span className="text-gray-300">-</span>
-        ),
-    },
+    // Offboarding is Superadmin-only, so the column is absent for anyone else.
+    ...(canOffboard
+      ? [
+          {
+            title: 'Actions',
+            key: 'actions',
+            align: 'right' as const,
+            render: (_: unknown, row: StaffRow) =>
+              row.kind === 'member' && row.status.toLowerCase() === 'active' ? (
+                <Tooltip title="Offboard">
+                  <button
+                    type="button"
+                    aria-label="Offboard"
+                    className="group p-2 hover:bg-danger-bg rounded-full transition-colors cursor-pointer"
+                    onClick={() => row.member && setStaffToOffboard(row.member)}
+                  >
+                    <MdDelete className="text-gray-600 transition-colors group-hover:text-red-600" />
+                  </button>
+                </Tooltip>
+              ) : (
+                <span className="text-gray-300">-</span>
+              ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -241,7 +261,7 @@ const CfpUsers: React.FC = () => {
           <div className="w-52">
             <Input
               prefix={<MdSearch className="text-gray-400" />}
-              placeholder="Search Staff..."
+              placeholder="Search by name, email or phone..."
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value);
@@ -249,17 +269,19 @@ const CfpUsers: React.FC = () => {
               }}
             />
           </div>
-          <Button
-            className="w-52 rounded-full border border-gray-300 px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
-            onClick={() => setIsBulkImportOpen(true)}
-          >
-            <MdOutlineUploadFile /> Import Staff
-          </Button>
+          {canBulkImport && (
+            <Button
+              className="w-52 rounded-full border border-gray-300 px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold text-gray-700 hover:border-primary-300 hover:text-primary-600 transition-colors"
+              onClick={() => setIsBulkImportOpen(true)}
+            >
+              <MdOutlineUploadFile /> Import Staff
+            </Button>
+          )}
           <Button
             className="w-52 rounded-full bg-primary-600 text-white px-4 py-2 flex items-center justify-center gap-1 text-sm font-semibold cfp-hover-lift"
             onClick={() => setIsInviteOpen(true)}
           >
-            <MdOutlinePersonAdd /> Invite
+            <MdOutlinePersonAdd /> Add CFP User
           </Button>
         </div>
       </div>
@@ -282,9 +304,9 @@ const CfpUsers: React.FC = () => {
               columns={staffColumns}
               dataSource={pagedStaffRows}
               onChange={handleTableChange}
-              rowClassName={(member) =>
+              rowClassName={(row) =>
                 globalSearchQuery &&
-                member.email.toLowerCase().includes(globalSearchQuery.toLowerCase())
+                row.email.toLowerCase().includes(globalSearchQuery.toLowerCase())
                   ? 'bg-primary-50'
                   : ''
               }
@@ -365,7 +387,9 @@ const CfpUsers: React.FC = () => {
         onInvited={() => setIsInviteOpen(false)}
       />
 
-      <StaffBulkImport open={isBulkImportOpen} onClose={() => setIsBulkImportOpen(false)} />
+      {canBulkImport && (
+        <StaffBulkImport open={isBulkImportOpen} onClose={() => setIsBulkImportOpen(false)} />
+      )}
 
       <AntdCommonModal
         open={isDeptModalOpen}

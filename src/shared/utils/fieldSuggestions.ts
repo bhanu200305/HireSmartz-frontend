@@ -37,6 +37,12 @@ export const unresolvedFieldNames = (suggestions: FieldSuggestions): Record<stri
     )
   );
 
+/** Skill names the AI gave that matched nothing in the catalogue (a list). */
+export const unresolvedSkillNames = (suggestions: FieldSuggestions): string[] => {
+  const skills = suggestions.unresolved?.skills;
+  return Array.isArray(skills) ? skills.filter((name) => name.trim()) : [];
+};
+
 /** The label to show for each skill id, skipping ids with no label. */
 export const skillLabelEntries = (
   ids: string[],
@@ -106,7 +112,8 @@ export const planFieldFills = (
     add('benefits', suggestions.benefits, 'Benefits');
   }
 
-  // A skill already picked, as required or optional, is never added again.
+  // Suggested skills are added to whatever is already picked: nothing is
+  // removed, and a skill already picked (required or optional) is never added again.
   const taken = new Set(
     [...(current.mandatorySkills ?? []), ...(current.optionalSkills ?? [])].map(String)
   );
@@ -114,11 +121,11 @@ export const planFieldFills = (
   const newOptional = (suggestions.optional_skill_ids ?? []).filter(
     (id) => !taken.has(id) && !newRequired.includes(id)
   );
-  if (isBlank(current.mandatorySkills) && newRequired.length > 0) {
-    add('mandatorySkills', newRequired, 'Required skills');
+  if (newRequired.length > 0) {
+    add('mandatorySkills', [...(current.mandatorySkills ?? []), ...newRequired], 'Required skills');
   }
-  if (isBlank(current.optionalSkills) && newOptional.length > 0) {
-    add('optionalSkills', newOptional, 'Optional skills');
+  if (newOptional.length > 0) {
+    add('optionalSkills', [...(current.optionalSkills ?? []), ...newOptional], 'Optional skills');
   }
 
   const { salary_min: min, salary_max: max, salary_period: period } = suggestions;

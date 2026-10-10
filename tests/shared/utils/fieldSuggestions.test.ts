@@ -4,6 +4,7 @@ import {
   planFieldFills,
   skillLabelEntries,
   unresolvedFieldNames,
+  unresolvedSkillNames,
 } from '../../../src/shared/utils/fieldSuggestions';
 
 const fieldsOf = (plan: ReturnType<typeof planFieldFills>) => plan.fills.map((f) => f.field);
@@ -150,12 +151,23 @@ describe('planFieldFills texts and skills', () => {
     ]);
   });
 
-  it('leaves a skills field alone when it already has skills', () => {
+  it('adds suggested skills to the ones already picked, keeping those', () => {
     const plan = planFieldFills(
       { required_skill_ids: ['a'], optional_skill_ids: ['c'] },
       { ...blank, mandatorySkills: ['x'] }
     );
-    expect(fieldsOf(plan)).toEqual(['optionalSkills']);
+    expect(plan.fills).toEqual([
+      { field: 'mandatorySkills', value: ['x', 'a'], label: 'Required skills' },
+      { field: 'optionalSkills', value: ['c'], label: 'Optional skills' },
+    ]);
+  });
+
+  it('fills nothing for skills when every suggestion is already picked', () => {
+    const plan = planFieldFills(
+      { required_skill_ids: ['x'] },
+      { ...blank, mandatorySkills: ['x'] }
+    );
+    expect(fieldsOf(plan)).toEqual([]);
   });
 
   it('never adds a skill that is already picked on either list', () => {
@@ -165,6 +177,7 @@ describe('planFieldFills texts and skills', () => {
     );
     expect(plan.fills).toEqual([
       { field: 'mandatorySkills', value: ['a'], label: 'Required skills' },
+      { field: 'optionalSkills', value: ['x', 'y', 'c'], label: 'Optional skills' },
     ]);
   });
 });
@@ -197,5 +210,18 @@ describe('unresolvedFieldNames', () => {
 
   it('is empty when nothing was unresolved', () => {
     expect(unresolvedFieldNames({})).toEqual({});
+  });
+});
+
+describe('unresolvedSkillNames', () => {
+  it('lists the skill names that matched nothing', () => {
+    expect(
+      unresolvedSkillNames({ unresolved: { department: 'Administration', skills: ['Excel', ' '] } })
+    ).toEqual(['Excel']);
+  });
+
+  it('is empty when there are none', () => {
+    expect(unresolvedSkillNames({})).toEqual([]);
+    expect(unresolvedSkillNames({ unresolved: { skills: 'x' } })).toEqual([]);
   });
 });

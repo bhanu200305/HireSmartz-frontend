@@ -335,7 +335,18 @@ const AcceptInvitation = () => {
       // already have typed a name (single invite or bulk import). The wire
       // carries one combined string — split on the first space into
       // firstName/the rest, since this form still collects them separately.
-      if (invitation.invited_name) {
+      if (invitation.first_name || invitation.last_name) {
+        // Already separate: no guessing where the first name ends.
+        if (invitation.first_name) {
+          setValue('firstName', invitation.first_name, {
+            shouldDirty: false,
+            shouldValidate: true,
+          });
+        }
+        if (invitation.last_name) {
+          setValue('lastName', invitation.last_name, { shouldDirty: false });
+        }
+      } else if (invitation.invited_name) {
         const [firstName, ...rest] = invitation.invited_name.trim().split(/\s+/);
         if (firstName) {
           setValue('firstName', firstName, { shouldDirty: false, shouldValidate: true });
@@ -429,8 +440,14 @@ const AcceptInvitation = () => {
         message: 'Account activated with two-factor authentication on. You can now log in.',
         type: 'success',
       });
+      // The email goes in the address too: router state alone is lost on a
+      // reload or a hard redirect. The login page removes it once it has read it.
+      const invitedEmail = invitation?.invited_email;
       setTimeout(
-        () => navigate('/login', { state: { prefillEmail: invitation?.invited_email } }),
+        () =>
+          navigate(invitedEmail ? `/login?email=${encodeURIComponent(invitedEmail)}` : '/login', {
+            state: { prefillEmail: invitedEmail },
+          }),
         2000
       );
     } catch (err: unknown) {

@@ -10,6 +10,31 @@ export type PlatformStaffMember = {
   department_name: string | null;
   status: string;
   created_at: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  title?: string | null;
+  country_code?: string | null;
+  phone_no?: string | null;
+};
+
+// An invitation not yet accepted — GET /v1/platform/staff `pending_invitations`.
+export type PendingPlatformInvitation = {
+  invitation_id: string;
+  email: string;
+  role: string;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  /** E.164, e.g. "+919876543210". */
+  phone: string | null;
+  department_id: string | null;
+  department_name: string | null;
+  expires_at: string;
+};
+
+export type PlatformStaffList = {
+  staff: PlatformStaffMember[];
+  pendingInvitations: PendingPlatformInvitation[];
 };
 
 export type PlatformDepartment = {
@@ -49,21 +74,20 @@ export type UploadOwnPlatformAvatarResult = {
   storage_key: string;
 };
 
-export type InviteSuperAdminRequest = {
-  email: string;
-};
-
-export type InviteSuperAdminResponse = {
-  invitation_id: string;
-  expires_at: string;
-  previously_suppressed: boolean;
-};
-
+// POST /v1/platform/staff/invitations — all three platform roles go here. Any
+// missing field, invalid phone, other role or extra field (e.g. a photo) is a
+// 422; 403 means the caller may not add that role.
 export type InvitePlatformStaffRequest = {
+  first_name: string;
+  last_name: string;
+  /** A courtesy title ("Mr", "Dr"), at most 20 characters. */
+  title: string;
   email: string;
-  department_id?: string;
-  /** Free text — there's no fixed list of internal roles yet. */
-  role: string;
+  country_code: string;
+  /** Digits only. */
+  phone_number: string;
+  role: 'super_admin' | 'cfp_admin' | 'cfp_support';
+  department_id: string | null;
 };
 
 export type InvitePlatformStaffResponse = {
@@ -82,6 +106,18 @@ const extendedApi = orgApi.injectEndpoints({
       transformResponse: (response: { staff: PlatformStaffMember[] }) => response.staff,
       providesTags: ['PlatformStaff'],
     }),
+    // The same endpoint with the invitations that are still waiting.
+    listPlatformStaffWithInvitations: build.query<PlatformStaffList, void>({
+      query: () => '/v1/platform/staff',
+      transformResponse: (response: {
+        staff: PlatformStaffMember[];
+        pending_invitations?: PendingPlatformInvitation[];
+      }): PlatformStaffList => ({
+        staff: response.staff,
+        pendingInvitations: response.pending_invitations ?? [],
+      }),
+      providesTags: ['PlatformStaff'],
+    }),
     listPlatformDepartments: build.query<PlatformDepartment[], void>({
       query: () => '/v1/platform/departments',
       transformResponse: (response: { departments: PlatformDepartment[] }) => response.departments,
@@ -94,14 +130,6 @@ const extendedApi = orgApi.injectEndpoints({
         body: { department_name },
       }),
       invalidatesTags: ['PlatformDepartments'],
-    }),
-    inviteSuperAdmin: build.mutation<InviteSuperAdminResponse, InviteSuperAdminRequest>({
-      query: (body) => ({
-        url: '/v1/platform/super-admins/invitations',
-        method: 'POST',
-        body,
-      }),
-      invalidatesTags: ['PlatformStaff'],
     }),
     invitePlatformStaff: build.mutation<InvitePlatformStaffResponse, InvitePlatformStaffRequest>({
       query: (body) => ({
@@ -165,9 +193,9 @@ const extendedApi = orgApi.injectEndpoints({
 
 export const {
   useListPlatformStaffQuery,
+  useListPlatformStaffWithInvitationsQuery,
   useListPlatformDepartmentsQuery,
   useCreatePlatformDepartmentMutation,
-  useInviteSuperAdminMutation,
   useInvitePlatformStaffMutation,
   useOffboardPlatformStaffMutation,
   useGetOwnPlatformProfileQuery,

@@ -31,6 +31,7 @@ import {
   planFieldFills,
   skillLabelEntries,
   unresolvedFieldNames,
+  unresolvedSkillNames,
   type FieldSuggestions,
 } from '../../../shared/utils/fieldSuggestions';
 import { useUpdateJobOpeningMutation } from '../../../api/job-service/JobOpening/UpdateJobOpening';
@@ -527,9 +528,16 @@ const JobDetails = () => {
         return next;
       });
     }
+    // Skills named in the prompt that are not in the catalogue can't be picked;
+    // say so, so they can be added from the skills box.
+    const missingSkills = unresolvedSkillNames(suggestions);
+    const missingSkillsNote =
+      missingSkills.length > 0
+        ? ` Skills not in your list: ${missingSkills.join(', ')}. Add them from the skills box.`
+        : '';
     return plan.labels.length > 0
-      ? `Filled: ${plan.labels.join(', ')}. Review before saving.`
-      : 'Nothing new to fill from that description.';
+      ? `Filled: ${plan.labels.join(', ')}. Review before saving.${missingSkillsNote}`
+      : `Nothing new to fill from that description.${missingSkillsNote}`;
   };
 
   const handleLocationChange = (locationId: string | number) => {

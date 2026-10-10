@@ -13,6 +13,7 @@ import { useResendVerificationMutation } from '../../api/authentication-service/
 import { useDispatch } from 'react-redux';
 import { loginStore } from '../../redux/slices/loginSlice';
 import { z } from 'zod';
+import { clearPendingInvitedEmail, resolvePrefillEmail, searchWithoutEmail } from './prefillEmail';
 import { Loader } from '../shared/ui/loader';
 import './login.css';
 import Footer from '../Footer';
@@ -114,17 +115,23 @@ const Login = () => {
   useEffect(() => {
     if (hasShownSuccessToastRef.current) return;
     const state = location.state as { successMessage?: string; prefillEmail?: string } | null;
+    const hasEmailParam = new URLSearchParams(location.search).has('email');
     if (state?.successMessage) {
       hasShownSuccessToastRef.current = true;
       showToast({ message: state.successMessage, type: 'success' });
     }
-    if (state?.successMessage || state?.prefillEmail) {
+    if (state?.successMessage || state?.prefillEmail || hasEmailParam) {
       hasShownSuccessToastRef.current = true;
       // Clear the state so neither the toast nor the prefilled email
       // re-appears on refresh/back — the latter especially shouldn't linger
       // in history state on a shared machine. The email itself was already
       // read into localState's initial value below before this runs.
-      navigate(location.pathname, { replace: true, state: {} });
+      // The `?email=` parameter goes too (other parameters, e.g. `reason`, stay
+      // for the effect below to read).
+      navigate(
+        { pathname: location.pathname, search: searchWithoutEmail(location.search) },
+        { replace: true, state: {} }
+      );
     }
   }, []);
 
@@ -158,7 +165,10 @@ const Login = () => {
   const [localState, setLocalState] = useReducer(
     (prevState, newState) => ({ ...prevState, ...newState }),
     {
-      email: (location.state as { prefillEmail?: string } | null)?.prefillEmail || '',
+      email: resolvePrefillEmail(
+        location.state as { prefillEmail?: string } | null,
+        location.search
+      ),
       password: '',
       errors: {} as FormErrors,
       rememberMe: Boolean(getLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_ME)) === true,
@@ -179,6 +189,9 @@ const Login = () => {
   const [fetchOwnPlatformProfile] = useLazyGetOwnPlatformProfileQuery();
 
   useEffect(() => {
+    // An email from an accepted invitation wins over saved credentials (which
+    // belong to someone else on this browser).
+    if (resolvePrefillEmail(null, '')) return;
     if (rememberMe) {
       const savedCredentials = getLocalStorageItem(LOCALSTORAGE_KEYS.REMEMBER_CREDENTIALS);
       if (savedCredentials) {
@@ -238,6 +251,8 @@ const Login = () => {
       processedValue = value.replace(/\s/g, ''); // Remove all spaces from email
     }
 
+    // Typing an email of their own ends the invited-email prefill.
+    if (name === 'email') clearPendingInvitedEmail();
     setLocalState({ [name]: processedValue });
 
     // Real-time validation with shouldValidate: true

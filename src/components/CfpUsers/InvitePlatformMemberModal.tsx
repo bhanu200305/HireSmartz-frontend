@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Select } from 'antd';
-import { FaPlus } from 'react-icons/fa';
-import { Button, Input, showToast } from '../shared';
+import { Button, Input, NameTitleSelect, PhoneNumberField, showToast } from '../shared';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
 import {
-  useInviteSuperAdminMutation,
   useInvitePlatformStaffMutation,
   PlatformDepartment,
 } from '../../api/organization-service/Platform/staff';
-import { useRolesCatalog } from '../../hooks/useRolesCatalog';
-import useEffectivePermissions from '../../hooks/useEffectivePermissions';
+import useHasAccess from '../../hooks/useHasAccess';
 import { Authorities } from '../../constants/authorities.constant';
+import { FORM_EMAIL_REGEX } from '../../constants/app.constants';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
-import CreateRoleModal from '../RolesManagement/CreateRoleModal';
+import {
+  isPhoneValidForCountry,
+  PHONE_VALIDATION_MESSAGE,
+} from '../../shared/utils/validation/phoneValidation';
+import { cleanPhoneNumber } from '../../shared/utils/methods';
 import { useEnterToSubmit } from '../../hooks/useEnterToSubmit';
+import { assignableRoles, type PlatformRole } from './staffRows';
 
 type InvitePlatformMemberModalProps = {
   open: boolean;
@@ -22,158 +25,232 @@ type InvitePlatformMemberModalProps = {
   onInvited: () => void;
 };
 
-/** §B — POST /platform/super-admins/invitations (email only) and
- * POST /platform/staff/invitations (email, department optional, role).
- * One modal, a type toggle, since both are the same kind of action with a
- * different destination.
- *
- * `role` is still a plain string on the wire (InvitePlatformStaffRequest —
- * no `role_id` field exists, matching how a platform membership's role is
- * stored: `MembershipModel.role` matched by NAME against `master_role.role`
- * for `tenant_id IS NULL`, not a foreign key). What changed is where that
- * string comes from: previously free text with no fixed list ("there's no
- * fixed list of internal roles yet", per docs/frontend_guide.txt — stale as
- * of this session's earlier RBAC work, which gave GET /platform/roles a real
- * catalog). Now it's picked from that same catalog via useRolesCatalog, so a
- * typo can no longer silently mint a membership whose role matches nothing
- * in master_role and therefore grants nothing. "+ Custom Role" covers the
- * case the fixed list doesn't — same CreateRoleModal Roles & Permissions
- * uses, scoped platform (`tenantId` omitted — a platform-owned role belongs
- * to no tenant). */
+type FieldErrors = Partial<
+  Record<'firstName' | 'lastName' | 'title' | 'email' | 'phone' | 'role', string>
+>;
+
+const DEFAULT_COUNTRY_CODE = '+1';
+const NAME_MAX = 100;
+
+/**
+ * Add CFP User: one form for all three platform roles (Superadmin, Admin,
+ * Support User), sent to POST /platform/staff/invitations. A Superadmin
+ * (platform:write) can pick any role; anyone else only gets Support User,
+ * preselected and locked. There is no photo field.
+ */
 const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
   open,
   departments,
   onClose,
   onInvited,
 }) => {
-  const [kind, setKind] = useState<'super_admin' | 'staff'>('staff');
+  const canAddAnyRole = useHasAccess(Authorities.PLATFORM_INVITE);
+  const roleOptions = assignableRoles(canAddAnyRole);
+  const lockedRole: PlatformRole | undefined = canAddAnyRole ? undefined : 'cfp_support';
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [title, setTitle] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<PlatformRole | undefined>(lockedRole);
   const [departmentId, setDepartmentId] = useState<string | undefined>(undefined);
-  const [createRoleOpen, setCreateRoleOpen] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
 
-  const [inviteSuperAdmin, { isLoading: isInvitingSuperAdmin }] = useInviteSuperAdminMutation();
-  const [inviteStaff, { isLoading: isInvitingStaff }] = useInvitePlatformStaffMutation();
-  const isLoading = isInvitingSuperAdmin || isInvitingStaff;
-
-  const {
-    roles: platformRoles,
-    createRole,
-    isForbidden: rolesForbidden,
-  } = useRolesCatalog({
-    scope: 'platform',
-    isMaster: true,
-  });
-  const effectivePermissions = useEffectivePermissions();
-  const canCreateRole = effectivePermissions.includes(Authorities.ROLE_CREATE);
+  const [inviteStaff, { isLoading }] = useInvitePlatformStaffMutation();
 
   const reset = () => {
-    setKind('staff');
+    setFirstName('');
+    setLastName('');
+    setTitle('');
     setEmail('');
-    setRole('');
+    setCountryCode(DEFAULT_COUNTRY_CODE);
+    setPhone('');
+    setRole(lockedRole);
     setDepartmentId(undefined);
+    setErrors({});
   };
+
+  // The locked role is picked for them as soon as the form opens.
+  useEffect(() => {
+    if (open && lockedRole) setRole(lockedRole);
+  }, [open, lockedRole]);
 
   const handleClose = () => {
     reset();
     onClose();
   };
 
-  const isFormValid = email.trim().length > 0 && (kind !== 'staff' || role.trim().length > 0);
+  const validate = (): FieldErrors => {
+    const next: FieldErrors = {};
+    if (!firstName.trim()) next.firstName = 'First name is required.';
+    if (!lastName.trim()) next.lastName = 'Last name is required.';
+    if (!title.trim()) next.title = 'Title is required.';
+    if (!email.trim()) next.email = 'Email is required.';
+    else if (!FORM_EMAIL_REGEX.test(email.trim())) next.email = 'Enter a valid email address.';
+    if (!phone.trim()) next.phone = 'Phone number is required.';
+    else if (!isPhoneValidForCountry(phone, countryCode)) next.phone = PHONE_VALIDATION_MESSAGE;
+    if (!role) next.role = 'Role is required.';
+    return next;
+  };
 
   const handleSubmit = async () => {
-    if (!email.trim()) {
-      showToast({ message: 'Email is required.', type: 'error' });
-      return;
-    }
-    if (kind === 'staff' && !role.trim()) {
-      showToast({ message: 'Role is required for internal staff.', type: 'error' });
-      return;
-    }
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length > 0 || !role) return;
     try {
-      if (kind === 'super_admin') {
-        await inviteSuperAdmin({ email: email.trim() }).unwrap();
-      } else {
-        await inviteStaff({
-          email: email.trim(),
-          role: role.trim(),
-          department_id: departmentId,
-        }).unwrap();
-      }
+      await inviteStaff({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        title: title.trim(),
+        email: email.trim(),
+        country_code: countryCode,
+        phone_number: cleanPhoneNumber(phone),
+        role,
+        department_id: departmentId ?? null,
+      }).unwrap();
       showToast({ message: `Invite sent to ${email.trim()}.`, type: 'success' });
       reset();
       onInvited();
     } catch (err) {
-      showToast({ message: getOrgErrorMessage(err, 'Failed to send invite.'), type: 'error' });
+      const status = (err as { status?: number })?.status;
+      showToast({
+        message:
+          status === 403
+            ? "You don't have permission to add a user with that role."
+            : getOrgErrorMessage(err, 'Failed to send invite.'),
+        type: 'error',
+      });
     }
   };
 
   const { onKeyDown: handleEnterToSubmit } = useEnterToSubmit(handleSubmit, {
-    enabled: open && !isLoading && isFormValid,
+    enabled: open && !isLoading,
   });
 
+  const fieldError = (message?: string) =>
+    message ? <p className="text-red-500 text-sm px-2 py-1">{message}</p> : null;
+
+  const required = <span className="required-asterisk">*</span>;
+  const inputClass =
+    'bg-white w-full px-4 py-2 mt-1 border rounded-3xl focus:ring focus:ring-brand-300 border-[var(--border)]';
+
   return (
-    <AntdCommonModal open={open} onClose={handleClose} title="Invite Platform Member">
-      <div className="flex flex-col gap-4" onKeyDown={handleEnterToSubmit}>
-        <Select
-          value={kind}
-          onChange={setKind}
-          options={[
-            { label: 'Internal staff (Sales, Support, Finance, Ops…)', value: 'staff' },
-            { label: 'Super Admin / Co-Founder', value: 'super_admin' },
-          ]}
-        />
-        <Input
-          type="email"
-          noAutoCapitalize
-          maxLength={320}
-          placeholder="Email *"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        {kind === 'staff' && (
-          <>
-            <Select
-              placeholder="Role *"
-              value={role || undefined}
-              onChange={setRole}
-              showSearch
-              optionFilterProp="label"
-              disabled={rolesForbidden}
-              notFoundContent={
-                rolesForbidden ? "You don't have permission to view platform roles." : undefined
-              }
-              options={platformRoles
-                .filter((r) => r.roleName !== 'super_admin')
-                .map((r) => ({ label: r.roleName, value: r.roleName }))}
+    <AntdCommonModal
+      open={open}
+      onClose={handleClose}
+      title="Add CFP User"
+      modalProps={{ width: 640 }}
+    >
+      <div
+        className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
+        onKeyDown={handleEnterToSubmit}
+      >
+        <div>
+          <label htmlFor="cfpFirstName" className="text-sm text-gray-600">
+            First Name {required}
+          </label>
+          <Input
+            id="cfpFirstName"
+            maxLength={NAME_MAX}
+            placeholder="First Name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className={inputClass}
+          />
+          {fieldError(errors.firstName)}
+        </div>
+        <div>
+          <label htmlFor="cfpLastName" className="text-sm text-gray-600">
+            Last Name {required}
+          </label>
+          <Input
+            id="cfpLastName"
+            maxLength={NAME_MAX}
+            placeholder="Last Name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className={inputClass}
+          />
+          {fieldError(errors.lastName)}
+        </div>
+
+        <div>
+          <label htmlFor="cfpTitle" className="text-sm text-gray-600">
+            Title {required}
+          </label>
+          <NameTitleSelect
+            id="cfpTitle"
+            className="w-full mt-1"
+            value={title || undefined}
+            onChange={(value) => setTitle(value ?? '')}
+          />
+          {fieldError(errors.title)}
+        </div>
+        <div>
+          <label htmlFor="cfpEmail" className="text-sm text-gray-600">
+            Email {required}
+          </label>
+          <Input
+            id="cfpEmail"
+            type="email"
+            noAutoCapitalize
+            maxLength={320}
+            placeholder="name@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value.replace(/\s/g, ''))}
+            className={inputClass}
+          />
+          {fieldError(errors.email)}
+        </div>
+
+        <div>
+          <p className="text-sm text-gray-600">Phone Number {required}</p>
+          <div className="mt-1">
+            <PhoneNumberField
+              countryCode={countryCode}
+              onCountryCodeChange={setCountryCode}
+              phoneNumber={phone}
+              onPhoneNumberChange={setPhone}
             />
-            {rolesForbidden && (
-              <p className="text-xs text-red-500">
-                You don&apos;t have permission to view platform roles, so none can be picked here.
-                Ask an admin to grant role-read access.
-              </p>
-            )}
-            {canCreateRole && (
-              <button
-                type="button"
-                onClick={() => setCreateRoleOpen(true)}
-                className="self-start inline-flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 rounded-full px-3 py-1.5 hover:bg-primary-50 cursor-pointer"
-              >
-                <FaPlus size={9} /> Custom Role
-              </button>
-            )}
-            <Select
-              placeholder="Department (optional)"
-              value={departmentId}
-              onChange={setDepartmentId}
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              options={departments.map((d) => ({ label: d.name, value: d.department_id }))}
-            />
-          </>
-        )}
-        <div className="grid grid-cols-2 gap-4">
+          </div>
+          {fieldError(errors.phone)}
+        </div>
+        <div>
+          <label htmlFor="cfpRole" className="text-sm text-gray-600">
+            Role {required}
+          </label>
+          <Select
+            id="cfpRole"
+            className="w-full mt-1"
+            placeholder="Select Role"
+            value={role}
+            onChange={(value) => setRole(value)}
+            disabled={Boolean(lockedRole)}
+            options={roleOptions}
+          />
+          {fieldError(errors.role)}
+        </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="cfpDepartment" className="text-sm text-gray-600">
+            Department
+          </label>
+          <Select
+            id="cfpDepartment"
+            className="w-full mt-1"
+            placeholder="Department (optional)"
+            value={departmentId}
+            onChange={setDepartmentId}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={departments.map((d) => ({ label: d.name, value: d.department_id }))}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:col-span-2 mt-2">
           <Button
             className="w-full border border-gray-300 rounded-full py-2"
             onClick={handleClose}
@@ -184,28 +261,12 @@ const InvitePlatformMemberModal: React.FC<InvitePlatformMemberModalProps> = ({
           <Button
             className="w-full bg-button text-white rounded-full py-2"
             onClick={handleSubmit}
-            disabled={isLoading || !isFormValid}
+            disabled={isLoading}
           >
             {isLoading ? 'Sending…' : 'Send Invite'}
           </Button>
         </div>
       </div>
-
-      <CreateRoleModal
-        open={createRoleOpen}
-        onClose={() => setCreateRoleOpen(false)}
-        scope="platform"
-        availableLocations={[]}
-        roles={platformRoles}
-        onCreate={async (payload) => {
-          const created = await createRole(payload);
-          // Same "select it the moment it's created" behaviour as the
-          // tenant-side RoleLocationPicker's own "+ Custom Role" — no second
-          // trip back to this dropdown to find and pick what was just made.
-          setRole(created.roleName);
-          return created;
-        }}
-      />
     </AntdCommonModal>
   );
 };
