@@ -137,7 +137,8 @@ export type JobSkillView = {
   skill_type: SkillType;
   skill_label: string;
   category: string | null;
-  source: string | null;
+  // master_skill_source id: 0 manual, 1 title mapping, 2 AI extracted.
+  source_id: number;
 };
 
 export type JobDetailsResponse = {
@@ -265,7 +266,8 @@ export type SuggestedSkill = {
   skill_label: string;
   category: string | null;
   suggested_skill_type: SkillType;
-  source: 'TITLE_MAPPING' | 'AI_EXTRACTED';
+  // master_skill_source id: 1 title mapping, 2 AI extracted.
+  source_id: 1 | 2;
 };
 
 export type SuggestedSkillsResponse = {
@@ -336,7 +338,8 @@ export type AudioQuestionsResponse = {
 export type JobQuestion = {
   id: string;
   question_text: string;
-  source: string;
+  // master_question_source id: 0 manual, 1 AI generated.
+  source_id: number;
   answer_text: string | null;
   interview_round_id: string | null;
   topic_skill: string | null;

@@ -9,6 +9,7 @@ import {
   HiOutlineDocumentDuplicate,
 } from 'react-icons/hi';
 import { MdClose, MdDownload } from 'react-icons/md';
+import { FALLBACK_EXTENSIONS, joinExtensions } from './uploadFormats';
 
 export interface ImportWarningItem {
   type: 'error' | 'duplicate';
@@ -53,6 +54,8 @@ interface UploadAndGenerateHeaderProps {
   generateDisabled?: boolean;
   /** Forces description-above-buttons layout for narrow-column callers. */
   stacked?: boolean;
+  /** File types the upload takes, from the backend. */
+  acceptedExtensions?: string[];
 }
 
 export const UploadAndGenerateHeader = ({
@@ -71,7 +74,9 @@ export const UploadAndGenerateHeader = ({
   isUploading = false,
   isDownloading = false,
   generateDisabled = false,
+  acceptedExtensions,
 }: UploadAndGenerateHeaderProps) => {
+  const extensions = acceptedExtensions?.length ? acceptedExtensions : FALLBACK_EXTENSIONS;
   const skippedCount = failedCount + duplicateCount;
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [filesOpen, setFilesOpen] = React.useState(false);
@@ -101,7 +106,7 @@ export const UploadAndGenerateHeader = ({
       Upload File
       <input
         type="file"
-        accept=".xlsx,.csv"
+        accept={extensions.join(',')}
         className="hidden"
         onChange={onUpload}
         disabled={uploadDisabled}
@@ -115,7 +120,7 @@ export const UploadAndGenerateHeader = ({
         <Tooltip title="Generates questions from the job description and this round's focus areas.">
           <span>{generateButton}</span>
         </Tooltip>
-        <Tooltip title="Import questions from an .xlsx or .csv file.">
+        <Tooltip title={`Import questions from an ${joinExtensions(extensions)} file.`}>
           <span>{uploadLabel}</span>
         </Tooltip>
         <Tooltip title="Download the .xlsx import template.">
@@ -274,7 +279,7 @@ export const UploadAndGenerateHeader = ({
             {
               type: 'duplicate' as const,
               title: 'Skipped duplicates',
-              hint: 'The question already exists, so these were not added.',
+              hint: 'The question is already in this round, so these were not added.',
             },
           ].map(({ type, title, hint }) => {
             const items = warnings.filter((warn) => warn.type === type);

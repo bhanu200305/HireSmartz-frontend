@@ -129,7 +129,7 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     generalQuestions: (job.questions ?? []).map((q) => ({
       id: q.id as unknown as number,
       question: q.question_text,
-      status: q.source,
+      status: null,
       jobOpeningId: job.org_job_opening_id as unknown as number,
       interviewRoundId: q.interview_round_id as unknown as number,
     })),

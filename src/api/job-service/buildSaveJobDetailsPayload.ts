@@ -3,6 +3,7 @@ import type { JobDetailsState } from '../../types';
 import type { TenantOffice } from '../organization-service/Tenants/offices';
 import type { SuggestedSkill } from './JobOpenings/types';
 import { toMoneyOrNull } from '../../shared/utils/money';
+import { SKILL_SOURCE } from './sourceIds';
 
 type BuildSaveDetailsArgs = {
   data: Partial<JobDetailsState> & {
@@ -12,7 +13,7 @@ type BuildSaveDetailsArgs = {
     requirements?: string;
   };
   offices?: TenantOffice[];
-  // Tags each skill's source (title_mapping/ai_extracted) if it's still
+  // Tags each skill's source (title mapping / AI extracted) if it's still
   // a live suggestion, else defaults to manual.
   suggestedSkills?: SuggestedSkill[];
 };
@@ -21,12 +22,14 @@ const suggestionSourceFor = (
   skillId: string,
   skillType: 'required' | 'optional',
   suggestedSkills: SuggestedSkill[]
-): JobSkillPayload['source'] => {
+): JobSkillPayload['source_id'] => {
   const match = suggestedSkills.find(
     (s) => String(s.skill_id) === skillId && s.suggested_skill_type.toLowerCase() === skillType
   );
   if (!match) return undefined;
-  return match.source === 'AI_EXTRACTED' ? 'ai_extracted' : 'title_mapping';
+  return match.source_id === SKILL_SOURCE.AI_EXTRACTED
+    ? SKILL_SOURCE.AI_EXTRACTED
+    : SKILL_SOURCE.TITLE_MAPPING;
 };
 
 const firstId = (value: unknown): string | null => {
@@ -105,14 +108,14 @@ export const buildSaveJobDetailsPayload = ({
     .map((skill_id) => ({
       skill_id,
       skill_type: 'required',
-      source: suggestionSourceFor(skill_id, 'required', suggestedSkills),
+      source_id: suggestionSourceFor(skill_id, 'required', suggestedSkills),
     }));
   const optional: JobSkillPayload[] = toIdList(data.optionalSkills)
     .filter(isUuid)
     .map((skill_id) => ({
       skill_id,
       skill_type: 'optional',
-      source: suggestionSourceFor(skill_id, 'optional', suggestedSkills),
+      source_id: suggestionSourceFor(skill_id, 'optional', suggestedSkills),
     }));
 
   return {

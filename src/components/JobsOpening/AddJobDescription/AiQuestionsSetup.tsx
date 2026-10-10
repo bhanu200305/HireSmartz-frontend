@@ -20,6 +20,7 @@ import {
   useGenerateJobQuestionsMutation,
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
+  useGetQuestionImportFormatsQuery,
   useGetQuestionImportsQuery,
   useLazyGetQuestionImportTemplateQuery,
   jobQuestionsApi,
@@ -53,6 +54,7 @@ import {
 import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGenerateHeader';
 import InlineQuestionInput from './InlineQuestionInput';
 import QuestionRowItem from './QuestionRowItem';
+import { isRepeat, splitRepeats } from './questionRepeats';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 
@@ -289,6 +291,8 @@ const AiQuestionsSetup = () => {
       jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
       selectedRoundInstanceId) ||
     defaultRoundInstanceId;
+  // The file types the upload accepts, from the backend.
+  const { data: importFormats } = useGetQuestionImportFormatsQuery();
   // Files bulk-imported into this round, newest first.
   const { data: questionImports } = useGetQuestionImportsQuery(
     { jobOpeningId: activeJobOpeningId ?? '', interviewRoundId: activeRoundInstanceId },
@@ -311,15 +315,8 @@ const AiQuestionsSetup = () => {
     () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
     [questions, activeRoundInstanceId]
   );
-  // After an add, scroll the list to the top where the new question is.
   const questionListRef = useRef<HTMLDivElement>(null);
-  const scrollToEndAfterAddRef = useRef(false);
-  useEffect(() => {
-    if (!scrollToEndAfterAddRef.current) return;
-    scrollToEndAfterAddRef.current = false;
-    const list = questionListRef.current;
-    if (list) list.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [visibleQuestions.length]);
+  const scrollToTopAfterAddRef = useRef(false);
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
   const questionsSnapshotKey = useMemo(() => questions.map((q) => q.id).join(','), [questions]);
 
@@ -401,6 +398,7 @@ const AiQuestionsSetup = () => {
     latest: { id: string; interview_round_id?: string | null }[],
     roundId: string | null
   ) => {
+    scrollToTopAfterAddRef.current = true;
     const before = new Set((questionSnapshotBeforeGenerateRef.current ?? '').split(','));
     setSelectedIds(
       latest
@@ -437,6 +435,13 @@ const AiQuestionsSetup = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGeneratingQuestions, questionsSnapshotKey]);
 
+  // New questions are added at the top, so show the top, not wherever the list was.
+  useEffect(() => {
+    if (!scrollToTopAfterAddRef.current) return;
+    scrollToTopAfterAddRef.current = false;
+    questionListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [visibleQuestions]);
+
   // Safety net so polling doesn't run forever. Does one last refetch before
   // giving up, in case generation finished right around the timeout.
   useEffect(() => {
@@ -448,6 +453,7 @@ const AiQuestionsSetup = () => {
       if (latestKey !== questionSnapshotBeforeGenerateRef.current) {
         setIsGeneratingQuestions(false);
         selectGeneratedQuestions(latestQuestions, roundBeingGeneratedForRef.current);
+        questionListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
         showToast({ message: 'Questions generated', type: 'success' });
         if (roundBeingGeneratedForRef.current) {
           setOpenSectionKey(roundBeingGeneratedForRef.current);
@@ -581,13 +587,14 @@ const AiQuestionsSetup = () => {
             reason:
               row.duplicate_of === 'file' && row.first_row_number != null
                 ? `Same question as row ${row.first_row_number} in this file`
-                : "Already in this job's questions",
+                : 'Already in this round',
             questionText: row.question_text,
           })
         ),
       ]);
       // No same-shape response to upsert here (unlike persistQuestions
       // above) - wait for the real refetch before returning.
+      scrollToTopAfterAddRef.current = (res.imported_count ?? 0) > 0;
       await refetchQuestions();
       const skipped = (res.failed_rows?.length ?? 0) + (res.skipped_duplicate_rows?.length ?? 0);
       if ((res.imported_count ?? 0) === 0) {
@@ -630,18 +637,42 @@ const AiQuestionsSetup = () => {
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean);
+      // A repeat is judged within this round only.
+      const { fresh, repeats } = splitRepeats(
+        lines,
+        visibleQuestions.map((q) => q.question_text)
+      );
+      if (fresh.length === 0) {
+        showToast({
+          message:
+            repeats.length === 1
+              ? 'This question is already in this round.'
+              : 'These questions are already in this round.',
+          type: 'error',
+        });
+        setIsInlineSubmitting(false);
+        return;
+      }
       const next: QuestionRequest[] = [
         ...questions.map(toQuestionRequest),
-        ...lines.map((question_text) => ({
+        ...fresh.map((question_text) => ({
           question_text,
           interview_round_id: activeRoundInstanceId,
         })),
       ];
-      scrollToEndAfterAddRef.current = true;
+      scrollToTopAfterAddRef.current = true;
       await persistQuestions(next);
-      showToast({ message: 'Questions added successfully', type: 'success' });
+      showToast(
+        repeats.length > 0
+          ? {
+              message: `${fresh.length} added, ${repeats.length} skipped - already in this round.`,
+              type: 'warning',
+            }
+          : { message: 'Questions added successfully', type: 'success' }
+      );
       setInlineInputText('');
     } catch (err) {
+      scrollToTopAfterAddRef.current = false;
       showToast({
         message: describeGenerateQuestionsError(err, 'Error saving questions'),
         type: 'error',
@@ -689,6 +720,16 @@ const AiQuestionsSetup = () => {
     const normalizedQuestion = editedQuestionText.trim();
     if (!normalizedQuestion) {
       showToast({ message: 'Question is required.', type: 'error' });
+      return;
+    }
+    const otherQuestions = visibleQuestions.filter((q) => q.id !== editingQuestion.id);
+    if (
+      isRepeat(
+        normalizedQuestion,
+        otherQuestions.map((q) => q.question_text)
+      )
+    ) {
+      showToast({ message: 'This question is already in this round.', type: 'error' });
       return;
     }
 
@@ -1085,7 +1126,7 @@ const AiQuestionsSetup = () => {
                     ) : (
                       <div
                         ref={questionListRef}
-                        className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1"
+                        className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1 [overflow-anchor:none]"
                       >
                         {visibleQuestions.map((q, index) => (
                           <QuestionRowItem
@@ -1122,6 +1163,7 @@ const AiQuestionsSetup = () => {
                       onGenerate={() => setShowGenerateConsentModal(true)}
                       onUpload={handleFileUpload}
                       onDownloadTemplate={handleDownloadTemplate}
+                      acceptedExtensions={importFormats?.extensions}
                       uploadedFileName={uploadedFileName}
                       importedCount={importedCount}
                       failedCount={failedRowCount}

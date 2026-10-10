@@ -3,6 +3,7 @@ import type {
   AudioQuestionResponse,
   FailedQuestionRowResponse,
   JobQuestionsResponse,
+  QuestionImportFormatsResponse,
   QuestionImportResponse,
   QuestionRequest,
   QuestionResponse,
@@ -143,6 +144,13 @@ export const jobQuestionsApi = jobApi.injectEndpoints({
       providesTags: (_r, _e, { jobOpeningId }) => [{ type: 'QuestionImports', id: jobOpeningId }],
     }),
 
+    getQuestionImportFormats: build.query<QuestionImportFormatsResponse, void>({
+      query: () => ({
+        url: '/master/question-import-formats',
+        method: 'GET',
+      }),
+    }),
+
     getQuestionImportTemplate: build.query<{ download_url: string; expires_in: number }, void>({
       query: () => ({
         url: '/master/question-import-template',
@@ -242,6 +250,7 @@ export const {
   useRegenerateJobQuestionsMutation,
   useBulkImportJobQuestionsMutation,
   useGetQuestionImportsQuery,
+  useGetQuestionImportFormatsQuery,
   useLazyGetQuestionImportTemplateQuery,
   useGetJobIntakeQuestionsQuery,
   useImportJobIntakeQuestionsMutation,

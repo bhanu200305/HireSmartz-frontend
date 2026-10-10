@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildSaveJobDetailsPayload } from '../../../src/api/job-service/buildSaveJobDetailsPayload';
 import type { SuggestedSkill } from '../../../src/api/job-service/JobOpenings/types';
+import { SKILL_SOURCE } from '../../../src/api/job-service/sourceIds';
 
 const SKILL_A = '11111111-1111-1111-1111-111111111111';
 const SKILL_B = '22222222-2222-2222-2222-222222222222';
@@ -10,49 +11,54 @@ const suggestion = (overrides: Partial<SuggestedSkill> = {}): SuggestedSkill => 
   skill_label: 'Python',
   category: null,
   suggested_skill_type: 'required',
-  source: 'AI_EXTRACTED',
+  source_id: SKILL_SOURCE.AI_EXTRACTED,
   ...overrides,
 });
 
 describe('buildSaveJobDetailsPayload — skill source tagging', () => {
-  it('tags a mandatory skill still in the suggestion list as ai_extracted', () => {
+  it('tags a mandatory skill still in the suggestion list as AI extracted', () => {
     const result = buildSaveJobDetailsPayload({
       data: { mandatorySkills: [SKILL_A] },
-      suggestedSkills: [suggestion({ source: 'AI_EXTRACTED' })],
+      suggestedSkills: [suggestion({ source_id: SKILL_SOURCE.AI_EXTRACTED })],
     });
 
     expect(result.skills).toEqual([
-      { skill_id: SKILL_A, skill_type: 'required', source: 'ai_extracted' },
+      { skill_id: SKILL_A, skill_type: 'required', source_id: SKILL_SOURCE.AI_EXTRACTED },
     ]);
   });
 
-  it('tags a skill from TITLE_MAPPING as title_mapping', () => {
+  it('tags a title-mapped skill as title mapping', () => {
     const result = buildSaveJobDetailsPayload({
       data: { optionalSkills: [SKILL_A] },
-      suggestedSkills: [suggestion({ suggested_skill_type: 'optional', source: 'TITLE_MAPPING' })],
+      suggestedSkills: [
+        suggestion({
+          suggested_skill_type: 'optional',
+          source_id: SKILL_SOURCE.TITLE_MAPPING,
+        }),
+      ],
     });
 
     expect(result.skills).toEqual([
-      { skill_id: SKILL_A, skill_type: 'optional', source: 'title_mapping' },
+      { skill_id: SKILL_A, skill_type: 'optional', source_id: SKILL_SOURCE.TITLE_MAPPING },
     ]);
   });
 
-  it('leaves source undefined for a skill not in the suggestion list', () => {
+  it('leaves source_id undefined for a skill not in the suggestion list', () => {
     const result = buildSaveJobDetailsPayload({
       data: { mandatorySkills: [SKILL_B] },
       suggestedSkills: [suggestion({ skill_id: SKILL_A })],
     });
 
     expect(result.skills).toEqual([
-      { skill_id: SKILL_B, skill_type: 'required', source: undefined },
+      { skill_id: SKILL_B, skill_type: 'required', source_id: undefined },
     ]);
   });
 
-  it('leaves source undefined when no suggestions were passed at all', () => {
+  it('leaves source_id undefined when no suggestions were passed at all', () => {
     const result = buildSaveJobDetailsPayload({ data: { mandatorySkills: [SKILL_A] } });
 
     expect(result.skills).toEqual([
-      { skill_id: SKILL_A, skill_type: 'required', source: undefined },
+      { skill_id: SKILL_A, skill_type: 'required', source_id: undefined },
     ]);
   });
 
@@ -64,7 +70,7 @@ describe('buildSaveJobDetailsPayload — skill source tagging', () => {
     });
 
     expect(result.skills).toEqual([
-      { skill_id: SKILL_A, skill_type: 'required', source: undefined },
+      { skill_id: SKILL_A, skill_type: 'required', source_id: undefined },
     ]);
   });
 });

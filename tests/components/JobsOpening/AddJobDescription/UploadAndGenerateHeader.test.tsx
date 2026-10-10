@@ -23,7 +23,7 @@ const warnings: ImportWarningItem[] = [
   {
     type: 'duplicate',
     row: 11,
-    reason: "already in this job's questions",
+    reason: 'already in this round',
     questionText: 'Explain decorators.',
   },
 ];
@@ -53,7 +53,7 @@ describe('UploadAndGenerateHeader import details', () => {
     expect(screen.getByText('Rows that were skipped')).toBeTruthy();
     expect(screen.getByText('Not imported (2)')).toBeTruthy();
     expect(screen.getByText('Skipped duplicates (2)')).toBeTruthy();
-    expect(screen.getByText(/The question already exists/)).toBeTruthy();
+    expect(screen.getByText(/The question is already in this round/)).toBeTruthy();
     expect(screen.queryByText(/Fix these rows/)).toBeNull();
     expect(screen.getByText('Row 4')).toBeTruthy();
     expect(screen.getByText('Question text is required')).toBeTruthy();
@@ -160,5 +160,37 @@ describe('UploadAndGenerateHeader uploaded files', () => {
     fireEvent.click(screen.getByText('Uploaded files (1)'));
     expect(await screen.findByText('older.xlsx')).toBeTruthy();
     expect(screen.queryByText(/added/)).toBeNull();
+  });
+});
+
+import { joinExtensions } from '../../../../src/components/JobsOpening/AddJobDescription/uploadFormats';
+
+describe('UploadAndGenerateHeader file types', () => {
+  const acceptOf = (extensions?: string[]) => {
+    const { container } = render(
+      <UploadAndGenerateHeader
+        description=""
+        onGenerate={vi.fn()}
+        onUpload={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+        acceptedExtensions={extensions}
+      />
+    );
+    return container.querySelector('input[type="file"]')?.getAttribute('accept');
+  };
+
+  it('offers the file types the backend sends', () => {
+    expect(acceptOf(['.xlsx', '.csv', '.docx', '.txt'])).toBe('.xlsx,.csv,.docx,.txt');
+  });
+
+  it('falls back to the template types until the list arrives', () => {
+    expect(acceptOf(undefined)).toBe('.xlsx,.csv');
+    expect(acceptOf([])).toBe('.xlsx,.csv');
+  });
+
+  it('words the list for the tooltip', () => {
+    expect(joinExtensions(['.xlsx'])).toBe('.xlsx');
+    expect(joinExtensions(['.xlsx', '.csv'])).toBe('.xlsx or .csv');
+    expect(joinExtensions(['.xlsx', '.csv', '.docx', '.txt'])).toBe('.xlsx, .csv, .docx or .txt');
   });
 });

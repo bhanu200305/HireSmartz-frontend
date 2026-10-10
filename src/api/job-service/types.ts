@@ -3,6 +3,8 @@
  * as strings.
  */
 
+import type { SkillSourceId } from './sourceIds';
+
 export type JobListStatus = 'draft' | 'published' | 'closed';
 
 export type JdStatus = 'PROCESSING' | 'GENERATING' | 'READY' | 'FAILED';
@@ -78,8 +80,8 @@ export type JobLocationPayload = {
 export type JobSkillPayload = {
   skill_id: string;
   skill_type: 'required' | 'optional';
-  // Omitted for a plain manual add; backend defaults that to 'manual'.
-  source?: 'title_mapping' | 'ai_extracted' | 'manual';
+  // master_skill_source id. Omitted for a plain manual add; backend defaults that to manual.
+  source_id?: SkillSourceId;
 };
 
 export type JobLocationResponse = {
@@ -97,7 +99,8 @@ export type JobSkillResponse = {
   skill_id: string;
   skill_label: string;
   skill_type: string;
-  source: string;
+  // master_skill_source id: 0 manual, 1 title mapping, 2 AI extracted.
+  source_id: number;
 };
 
 export type JobDetailsResponse = {
@@ -306,10 +309,18 @@ export type InterviewRoundType = {
   variant_labels?: Record<string, string> | null;
 };
 
+/** What the question upload accepts, from GET /master/question-import-formats. */
+export type QuestionImportFormatsResponse = {
+  // Lower case with a leading dot, e.g. '.xlsx'.
+  extensions: string[];
+  max_size_bytes: number;
+};
+
 export type QuestionResponse = {
   id: string;
   question_text: string;
-  source: string;
+  // master_question_source id: 0 manual, 1 AI generated.
+  source_id: number;
   answer_text: string | null;
   interview_round_id: string;
   scoring_sections: string[];
@@ -322,10 +333,15 @@ export type RoundQuestionsResponse = {
   sequence: number;
   variant: string | null;
   questions: QuestionResponse[];
+  /** Every question in the round, whatever page `questions` holds. */
+  total_count?: number;
 };
 
 export type JobQuestionsResponse = {
   rounds: RoundQuestionsResponse[];
+  /** The page asked for, applied to each round; null when not paged. */
+  page?: number | null;
+  page_size?: number | null;
   /** Why the last AI-generated batch was rejected by the content check. */
   generation_error?: string | null;
   /** Set when the last batch added fewer questions than asked for. */
