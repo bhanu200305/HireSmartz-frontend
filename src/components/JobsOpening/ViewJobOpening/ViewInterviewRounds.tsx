@@ -26,7 +26,10 @@ const ViewInterviewRound = () => {
   // Same endpoint the Edit screen's "Intake Call Questions" section reads and writes.
   const { data: intakeData } = useGetJobIntakeQuestionsQuery(jobId, { skip: !jobId });
   // The round's own question list: it carries the round's order and which questions are asked.
-  const { data: questionsData } = useGetJobQuestionsQuery(jobId, { skip: !jobId });
+  const { data: questionsData } = useGetJobQuestionsQuery(
+    { jobOpeningId: jobId },
+    { skip: !jobId }
+  );
   const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
   const variantLabelOverrides = useMemo(
     () => Object.assign({}, ...roundTypes.map((round) => round.variant_labels ?? {})),

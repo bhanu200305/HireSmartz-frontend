@@ -23,6 +23,13 @@ export const InlineQuestionInput = ({
   disabled = false,
 }: InlineQuestionInputProps) => {
   const canSubmit = !!value.trim() && !isSubmitting && !disabled;
+  const questionCount = value.trim() ? value.split('\n').filter((l) => l.trim()).length : 0;
+  const addLabel =
+    questionCount === 1
+      ? 'Add 1 Question'
+      : questionCount > 1
+        ? `Add ${questionCount} Questions`
+        : 'Add';
   return (
     <div className="w-full rounded-2xl border border-primary-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex items-center gap-1.5">
@@ -49,11 +56,11 @@ export const InlineQuestionInput = ({
         <Tooltip title="Add the question(s) above to this round.">
           <Button
             type="button"
-            className="rounded-full bg-button px-6 py-1.5 text-sm font-semibold text-white"
+            className="rounded-full bg-button px-6 py-1 text-sm font-semibold text-white"
             onClick={onSubmit}
             disabled={!canSubmit}
           >
-            Add
+            {addLabel}
           </Button>
         </Tooltip>
       </div>

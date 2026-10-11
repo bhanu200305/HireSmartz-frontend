@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
+import { useState } from 'react';
+import userEvent from '@testing-library/user-event';
+import QuestionEntryPanel from '../../../../src/components/JobsOpening/AddJobDescription/QuestionEntryPanel';
 import UploadAndGenerateHeader, {
   type ImportWarningItem,
   type UploadedFileItem,
@@ -27,6 +30,134 @@ const warnings: ImportWarningItem[] = [
     questionText: 'Explain decorators.',
   },
 ];
+
+const EntryHarness = ({ onSubmit = vi.fn(), onUpload = vi.fn() }) => {
+  const [text, setText] = useState('');
+  return (
+    <ConfigProvider theme={{ token: { motion: false } }}>
+      <QuestionEntryPanel
+        description=""
+        empty
+        text={text}
+        onTextChange={setText}
+        onSubmit={onSubmit}
+        onUpload={onUpload}
+        onGenerate={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+        isSubmitting={false}
+        roundName="Audio Screening"
+      />
+    </ConfigProvider>
+  );
+};
+
+describe('Question entry UI', () => {
+  it('orders the cards upload, generate, write and uses sparkles without the fastest badge', () => {
+    render(<EntryHarness />);
+    expect(
+      screen
+        .getAllByRole('button')
+        .slice(0, 3)
+        .map((button) => button.textContent?.trim())
+    ).toEqual(['Upload File', '✨Generate With AI', 'Write Your Own']);
+    expect(screen.queryByText('Fastest')).not.toBeInTheDocument();
+  });
+
+  it('provides a real upload button and forwards file input changes', async () => {
+    const user = userEvent.setup();
+    const onUpload = vi.fn();
+    render(<EntryHarness onUpload={onUpload} />);
+    expect(screen.getByRole('button', { name: 'Upload File' })).toBeEnabled();
+    await user.upload(
+      screen.getByLabelText('Upload questions file'),
+      new File(['Question?'], 'questions.csv', { type: 'text/csv' })
+    );
+    expect(onUpload).toHaveBeenCalledOnce();
+  });
+
+  it('opens the writing modal, counts only nonblank lines, and reuses submit', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<EntryHarness onSubmit={onSubmit} />);
+    await user.click(screen.getByRole('button', { name: 'Write Your Own' }));
+    const input = screen.getByRole('textbox', { name: 'Questions' });
+    await waitFor(() => expect(input).toHaveFocus());
+    expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('button', { name: 'Add Questions' })).toBeDisabled();
+    await user.paste(' First question? \n\n Second question? ');
+    expect(screen.getByText('2 questions ready to add')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add 2 Questions' }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('shows writing help and uses project pill buttons', async () => {
+    const user = userEvent.setup();
+    render(<EntryHarness />);
+    await user.click(screen.getByRole('button', { name: 'Write Your Own' }));
+    const help =
+      'Type one question, or paste a list with one question on each line. Every line is added as a separate question.';
+    expect(screen.getByRole('textbox', { name: 'Questions' })).toHaveAccessibleDescription(help);
+    await user.hover(screen.getByRole('button', { name: 'How to write questions' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(help);
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    expect(cancelButton).toHaveClass(
+      'rounded-3xl',
+      'min-h-11',
+      'px-6',
+      'py-2',
+      'bg-white',
+      'border-gray-300'
+    );
+    expect(cancelButton.parentElement).toHaveClass('gap-3');
+    expect(cancelButton.parentElement).not.toHaveClass('sm:gap-6');
+    expect(screen.getByRole('button', { name: 'Add Questions' })).toHaveClass(
+      'rounded-3xl',
+      'min-h-11',
+      'px-6',
+      'py-2',
+      'bg-primary'
+    );
+  });
+
+  it('ignores text drags and keeps the file overlay through nested drag leaves', () => {
+    render(<EntryHarness />);
+    fireEvent.dragEnter(window, { dataTransfer: { types: ['text/plain'] } });
+    expect(screen.queryByText('Drop your file to upload')).not.toBeInTheDocument();
+    const drag = { dataTransfer: { types: ['Files'] } };
+    fireEvent.dragEnter(window, drag);
+    fireEvent.dragEnter(window, drag);
+    fireEvent.dragLeave(window, drag);
+    expect(screen.getByText('Drop your file to upload')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Drop your file to upload')).not.toBeInTheDocument();
+  });
+
+  it('rejects invalid dropped files without uploading and clears the overlay', () => {
+    const onUpload = vi.fn();
+    render(<EntryHarness onUpload={onUpload} />);
+    fireEvent.dragEnter(window, { dataTransfer: { types: ['Files'] } });
+    fireEvent.drop(window, {
+      dataTransfer: { types: ['Files'], files: [new File(['hello'], 'questions.txt')] },
+    });
+    expect(onUpload).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Upload an Excel (.xlsx) or CSV (.csv) file.'
+    );
+    expect(screen.queryByText('Drop your file to upload')).not.toBeInTheDocument();
+  });
+
+  it('rejects oversized files before the upload handler', () => {
+    const onUpload = vi.fn();
+    render(<EntryHarness onUpload={onUpload} />);
+    const file = new File(['question'], 'questions.csv');
+    Object.defineProperty(file, 'size', { value: 6 * 1024 * 1024 });
+    fireEvent.drop(window, { dataTransfer: { types: ['Files'], files: [file] } });
+    expect(onUpload).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('File size must not exceed 5 MB.');
+  });
+});
 
 const renderHeader = () =>
   render(
@@ -134,15 +265,24 @@ describe('UploadAndGenerateHeader uploaded files', () => {
       </ConfigProvider>
     );
 
-  it('shows nothing when no file was uploaded to the round', () => {
+  it('opens an empty state from the info icon when no file was uploaded', async () => {
+    const user = userEvent.setup();
     renderWithFiles([]);
-    expect(screen.queryByText(/Uploaded files/)).toBeNull();
+    const infoButton = screen.getByRole('button', { name: 'View uploaded files' });
+    expect(infoButton).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(infoButton.textContent).toBe('');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(infoButton);
+    expect(screen.getByRole('dialog', { name: 'Uploaded files' })).toBeInTheDocument();
+    expect(screen.getByText('No files uploaded')).toBeInTheDocument();
+    await user.click(screen.getByText('Close'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('lists every file with its counts in a modal that can be closed', async () => {
     renderWithFiles(files);
 
-    fireEvent.click(screen.getByText('Uploaded files (2)'));
+    fireEvent.click(screen.getByRole('button', { name: 'View uploaded files' }));
     expect(await screen.findByText('round-two.xlsx')).toBeTruthy();
     expect(screen.getByText(/4 added · 1 invalid · 2 duplicate/)).toBeTruthy();
     expect(screen.getByText('older.xlsx')).toBeTruthy();
@@ -154,7 +294,7 @@ describe('UploadAndGenerateHeader uploaded files', () => {
   it('leaves out counts a file does not have', async () => {
     renderWithFiles([files[1]]);
 
-    fireEvent.click(screen.getByText('Uploaded files (1)'));
+    fireEvent.click(screen.getByRole('button', { name: 'View uploaded files' }));
     expect(await screen.findByText('older.xlsx')).toBeTruthy();
     expect(screen.queryByText(/added/)).toBeNull();
   });
@@ -162,14 +302,15 @@ describe('UploadAndGenerateHeader uploaded files', () => {
 
 describe('UploadAndGenerateHeader file types', () => {
   const acceptOf = (extensions?: string[]) => {
-    const { container } = render(
-      <UploadAndGenerateHeader
-        description=""
-        onGenerate={vi.fn()}
-        onUpload={vi.fn()}
-        acceptedExtensions={extensions}
-      />
-    );
+    const props = {
+      description: '',
+      onGenerate: vi.fn(),
+      onUpload: vi.fn(),
+      onDownloadTemplate: vi.fn(),
+      acceptedExtensions: extensions,
+    } as any;
+
+    const { container } = render(<UploadAndGenerateHeader {...props} />);
     return container.querySelector('input[type="file"]')?.getAttribute('accept');
   };
 

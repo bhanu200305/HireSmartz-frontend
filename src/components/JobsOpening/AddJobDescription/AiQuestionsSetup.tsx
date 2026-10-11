@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useJobDetailsHeaderSlot } from '../../../layouts/jobDetailsHeaderSlot';
 import { Tooltip } from 'antd';
 import { MdClose, MdInfoOutline, MdOutlineQuestionAnswer } from 'react-icons/md';
-import { HiOutlineTrash } from 'react-icons/hi';
 import { useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../redux/provider/store';
 import { stopStream } from '../../../redux/slices/streamSlice';
 import { setIsDraft } from '../../../redux/slices/editJobOpeningSlice';
 import { Loader } from '../../shared/ui/loader';
-import { Button, showToast, Typography } from '../../shared';
+import { showToast, Typography } from '../../shared';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
-import QuestionFormModal from './QuestionFormModal';
 import JobIntakeQuestionsSection from './JobIntakeQuestionsSection';
 import {
   useGetJobIntakeQuestionsQuery,
@@ -23,14 +23,12 @@ import {
   useBulkImportJobQuestionsMutation,
   useGetQuestionImportFormatsQuery,
   useGetQuestionImportsQuery,
+  useLazyGetQuestionImportTemplateQuery,
   jobQuestionsApi,
 } from '../../../api/job-service/JobOpening/jobQuestions';
 import { useListInterviewRoundTypesQuery } from '../../../api/job-service/JobOpening/catalogs';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
-import {
-  useGetJobScoringConfigQuery,
-  type JobScoringWeight,
-} from '../../../api/job-service/JobOpening/jobScoringConfig';
+import { useGetJobScoringConfigQuery } from '../../../api/job-service/JobOpening/jobScoringConfig';
 import {
   useLazyValidateForPublishQuery,
   usePublishJobMutation,
@@ -51,12 +49,13 @@ import {
   getJobErrorMessage,
 } from '../../../shared/utils/auth/jobError.helpers';
 
-import UploadAndGenerateHeader, { type ImportWarningItem } from './UploadAndGenerateHeader';
-import InlineQuestionInput from './InlineQuestionInput';
-import QuestionRowItem from './QuestionRowItem';
+import { type ImportWarningItem } from './UploadAndGenerateHeader';
+import QuestionEntryPanel from './QuestionEntryPanel';
+import QuestionList from './QuestionList';
 import { isRepeat, splitRepeats } from './questionRepeats';
 import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
+import AiQuestionsActionFooter from './AiQuestionsActionFooter';
 
 const DEFAULT_QUESTION_COUNT = 10;
 const GENERATION_POLL_INTERVAL_MS = 1000;
@@ -129,32 +128,40 @@ type RoundNavItemProps = {
   onClick: () => void;
 };
 
-const RoundNavItem = ({ label, subtitle, count, active, onClick }: RoundNavItemProps) => (
-  <Tooltip title={subtitle}>
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? 'true' : undefined}
-      className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
-        active
-          ? 'border-primary bg-primary-50 text-primary-700'
-          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-      }`}
-    >
-      {label}
-      <span
-        title={count > 0 ? `${count} question(s)` : 'No questions yet - add at least one.'}
-        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-          count > 0 ? 'bg-primary text-white' : 'bg-white text-primary-700 ring-1 ring-primary-200'
-        }`}
+const RoundNavItem = ({ label, subtitle, count, active, onClick }: RoundNavItemProps) => {
+  const isEmpty = count === 0;
+  const buttonClass = active
+    ? 'border-primary bg-primary-50 text-primary-700'
+    : isEmpty
+      ? 'border-rose-200 bg-rose-50/60 text-rose-700 hover:bg-rose-50'
+      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50';
+  const badgeClass = active
+    ? 'bg-primary text-white'
+    : isEmpty
+      ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200'
+      : 'bg-primary text-white';
+  return (
+    <Tooltip title={subtitle}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-current={active ? 'true' : undefined}
+        className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold leading-none transition-colors cursor-pointer ${buttonClass}`}
       >
-        {count}
-      </span>
-    </button>
-  </Tooltip>
-);
+        {label}
+        <span
+          title={count > 0 ? `${count} question(s)` : 'No questions yet - add at least one.'}
+          className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${badgeClass}`}
+        >
+          {count}
+        </span>
+      </button>
+    </Tooltip>
+  );
+};
 
 const AiQuestionsSetup = () => {
+  const headerSlot = useJobDetailsHeaderSlot();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { pathname } = useLocation();
@@ -172,27 +179,30 @@ const AiQuestionsSetup = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<QuestionResponse | null>(null);
-  const [editedQuestionText, setEditedQuestionText] = useState('');
-  const [editedAnswerText, setEditedAnswerText] = useState('');
-  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+  // Per-round selection map so selections persist when switching tabs.
+  const [selectedIdsByRound, setSelectedIdsByRound] = useState<Record<string, string[]>>({});
+  // Per-round search query so each tab remembers its own search independently.
+  const [searchByRound, setSearchByRound] = useState<Record<string, string>>({});
 
   const [inlineInputText, setInlineInputText] = useState('');
   const [isInlineSubmitting, setIsInlineSubmitting] = useState(false);
   // Which round's questions are currently shown/added to.
   const [selectedRoundInstanceId, setSelectedRoundInstanceId] = useState<string | null>(null);
+  // Local draft edits (questionId → text) — flushed to API on Save & Next / Publish.
+  const [localEdits, setLocalEdits] = useState<Record<string, string>>({});
+  const [isSavingEdits, setIsSavingEdits] = useState(false);
 
   const [importWarnings, setImportWarnings] = useState<ImportWarningItem[]>([]);
   const [failedRowCount, setFailedRowCount] = useState<number>(0);
   const [duplicateRowCount, setDuplicateRowCount] = useState<number>(0);
   const [importedCount, setImportedCount] = useState<number>(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  // Slot beside the round chips where the add-questions buttons render.
+  const [actionsSlot, setActionsSlot] = useState<HTMLDivElement | null>(null);
   // Rounds (by id) the backend last reported as having no questions.
   const [blockedRoundIds, setBlockedRoundIds] = useState<string[]>([]);
   const [intakeUnsaved, setIntakeUnsaved] = useState(false);
@@ -244,15 +254,26 @@ const AiQuestionsSetup = () => {
   // For the completion toast: what the round held before, and whether this was an append.
   const roundCountBeforeGenerateRef = useRef(0);
   const generationModeRef = useRef<'ADD' | 'REPLACE'>('REPLACE');
+  // Tracks which rounds have had their is_selected state initialized from the backend.
+  const initializedRoundsRef = useRef<Set<string>>(new Set());
+  // Debounce timer for persisting selection changes without hammering the API on rapid ticks.
+  const selectionPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Debounced search value — drives the server-side search query 300 ms after the last keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Base query (no search) — used for generation polling, round counts, and as the save payload.
   const {
     data: questionsData,
     isLoading: isLoadingQuestions,
     refetch: refetchQuestions,
-  } = useGetJobQuestionsQuery(activeJobOpeningId, {
-    skip: !activeJobOpeningId,
-    pollingInterval: isGeneratingQuestions ? GENERATION_POLL_INTERVAL_MS : 0,
-  });
+  } = useGetJobQuestionsQuery(
+    { jobOpeningId: activeJobOpeningId ?? '' },
+    {
+      skip: !activeJobOpeningId,
+      pollingInterval: isGeneratingQuestions ? GENERATION_POLL_INTERVAL_MS : 0,
+    }
+  );
 
   const [saveJobQuestions] = useSaveJobQuestionsMutation();
   const [generateJobQuestions, { isLoading: isGenerateRequestPending }] =
@@ -260,6 +281,7 @@ const AiQuestionsSetup = () => {
   const [regenerateJobQuestions] = useRegenerateJobQuestionsMutation();
   const [bulkImportJobQuestions, { isLoading: isUploadingExcel }] =
     useBulkImportJobQuestionsMutation();
+  const [fetchImportTemplate] = useLazyGetQuestionImportTemplateQuery();
   const [validateForPublish] = useLazyValidateForPublishQuery();
   const [publishJob, { isLoading: isPublishing }] = usePublishJobMutation();
   // Covers both the initial request and the polling wait after it.
@@ -282,8 +304,42 @@ const AiQuestionsSetup = () => {
       jdRounds.some((round) => round.round_instance_id === selectedRoundInstanceId) &&
       selectedRoundInstanceId) ||
     defaultRoundInstanceId;
-  // The file types the upload accepts, from the backend.
-  const { data: importFormats } = useGetQuestionImportFormatsQuery();
+
+  // Derived: selected ids for the active round (persists across tab switches).
+  // Must be keyed on activeRoundInstanceId (not selectedRoundInstanceId) so that
+  // the initial render — before the user has clicked any tab — still reads from the
+  // correct round instead of from the empty-string key.
+  const selectedIds = selectedIdsByRound[activeRoundInstanceId ?? ''] ?? [];
+  const setSelectedIds = (ids: string[]) => {
+    if (!activeRoundInstanceId) return;
+    setSelectedIdsByRound((prev) => ({ ...prev, [activeRoundInstanceId]: ids }));
+  };
+
+  // Derived: search query for the active round (persists across tab switches).
+  const activeSearch = searchByRound[activeRoundInstanceId ?? ''] ?? '';
+  const handleSearchChange = (value: string) => {
+    if (!activeRoundInstanceId) return;
+    setSearchByRound((prev) => ({ ...prev, [activeRoundInstanceId]: value }));
+  };
+
+  // Debounce: update debouncedSearch 300 ms after the user stops typing.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(activeSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [activeSearch]);
+
+  // Filtered search query — only active while the user has typed a search term.
+  const { data: searchData, isFetching: isSearchFetching } = useGetJobQuestionsQuery(
+    {
+      jobOpeningId: activeJobOpeningId ?? '',
+      interview_round_id: activeRoundInstanceId,
+      search: debouncedSearch,
+    },
+    { skip: !activeJobOpeningId || !activeRoundInstanceId || !debouncedSearch }
+  );
+
+  // The file types the upload accepts, from the backend (consumed by UploadAndGenerateHeader).
+  useGetQuestionImportFormatsQuery();
   // Files bulk-imported into this round, newest first.
   const { data: questionImports } = useGetQuestionImportsQuery(
     { jobOpeningId: activeJobOpeningId ?? '', interviewRoundId: activeRoundInstanceId },
@@ -301,11 +357,18 @@ const AiQuestionsSetup = () => {
       })),
     [questionImports]
   );
-  // The API lists the newest batch first.
-  const visibleQuestions = useMemo(
-    () => questions.filter((q) => q.interview_round_id === activeRoundInstanceId),
-    [questions, activeRoundInstanceId]
-  );
+  // When a search is active, show the server-filtered results; otherwise use base data.
+  // Sort by question_order so the display always matches what the backend persisted.
+  const visibleQuestions = useMemo(() => {
+    if (debouncedSearch && searchData) {
+      return (searchData.rounds ?? [])
+        .flatMap((r) => r.questions ?? [])
+        .sort((a, b) => a.question_order - b.question_order);
+    }
+    return questions
+      .filter((q) => q.interview_round_id === activeRoundInstanceId)
+      .sort((a, b) => a.question_order - b.question_order);
+  }, [debouncedSearch, searchData, questions, activeRoundInstanceId]);
   const questionListRef = useRef<HTMLDivElement>(null);
   const scrollToTopAfterAddRef = useRef(false);
   // Content fingerprint rather than a count, since REPLACE can reduce the count.
@@ -325,16 +388,6 @@ const AiQuestionsSetup = () => {
     const kind = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.special_kind;
     return kind === 'live_video' || kind === 'in_person';
   }, [roundTypes, activeRoundTypeId]);
-  // AI Video = available_variants ["soundwave", "avatar"].
-  const isAiVideoActiveRound = useMemo(() => {
-    const variants = roundTypes.find((rt) => rt.round_id === activeRoundTypeId)?.available_variants;
-    return (
-      !!variants &&
-      variants.length === 2 &&
-      variants.includes('soundwave') &&
-      variants.includes('avatar')
-    );
-  }, [roundTypes, activeRoundTypeId]);
   const { data: scoringData } = useGetJobScoringConfigQuery(activeJobOpeningId, {
     skip: !activeJobOpeningId,
   });
@@ -350,17 +403,6 @@ const AiQuestionsSetup = () => {
         : [],
     [isHiringPanelActiveRound, scoringData]
   );
-  // What this round's questions should probe - shown as guidance text.
-  const activeRoundGuidanceLabels = useMemo(() => {
-    const weights = scoringData?.data?.interviewConfig?.weights ?? [];
-    const appliesToActiveRound = isHiringPanelActiveRound
-      ? (w: JobScoringWeight) => w.appliesPanel
-      : isAiVideoActiveRound
-        ? (w: JobScoringWeight) => w.appliesAiVideo
-        : (w: JobScoringWeight) => w.appliesAudioScreening;
-    return weights.filter(appliesToActiveRound).map((w) => w.displayName ?? w.categoryName);
-  }, [scoringData, isHiringPanelActiveRound, isAiVideoActiveRound]);
-
   // A batch rejected by the content check: stop waiting and show why.
   const generationError = questionsData?.generation_error;
   useEffect(() => {
@@ -391,11 +433,23 @@ const AiQuestionsSetup = () => {
   ) => {
     scrollToTopAfterAddRef.current = true;
     const before = new Set((questionSnapshotBeforeGenerateRef.current ?? '').split(','));
-    setSelectedIds(
-      latest
-        .filter((q) => (roundId ? q.interview_round_id === roundId : true) && !before.has(q.id))
-        .map((q) => q.id)
-    );
+    const newIds = latest
+      .filter((q) => (roundId ? q.interview_round_id === roundId : true) && !before.has(q.id))
+      .map((q) => q.id);
+    const isAdd = generationModeRef.current === 'ADD';
+    if (roundId) {
+      setSelectedIdsByRound((prev) => ({
+        ...prev,
+        [roundId]: isAdd ? [...new Set([...(prev[roundId] ?? []), ...newIds])] : newIds,
+      }));
+    } else if (selectedRoundInstanceId) {
+      setSelectedIdsByRound((prev) => ({
+        ...prev,
+        [selectedRoundInstanceId]: isAdd
+          ? [...new Set([...(prev[selectedRoundInstanceId] ?? []), ...newIds])]
+          : newIds,
+      }));
+    }
   };
 
   // Stop polling once the list differs from its pre-generation snapshot.
@@ -461,8 +515,25 @@ const AiQuestionsSetup = () => {
     return () => clearTimeout(timeoutId);
   }, [isGeneratingQuestions, refetchQuestions]);
 
-  const isAllSelected =
-    visibleQuestions.length > 0 && selectedIds.length === visibleQuestions.length;
+  // Initialize each round's selection state from the backend is_selected field, once per round.
+  // Subsequent local changes are tracked in selectedIdsByRound without overwriting.
+  useEffect(() => {
+    if (!questionsData) return;
+    const toInit: Record<string, string[]> = {};
+    let hasNew = false;
+    questionsData.rounds.forEach((round) => {
+      if (!initializedRoundsRef.current.has(round.round_instance_id)) {
+        toInit[round.round_instance_id] = (round.questions ?? [])
+          .filter((q) => q.is_selected)
+          .map((q) => q.id);
+        initializedRoundsRef.current.add(round.round_instance_id);
+        hasNew = true;
+      }
+    });
+    if (hasNew) {
+      setSelectedIdsByRound((prev) => ({ ...prev, ...toInit }));
+    }
+  }, [questionsData]);
 
   const toQuestionRequest = (question: QuestionResponse): QuestionRequest => ({
     id: question.id,
@@ -470,28 +541,63 @@ const AiQuestionsSetup = () => {
     answer_text: question.answer_text,
     interview_round_id: question.interview_round_id,
     scoring_sections: question.scoring_sections,
+    is_selected: (selectedIdsByRound[question.interview_round_id ?? ''] ?? []).includes(
+      question.id
+    ),
   });
 
-  // Shared save path for add/edit/delete — sends the job's whole updated
-  // list. Writes the PUT's response into the cache directly so the update
-  // lands even if the follow-up refetch doesn't land in time.
+  // Shared save path for add/edit/delete/reorder — sends the job's whole updated list.
+  // question_order is set to the 1-based position in `next` so the backend persists the order.
+  // Writes the PUT's response into the cache directly so the update lands even if the
+  // follow-up refetch doesn't land in time.
   const persistQuestions = async (next: QuestionRequest[]) => {
-    if (!activeJobOpeningId) return;
-    // Every question stays selected (asked) until the page can unselect them.
+    if (!activeJobOpeningId) return null;
+    const withOrder = next.map((q, i) => ({ ...q, question_order: i }));
     const res = await saveJobQuestions({
       jobOpeningId: activeJobOpeningId,
-      questions: next.map((question) => ({ ...question, is_selected: true })),
+      questions: withOrder,
     }).unwrap();
-    dispatch(jobQuestionsApi.util.upsertQueryData('getJobQuestions', activeJobOpeningId, res));
+    dispatch(
+      jobQuestionsApi.util.upsertQueryData(
+        'getJobQuestions',
+        { jobOpeningId: activeJobOpeningId },
+        res
+      )
+    );
     await refetchQuestions();
+    return res;
   };
 
-  const handleSelectAll = (checked: boolean) =>
-    setSelectedIds(checked ? visibleQuestions.map((q) => q.id) : []);
-  const handleSelectOne = (questionId: string, checked: boolean) =>
-    setSelectedIds((prev) =>
-      checked ? [...prev, questionId] : prev.filter((item) => item !== questionId)
-    );
+  // User-triggered selection change: updates local state immediately and
+  // debounces a PUT so is_selected persists across page reloads.
+  const handleSelectionChange = (ids: string[]) => {
+    if (!activeRoundInstanceId) return;
+    setSelectedIdsByRound((prev) => ({ ...prev, [activeRoundInstanceId]: ids }));
+
+    if (selectionPersistTimerRef.current) clearTimeout(selectionPersistTimerRef.current);
+    // Capture round, ids, and current state in the closure so the timer uses the correct values.
+    const roundId = activeRoundInstanceId;
+    const snapshot = { questions, selectedIdsByRound };
+    selectionPersistTimerRef.current = setTimeout(async () => {
+      if (!activeJobOpeningId) return;
+      try {
+        const next: QuestionRequest[] = snapshot.questions.map((q) => ({
+          id: q.id,
+          question_text: q.question_text,
+          answer_text: q.answer_text,
+          interview_round_id: q.interview_round_id,
+          scoring_sections: q.scoring_sections,
+          is_selected:
+            q.interview_round_id === roundId
+              ? ids.includes(q.id)
+              : (snapshot.selectedIdsByRound[q.interview_round_id ?? ''] ?? []).includes(q.id),
+        }));
+        await persistQuestions(next);
+      } catch {
+        // Silent — local state already reflects the user's intent.
+      }
+    }, 400);
+  };
 
   const handleGenerateDefaultQuestions = async (
     mode: 'ADD' | 'REPLACE',
@@ -535,10 +641,27 @@ const AiQuestionsSetup = () => {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    if (isDownloadingTemplate) return;
+    setIsDownloadingTemplate(true);
+    try {
+      const result = await fetchImportTemplate().unwrap();
+      const a = document.createElement('a');
+      a.href = result.download_url;
+      a.download = '';
+      a.click();
+    } catch {
+      showToast({ message: 'Failed to download template', type: 'error' });
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeJobOpeningId) return;
     try {
+      const existingIds = new Set(questions.map((q) => q.id));
       const res = await bulkImportJobQuestions({
         jobOpeningId: activeJobOpeningId,
         file,
@@ -573,7 +696,21 @@ const AiQuestionsSetup = () => {
       // No same-shape response to upsert here (unlike persistQuestions
       // above) - wait for the real refetch before returning.
       scrollToTopAfterAddRef.current = (res.imported_count ?? 0) > 0;
-      await refetchQuestions();
+      const refetchResult = await refetchQuestions();
+      if ((res.imported_count ?? 0) > 0 && activeRoundInstanceId && refetchResult.data) {
+        const newIds = (refetchResult.data.rounds ?? [])
+          .flatMap((r) => r.questions ?? [])
+          .filter((q) => q.interview_round_id === activeRoundInstanceId && !existingIds.has(q.id))
+          .map((q) => q.id);
+        if (newIds.length > 0) {
+          setSelectedIdsByRound((prev) => ({
+            ...prev,
+            [activeRoundInstanceId]: [
+              ...new Set([...(prev[activeRoundInstanceId] ?? []), ...newIds]),
+            ],
+          }));
+        }
+      }
       const skipped = (res.failed_rows?.length ?? 0) + (res.skipped_duplicate_rows?.length ?? 0);
       if ((res.imported_count ?? 0) === 0) {
         showToast({
@@ -636,10 +773,26 @@ const AiQuestionsSetup = () => {
         ...fresh.map((question_text) => ({
           question_text,
           interview_round_id: activeRoundInstanceId,
+          is_selected: true,
         })),
       ];
+      const existingIds = new Set(questions.map((q) => q.id));
       scrollToTopAfterAddRef.current = true;
-      await persistQuestions(next);
+      const saved = await persistQuestions(next);
+      if (saved) {
+        const newIds = (saved.rounds ?? [])
+          .flatMap((r) => r.questions ?? [])
+          .filter((q) => q.interview_round_id === activeRoundInstanceId && !existingIds.has(q.id))
+          .map((q) => q.id);
+        if (newIds.length > 0) {
+          setSelectedIdsByRound((prev) => ({
+            ...prev,
+            [activeRoundInstanceId]: [
+              ...new Set([...(prev[activeRoundInstanceId] ?? []), ...newIds]),
+            ],
+          }));
+        }
+      }
       showToast(
         repeats.length > 0
           ? {
@@ -671,7 +824,7 @@ const AiQuestionsSetup = () => {
     persistQuestions(remaining)
       .then(() => {
         showToast({ message: 'Deleted successfully', type: 'success' });
-        setSelectedIds((prev) => prev.filter((id) => !idsToRemove.has(id)));
+        setSelectedIds(selectedIds.filter((id) => !idsToRemove.has(id)));
       })
       .catch((err) =>
         showToast({
@@ -686,58 +839,39 @@ const AiQuestionsSetup = () => {
       });
   };
 
-  const closeEditModal = () => {
-    setIsEditModalOpen(false);
-    setEditingQuestion(null);
-    setEditedQuestionText('');
-    setEditedAnswerText('');
-  };
-
-  const handleEditSave = async () => {
-    if (!editingQuestion || isEditSubmitting) return;
-
-    const normalizedQuestion = editedQuestionText.trim();
-    if (!normalizedQuestion) {
-      showToast({ message: 'Question is required.', type: 'error' });
-      return;
-    }
-    const otherQuestions = visibleQuestions.filter((q) => q.id !== editingQuestion.id);
-    if (
-      isRepeat(
-        normalizedQuestion,
-        otherQuestions.map((q) => q.question_text)
-      )
-    ) {
+  /** Save a question edit to local draft only — no API call. */
+  const handleLocalEdit = (question: QuestionResponse, newText: string) => {
+    const normalizedText = newText.trim();
+    if (!normalizedText) return;
+    // Duplicate check against the current visible questions (with existing local edits merged).
+    const otherTexts = visibleQuestions
+      .filter((q) => q.id !== question.id)
+      .map((q) => localEdits[q.id] ?? q.question_text);
+    if (isRepeat(normalizedText, otherTexts)) {
       showToast({ message: 'This question is already in this round.', type: 'error' });
       return;
     }
+    setLocalEdits((prev) => ({ ...prev, [question.id]: normalizedText }));
+  };
 
-    setIsEditSubmitting(true);
+  /** Merge all local draft edits into the saved questions list via API. */
+  const flushLocalEdits = async (): Promise<boolean> => {
+    if (Object.keys(localEdits).length === 0) return true;
+    setIsSavingEdits(true);
     try {
-      const next = questions.map((q) =>
-        q.id === editingQuestion.id
-          ? {
-              ...toQuestionRequest(q),
-              question_text: normalizedQuestion,
-              // Untouched answers go back as-is so the backend doesn't treat
-              // them as edited (that clears the AI-written flag).
-              answer_text:
-                editedAnswerText === (q.answer_text ?? '')
-                  ? q.answer_text
-                  : editedAnswerText.trim() || null,
-            }
+      const merged = questions.map((q) =>
+        localEdits[q.id]
+          ? { ...toQuestionRequest(q), question_text: localEdits[q.id] }
           : toQuestionRequest(q)
       );
-      await persistQuestions(next);
-      showToast({ message: 'Question updated successfully', type: 'success' });
-      closeEditModal();
+      await persistQuestions(merged);
+      setLocalEdits({});
+      return true;
     } catch (err) {
-      showToast({
-        message: getJobErrorMessage(err, 'Error updating question'),
-        type: 'error',
-      });
+      showToast({ message: getJobErrorMessage(err, 'Error saving edits'), type: 'error' });
+      return false;
     } finally {
-      setIsEditSubmitting(false);
+      setIsSavingEdits(false);
     }
   };
 
@@ -765,6 +899,8 @@ const AiQuestionsSetup = () => {
   };
 
   const handlePublishOrFinish = async () => {
+    const saved = await flushLocalEdits();
+    if (!saved) return;
     dispatch(stopStream());
     if (isEditingAlreadyPublishedJob) {
       // Edits save as they're made; this only checks no round was left empty.
@@ -850,7 +986,7 @@ const AiQuestionsSetup = () => {
     setOpenSectionKey(key);
     if (key !== 'intake') {
       setSelectedRoundInstanceId(key);
-      setSelectedIds([]);
+      // Keep selections; per-round map preserves them automatically.
       setUploadedFileName('');
       setImportedCount(0);
       setFailedRowCount(0);
@@ -956,10 +1092,6 @@ const AiQuestionsSetup = () => {
   const activeRound = isIntakeActive
     ? null
     : (jdRounds.find((round) => round.round_instance_id === activeKey) ?? jdRounds[0] ?? null);
-  const activeRoundDescription = roundTypes.find(
-    (rt) => rt.round_id === activeRound?.round_id
-  )?.round_description;
-
   // Tabs in display order: Intake Call (when the job has one), then each round.
   // Save & Next walks them; the last one publishes.
   const sectionKeys = [
@@ -972,7 +1104,30 @@ const AiQuestionsSetup = () => {
   const nextSectionKey = activeSectionIndex >= 0 ? sectionKeys[activeSectionIndex + 1] : undefined;
   const isLastSection = nextSectionKey === undefined;
   const canPublishHere = isEditingAlreadyPublishedJob || (canPublish && isAssignedToThisJob);
-  const handleSaveAndNext = () => {
+  const emptyRoundsBlockingPublish = [
+    ...(jobHasIntakeRound && intakeCount === 0 ? ['Intake Call'] : []),
+    ...jdRounds
+      .filter((r) => !questionCountByRound[r.round_instance_id])
+      .map((r) => r.round_name ?? 'Interview Round'),
+  ];
+  const roundsMissingSelection = jdRounds
+    .filter(
+      (r) =>
+        (questionCountByRound[r.round_instance_id] ?? 0) > 0 &&
+        (selectedIdsByRound[r.round_instance_id]?.length ?? 0) === 0
+    )
+    .map((r) => r.round_name ?? 'Interview Round');
+  const publishDisabledReason =
+    isLoadingQuestions || !questionsData
+      ? null
+      : jdRounds.length === 0
+        ? 'Add an interview round with questions first.'
+        : emptyRoundsBlockingPublish.length > 0
+          ? `Add at least one question to: ${emptyRoundsBlockingPublish.join(', ')}`
+          : roundsMissingSelection.length > 0
+            ? `Select at least one question in: ${roundsMissingSelection.join(', ')}`
+            : null;
+  const handleSaveAndNext = async () => {
     if (!nextSectionKey) return;
     const sectionIsEmpty = isIntakeActive
       ? intakeCount === 0
@@ -989,23 +1144,25 @@ const AiQuestionsSetup = () => {
       });
       return;
     }
+    const saved = await flushLocalEdits();
+    if (!saved) return;
     requestSelectSection(nextSectionKey);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <>
-      <div className="flex flex-col gap-3 py-2">
-        {isUploadingExcel && <Loader message="Reading your file… this can take up to a minute." />}
-        {!isUploadingExcel &&
-          (isLoadingQuestions ||
-            isGenerating ||
-            isDeleteInProgress ||
-            isEditSubmitting ||
-            isInlineSubmitting ||
-            isPublishing) && <Loader />}
+      <div className="flex min-w-0 max-w-full flex-col gap-1.5">
+        {(isLoadingQuestions ||
+          isGenerating ||
+          isUploadingExcel ||
+          isDownloadingTemplate ||
+          isDeleteInProgress ||
+          isInlineSubmitting ||
+          isSavingEdits ||
+          isPublishing) && <Loader />}
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="bg-primary-50 text-primary-600 p-1.5 rounded-lg flex items-center justify-center">
             <MdOutlineQuestionAnswer size={16} />
           </span>
@@ -1013,6 +1170,24 @@ const AiQuestionsSetup = () => {
             Questions
           </Typography>
         </div>
+
+        {headerSlot &&
+          createPortal(
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary-100/80 bg-gradient-to-r from-primary-50 via-white to-accent-50 px-3.5 py-1.5 shadow-xs">
+              <MdInfoOutline className="text-primary-600 shrink-0" size={15} />
+              <Typography
+                variant="caption"
+                color="inherit"
+                as="span"
+                className="m-0 text-xs font-medium text-neutral-700"
+              >
+                {isEditingAlreadyPublishedJob
+                  ? 'Your question changes are saved automatically.'
+                  : 'Your questions are saved automatically. The job stays a draft until you publish it.'}
+              </Typography>
+            </div>,
+            headerSlot
+          )}
 
         {noEligibleRound && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -1040,31 +1215,34 @@ const AiQuestionsSetup = () => {
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
-          <nav aria-label="Interview rounds" className="flex flex-wrap gap-2">
-            {activeJobOpeningId && jobHasIntakeRound && (
-              <RoundNavItem
-                label="Intake Call"
-                subtitle="Asked on the intake call"
-                count={intakeCount}
-                active={isIntakeActive}
-                onClick={() => handleSelectSection('intake')}
-              />
-            )}
-            {jdRounds.map((round) => (
-              <RoundNavItem
-                key={round.round_instance_id}
-                label={round.round_name ?? 'Interview Round'}
-                count={questionCountByRound[round.round_instance_id] ?? 0}
-                active={
-                  !isIntakeActive && activeRound?.round_instance_id === round.round_instance_id
-                }
-                onClick={() => requestSelectSection(round.round_instance_id)}
-              />
-            ))}
-          </nav>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center mb-1 gap-2">
+            <nav aria-label="Interview rounds" className="flex flex-wrap mb-1.5 gap-2">
+              {activeJobOpeningId && jobHasIntakeRound && (
+                <RoundNavItem
+                  label="Intake Call"
+                  subtitle="Asked on the intake call"
+                  count={intakeCount}
+                  active={isIntakeActive}
+                  onClick={() => handleSelectSection('intake')}
+                />
+              )}
+              {jdRounds.map((round) => (
+                <RoundNavItem
+                  key={round.round_instance_id}
+                  label={round.round_name ?? 'Interview Round'}
+                  count={questionCountByRound[round.round_instance_id] ?? 0}
+                  active={
+                    !isIntakeActive && activeRound?.round_instance_id === round.round_instance_id
+                  }
+                  onClick={() => requestSelectSection(round.round_instance_id)}
+                />
+              ))}
+            </nav>
+            <div ref={setActionsSlot} className="flex flex-wrap items-center gap-2 sm:ml-auto" />
+          </div>
 
-          <section className="min-w-0 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+          <section>
             {isIntakeActive && activeJobOpeningId ? (
               <>
                 <JobIntakeQuestionsSection
@@ -1076,140 +1254,68 @@ const AiQuestionsSetup = () => {
                 />
               </>
             ) : activeRound ? (
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <Typography variant="subtitle1" className="m-0 font-bold text-gray-900">
-                    {activeRound.round_name}
-                  </Typography>
-                  {(activeRoundDescription || activeRoundGuidanceLabels.length > 0) && (
-                    <Tooltip
-                      title={
-                        <div className="flex flex-col gap-1">
-                          {activeRoundDescription && <span>{activeRoundDescription}</span>}
-                          {activeRoundGuidanceLabels.length > 0 && (
-                            <span>Focus areas: {activeRoundGuidanceLabels.join(', ')}</span>
-                          )}
-                        </div>
-                      }
-                    >
-                      <MdInfoOutline className="-ml-1.5 text-gray-400" size={15} />
-                    </Tooltip>
+              <div className="flex flex-col gap-2">
+                <QuestionEntryPanel
+                  actionsContainer={actionsSlot}
+                  empty={!isLoadingQuestions && !activeSearch && visibleQuestions.length === 0}
+                  description=""
+                  text={inlineInputText}
+                  onTextChange={setInlineInputText}
+                  onSubmit={handleInlineSubmit}
+                  isSubmitting={isInlineSubmitting || isLoadingQuestions}
+                  roundName={activeRound.round_name ?? 'Interview Round'}
+                  onGenerate={() => setShowGenerateConsentModal(true)}
+                  onUpload={handleFileUpload}
+                  uploadedFiles={uploadedFiles}
+                  uploadedFileName={uploadedFileName}
+                  importedCount={importedCount}
+                  failedCount={failedRowCount}
+                  duplicateCount={duplicateRowCount}
+                  warnings={importWarnings}
+                  onClearDetails={() => {
+                    setUploadedFileName('');
+                    setImportWarnings([]);
+                    setFailedRowCount(0);
+                    setDuplicateRowCount(0);
+                  }}
+                  isGenerating={isGenerating}
+                  generateDisabled={noEligibleRound || isLoadingQuestions}
+                  isUploading={isUploadingExcel}
+                  onDownloadTemplate={handleDownloadTemplate}
+                  isDownloading={isDownloadingTemplate}
+                />
+                <QuestionList
+                  key={activeRound.round_instance_id}
+                  questions={visibleQuestions.map((q) =>
+                    localEdits[q.id] ? { ...q, question_text: localEdits[q.id] } : q
                   )}
-                  <span className="text-sm text-gray-400">
-                    {visibleQuestions.length} question{visibleQuestions.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_370px]">
-                  <div className="order-2 min-w-0 lg:order-1">
-                    {visibleQuestions.length > 0 && (
-                      <div className="mb-3 flex items-center justify-between border-b border-gray-100 pb-3">
-                        <label className="flex cursor-pointer items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isAllSelected}
-                            onChange={(e) => handleSelectAll(e.target.checked)}
-                            className="h-4 w-4 cursor-pointer rounded border-gray-300 text-primary focus:ring-primary"
-                          />
-                          <span className="text-sm font-semibold text-gray-800">Select All</span>
-                        </label>
-                        <Tooltip
-                          title={
-                            selectedIds.length > 0
-                              ? 'Delete the ticked questions.'
-                              : 'Delete every question in this round.'
-                          }
-                        >
-                          <button
-                            className="flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-700"
-                            onClick={() => {
-                              if (selectedIds.length === 0)
-                                setSelectedIds(visibleQuestions.map((q) => q.id));
-                              setShowDeleteModal(true);
-                            }}
-                          >
-                            <HiOutlineTrash size={15} />
-                            {selectedIds.length > 0
-                              ? `Delete Selected (${selectedIds.length})`
-                              : 'Delete All'}
-                          </button>
-                        </Tooltip>
-                      </div>
-                    )}
-
-                    {isLoadingQuestions ? (
-                      <p className="py-6 text-center text-sm italic text-gray-400">Loading...</p>
-                    ) : visibleQuestions.length === 0 ? (
-                      <div className="flex h-full min-h-[200px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center">
-                        <p className="m-0 text-sm font-semibold text-gray-700">
-                          No questions for this round yet
-                        </p>
-                        <p className="m-0 mt-1 text-sm text-gray-500">
-                          Write a question, generate with AI, or upload a file.
-                        </p>
-                      </div>
-                    ) : (
-                      <div
-                        ref={questionListRef}
-                        className="max-h-[46vh] min-h-[120px] space-y-3 overflow-y-auto pr-1 [overflow-anchor:none]"
-                      >
-                        {visibleQuestions.map((q, index) => (
-                          <QuestionRowItem
-                            key={q.id}
-                            number={index + 1}
-                            question={{
-                              id: q.id,
-                              question: q.question_text,
-                            }}
-                            checked={selectedIds.includes(q.id)}
-                            onCheckChange={(checked) => handleSelectOne(q.id, checked)}
-                            onEdit={() => {
-                              setEditingQuestion(q);
-                              setEditedQuestionText(q.question_text);
-                              setEditedAnswerText(q.answer_text ?? '');
-                              setIsEditModalOpen(true);
-                            }}
-                            onDelete={() => {
-                              setSelectedQuestionId(q.id);
-                              setShowDeleteModal(true);
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="order-1 flex flex-col gap-3 lg:order-2">
-                    <InlineQuestionInput
-                      value={inlineInputText}
-                      onChange={setInlineInputText}
-                      onSubmit={handleInlineSubmit}
-                      isSubmitting={isInlineSubmitting || isLoadingQuestions}
-                      disabled={noEligibleRound}
-                    />
-                    <UploadAndGenerateHeader
-                      description="Or add questions faster here:"
-                      onGenerate={() => setShowGenerateConsentModal(true)}
-                      onUpload={handleFileUpload}
-                      acceptedExtensions={importFormats?.extensions}
-                      uploadedFileName={uploadedFileName}
-                      importedCount={importedCount}
-                      failedCount={failedRowCount}
-                      duplicateCount={duplicateRowCount}
-                      warnings={importWarnings}
-                      uploadedFiles={uploadedFiles}
-                      onClearDetails={() => {
-                        setUploadedFileName('');
-                        setImportWarnings([]);
-                        setFailedRowCount(0);
-                        setDuplicateRowCount(0);
-                      }}
-                      isGenerating={isGenerating}
-                      generateDisabled={noEligibleRound}
-                      isUploading={isUploadingExcel}
-                    />
-                  </div>
-                </div>
+                  selectedIds={selectedIds}
+                  isLoading={isLoadingQuestions}
+                  isSearchLoading={isSearchFetching}
+                  listRef={questionListRef}
+                  searchValue={activeSearch}
+                  onSearchChange={handleSearchChange}
+                  onSelectionChange={handleSelectionChange}
+                  onLocalEdit={handleLocalEdit}
+                  onDelete={(questionId) => {
+                    setSelectedQuestionId(questionId);
+                    setShowDeleteModal(true);
+                  }}
+                  onDeleteSelected={() => {
+                    setSelectedQuestionId(null);
+                    setShowDeleteModal(true);
+                  }}
+                  onReorder={(reorderedQuestions) => {
+                    // Other rounds keep their current order; only the active round is reordered.
+                    const otherRoundQuestions = questions
+                      .filter((q) => q.interview_round_id !== activeRoundInstanceId)
+                      .map(toQuestionRequest);
+                    persistQuestions([
+                      ...otherRoundQuestions,
+                      ...reorderedQuestions.map(toQuestionRequest),
+                    ]);
+                  }}
+                />
               </div>
             ) : (
               <p className="m-0 py-8 text-center text-sm text-gray-500">
@@ -1237,17 +1343,6 @@ const AiQuestionsSetup = () => {
             isLoading={isDeleteInProgress}
           />
         )}
-        <QuestionFormModal
-          open={isEditModalOpen}
-          title="Update Question"
-          questionText={editedQuestionText}
-          submitLabel="Save"
-          isSubmitting={isEditSubmitting}
-          onQuestionChange={setEditedQuestionText}
-          onSubmit={handleEditSave}
-          onClose={closeEditModal}
-          disableSubmit={!editedQuestionText.trim()}
-        />
         <GenerateQuestionsConsentModal
           open={showGenerateConsentModal}
           onClose={() => setShowGenerateConsentModal(false)}
@@ -1275,67 +1370,18 @@ const AiQuestionsSetup = () => {
             confirmText="Leave Page"
           />
         )}
-        {activeJobOpeningId && (
-          <p className="m-0 mt-2 text-center text-xs text-gray-500">
-            {isEditingAlreadyPublishedJob
-              ? 'Your question changes are saved automatically.'
-              : 'Your questions are saved automatically. The job stays a draft until you publish it.'}
-          </p>
-        )}
-        {(!isLastSection || canPublishHere) && (
-          <div className="flex justify-center gap-6">
-            {canPublishHere && !isEditingAlreadyPublishedJob && (
-              <Tooltip title="Save progress and come back later.">
-                <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-                  onClick={handleSaveDraft}
-                >
-                  Save As Draft
-                </Button>
-              </Tooltip>
-            )}
-            {canPublishHere && !isEditingAlreadyPublishedJob && (
-              <Tooltip title="Delete this job opening and everything in it.">
-                <Button
-                  className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
-                  onClick={() => setShowCancelConfirm(true)}
-                >
-                  Cancel
-                </Button>
-              </Tooltip>
-            )}
-            {!isLastSection ? (
-              <Tooltip title="Questions are saved. Continue to the next round.">
-                <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-                  onClick={handleSaveAndNext}
-                >
-                  Save &amp; Next
-                </Button>
-              </Tooltip>
-            ) : (
-              <Tooltip
-                title={
-                  isEditingAlreadyPublishedJob
-                    ? 'Save changes to this published job.'
-                    : 'Publish this job opening live.'
-                }
-              >
-                <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => void handlePublishOrFinish()}
-                  disabled={isPublishing || !activeJobOpeningId}
-                >
-                  {isPublishing
-                    ? 'Publishing…'
-                    : isEditingAlreadyPublishedJob
-                      ? 'Save & Finish'
-                      : 'Publish Job Opening'}
-                </Button>
-              </Tooltip>
-            )}
-          </div>
-        )}
+        <AiQuestionsActionFooter
+          canPublishHere={canPublishHere}
+          isEditingAlreadyPublishedJob={isEditingAlreadyPublishedJob}
+          isLastSection={isLastSection}
+          isPublishing={isPublishing}
+          activeJobOpeningId={activeJobOpeningId}
+          publishDisabledReason={publishDisabledReason}
+          onSaveDraft={handleSaveDraft}
+          onCancel={() => setShowCancelConfirm(true)}
+          onSaveAndNext={handleSaveAndNext}
+          onPublishOrFinish={handlePublishOrFinish}
+        />
         {showCancelConfirm && (
           <ConfirmationModal
             onClose={() => setShowCancelConfirm(false)}

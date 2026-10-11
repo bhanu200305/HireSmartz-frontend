@@ -205,12 +205,7 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
   }, []);
 
   return (
-    <div
-      className={clsx(
-        'w-full bg-surface-gray',
-        fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
-      )}
-    >
+    <div className="w-full bg-surface-gray h-screen overflow-hidden">
       <Sidebar
         collapsed={collapsed}
         onToggleCollapse={toggleCollapsed}
@@ -218,32 +213,31 @@ const MainLayout = ({ children, fullHeight = false }: MainLayoutProps) => {
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
       <div
-        className={clsx(
-          'flex flex-col transition-[margin-left] duration-200 ease-in-out',
-          fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'
-        )}
+        className="flex flex-col h-screen transition-[margin-left] duration-200 ease-in-out"
         style={{
           // No reserved gutter below `lg` — Sidebar is an overlay drawer
           // there, not a permanent rail.
           marginLeft: !isDesktop ? 0 : collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
         }}
       >
-        <div ref={headerRef}>
+        <div ref={headerRef} className="shrink-0">
           <Header onOpenMobileMenu={() => setMobileSidebarOpen(true)} />
         </div>
+        {/* Scroll is contained here, not at body level — this keeps the
+            header and footer always visible without relying on `sticky`,
+            which breaks when any ancestor has overflow-x:hidden (the
+            whole-site horizontal-overflow guard in index.css). */}
         <div
-          className={clsx('w-full', fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'flex-grow')}
+          className={clsx(
+            'w-full',
+            fullHeight ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-y-auto'
+          )}
+          style={!fullHeight ? { scrollbarGutter: 'stable' } : undefined}
         >
           {children}
         </div>
-        {/* sticky + z-[1100]: mirrors Header's treatment above so the
-            footer stays visible above any modal's mask instead of being
-            buried under it (a full-viewport antd Modal otherwise renders
-            over the whole app shell). bg-surface-gray matches the page
-            background it sits on so it reads as solid, not translucent,
-            once it's stacked above a dimmed backdrop. */}
-        <div ref={footerRef}>
-          <Footer className="sticky bottom-0 z-[1100] bg-surface-gray" />
+        <div ref={footerRef} className="shrink-0 z-[1100] bg-surface-gray">
+          <Footer />
         </div>
       </div>
     </div>

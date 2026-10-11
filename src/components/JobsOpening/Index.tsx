@@ -20,6 +20,7 @@ import {
   MdOutlineCheckCircle,
   MdOutlineEditNote,
   MdOutlineCancel,
+  MdClose,
 } from 'react-icons/md';
 import { StatCardRow, type StatCardData } from '../shared/ui/StatCardRow';
 import { hasFeatureAccess, isAssignedToJob } from '../../shared/utils/auth/getAccess';
@@ -1598,12 +1599,14 @@ const JobsOpening = () => {
           destroyOnClose
         >
           <div className="p-4 relative">
-            <Button
-              className="absolute right-2 top-2 p-0 min-w-0 border-none shadow-none text-gray-500 hover:text-gray-700 cursor-pointer"
+            <button
+              type="button"
+              aria-label="Close"
+              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
               onClick={() => setShowCreateJobModal(false)}
             >
-              <CloseOutlined className="text-lg" />
-            </Button>
+              <CloseOutlined className="text-base" />
+            </button>
             <h2 className="text-3xl font-semibold text-center mb-6">Create Job Opening</h2>
             <div className="space-y-3">
               <Button
@@ -1665,18 +1668,20 @@ const JobsOpening = () => {
           closable={false}
           destroyOnClose
         >
-          <div className="p-4">
+          <div className="p-4 relative">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-3xl font-semibold text-center w-full">Create Job Opening</h2>
-              <Button
-                className="absolute right-6 top-6 p-0 min-w-0"
+              <button
+                type="button"
+                aria-label="Close"
+                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                 onClick={() => {
                   resetJdUploadState();
                   setShowJdUploadModal(false);
                 }}
               >
-                <CloseOutlined />
-              </Button>
+                <CloseOutlined className="text-base" />
+              </button>
             </div>
 
             {jdFiles.length === 0 && (
@@ -1798,6 +1803,12 @@ const JobsOpening = () => {
           footer={null}
           centered
           closable
+          className="qr-modal"
+          closeIcon={
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+              <MdClose size={20} />
+            </span>
+          }
           width={520}
           destroyOnClose={false}
           // Same fix as TenantAnalyticsModal/CreateRoleModal/EditRoleModal:

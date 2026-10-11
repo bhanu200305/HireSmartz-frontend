@@ -154,9 +154,10 @@ export const BookingDetailDrawer = ({
   // reasoning — that's the id that actually disambiguates repeats, but
   // interview-service's booking never carries it, so sequence is the one
   // key both sides already agree on).
-  const { data: jobQuestions } = useGetJobQuestionsQuery(booking?.job_id ?? '', {
-    skip: !open || !isPanel || !canViewQuestions || !booking?.job_id,
-  });
+  const { data: jobQuestions } = useGetJobQuestionsQuery(
+    { jobOpeningId: booking?.job_id ?? '' },
+    { skip: !open || !isPanel || !canViewQuestions || !booking?.job_id }
+  );
   const roundQuestions = jobQuestions?.rounds.find((r) => r.sequence === booking?.sequence_no);
   // Live session state — only meaningful for a scheduled/in-progress video round.
   const { data: sessionState } = useGetSessionStateQuery(id, {

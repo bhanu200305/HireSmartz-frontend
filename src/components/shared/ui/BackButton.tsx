@@ -13,9 +13,9 @@ const BackButton: FC<BackButtonProps> = ({ onClick, label = 'Back', className = 
   <button
     type="button"
     onClick={onClick}
-    className={`-ml-2 flex w-fit cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 ${className}`}
+    className={`flex w-fit cursor-pointer items-center gap-1 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-600 shadow-xs transition-colors hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${className}`}
   >
-    <MdOutlineArrowBack size={16} />
+    <MdOutlineArrowBack size={15} />
     <span>{label}</span>
   </button>
 );

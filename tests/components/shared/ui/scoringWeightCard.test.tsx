@@ -28,6 +28,41 @@ const baseProps = {
 };
 
 describe('ScoringWeightCard — weight sum can never exceed 100', () => {
+  it('only enables Save for a changed distribution totaling 100%', () => {
+    render(<ScoringWeightCard {...baseProps} />);
+
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    const [inputA, inputB] = screen.getAllByRole('spinbutton');
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(inputB, { target: { value: '30' } });
+    expect(saveButton).toBeDisabled();
+    fireEvent.change(inputA, { target: { value: '70' } });
+    expect(saveButton).toBeEnabled();
+
+    fireEvent.change(inputA, { target: { value: '60' } });
+    fireEvent.change(inputB, { target: { value: '40' } });
+    expect(saveButton).toBeDisabled();
+  });
+
+  it('disables Save once the saved weights match the edits', () => {
+    const { rerender } = render(<ScoringWeightCard {...baseProps} />);
+    const [inputA, inputB] = screen.getAllByRole('spinbutton');
+    fireEvent.change(inputB, { target: { value: '30' } });
+    fireEvent.change(inputA, { target: { value: '70' } });
+
+    rerender(
+      <ScoringWeightCard
+        {...baseProps}
+        weights={weights.map((weight) => ({
+          ...weight,
+          weightPercentage: weight.id === 'a' ? 70 : 30,
+        }))}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
   it('caps a field at its own current value when the total already sits at 100', () => {
     render(<ScoringWeightCard {...baseProps} />);
 

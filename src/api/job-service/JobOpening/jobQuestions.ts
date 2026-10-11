@@ -22,14 +22,35 @@ export type JobIntakeQuestion = {
 
 export type JobIntakeQuestionsResponse = { questions: JobIntakeQuestion[] };
 
+export type GetJobQuestionsParams = {
+  jobOpeningId: string;
+  /** Full-text search within the round's question text. */
+  search?: string;
+  source_id?: number;
+  has_answer?: boolean;
+  category_code?: string;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
+  interview_round_id?: string | null;
+};
+
 export const jobQuestionsApi = jobApi.injectEndpoints({
   endpoints: (build) => ({
-    getJobQuestions: build.query<JobQuestionsResponse, string>({
-      query: (jobOpeningId) => ({
-        url: `/job-openings/${jobOpeningId}/questions`,
-        method: 'GET',
-      }),
-      providesTags: (_r, _e, jobOpeningId) => [{ type: 'JobQuestions', id: jobOpeningId }],
+    getJobQuestions: build.query<JobQuestionsResponse, GetJobQuestionsParams>({
+      query: ({ jobOpeningId, ...params }) => {
+        const queryParams: Record<string, unknown> = {};
+        Object.entries(params).forEach(([key, value]) => {
+          if (value != null && value !== '') queryParams[key] = value;
+        });
+        return {
+          url: `/job-openings/${jobOpeningId}/questions`,
+          method: 'GET',
+          params: queryParams,
+        };
+      },
+      providesTags: (_r, _e, { jobOpeningId }) => [{ type: 'JobQuestions', id: jobOpeningId }],
     }),
 
     getAudioQuestions: build.query<{ questions: AudioQuestionResponse[] }, string>({

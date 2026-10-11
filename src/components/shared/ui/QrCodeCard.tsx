@@ -67,10 +67,10 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
     // Styled after the legacy careerforcepro-web QR card: Sora heading,
     // Roboto body, a bordered input-style row and a plain "DOWNLOAD" pill.
     <div
-      className="flex items-center justify-center py-2"
+      className="flex items-center justify-center py-0"
       style={{ fontFamily: "'Roboto', sans-serif" }}
     >
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-8 sm:px-10 w-full max-w-md flex flex-col items-center gap-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-2 sm:px-10 w-full max-w-md flex flex-col items-center gap-4">
         {/* Header */}
         <div className="text-center">
           <h2

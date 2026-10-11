@@ -13,6 +13,7 @@ import { getJobErrorMessage } from '../../../shared/utils/auth/jobError.helpers'
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import { useGetJobDescriptionByIdQuery } from '../../../api/job-service/JobOpening/ViewJobDescriptionById';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import JobActionFooter from '../AddJobDescription/JobActionFooter';
 
 /**
  * Edit wizard's "AI Job Description" tab — now the exact same panel the
@@ -90,39 +91,39 @@ const EditAiJobDescription = () => {
   return (
     <>
       <JobDescriptionPanel ref={panelRef} aiJobDescriptionId={jobOpeningId} />
-      <div className="flex items-center justify-center mt-6 gap-6">
-        {isDraft && (
-          <Tooltip title="Save progress and come back later.">
-            <Button
-              type="button"
-              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-              onClick={handleSaveDraft}
-            >
-              Save As Draft
-            </Button>
-          </Tooltip>
-        )}
+      <JobActionFooter>
         {isDraft && (
           <Tooltip title="Delete this job opening and everything in it.">
             <Button
               type="button"
-              className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+              className="border border-neutral-300 bg-white text-neutral-600 hover:text-red-600 hover:border-red-300 hover:bg-red-50/50 rounded-full px-5 py-2 text-sm font-medium transition-colors flex items-center justify-center"
               onClick={() => setShowCancelConfirm(true)}
             >
               Cancel
             </Button>
           </Tooltip>
         )}
+        {isDraft && (
+          <Tooltip title="Save progress and come back later.">
+            <Button
+              type="button"
+              className="bg-primary hover:bg-brand-700 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-colors flex items-center justify-center"
+              onClick={handleSaveDraft}
+            >
+              Save As Draft
+            </Button>
+          </Tooltip>
+        )}
         <Tooltip title="Save this page and continue.">
           <Button
             type="button"
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
+            className="bg-primary hover:bg-primary-hover text-white rounded-full px-5 py-2 text-sm font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center"
             onClick={handleContinueToScoring}
           >
             Save & Next
           </Button>
         </Tooltip>
-      </div>
+      </JobActionFooter>
       {showCancelConfirm && (
         <ConfirmationModal
           onClose={() => setShowCancelConfirm(false)}

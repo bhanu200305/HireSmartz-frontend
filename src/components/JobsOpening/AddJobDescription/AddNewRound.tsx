@@ -34,6 +34,7 @@ import {
   roundTypeIdsOfKind,
   addableRoundTypes,
 } from '../intakeRoundPlacement';
+import { useInterviewRoundsDraft } from '../EditJobOpening/interviewRoundsDraft';
 
 const { Option } = Select;
 
@@ -57,9 +58,11 @@ const AddNewRound = () => {
   // AiQuestionsSetup.tsx's `activeJobOpeningId` — see that comment for the
   // full "already published" report this addresses.
   const resolvedJobId = asJobId(jobFromPath) || asJobId(jobOpeningId);
-  const { data: rounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
-    skip: !resolvedJobId,
+  const draft = useInterviewRoundsDraft();
+  const { data: savedRounds = [] } = useGetInterviewRoundsByJobIdQuery(resolvedJobId, {
+    skip: !resolvedJobId || !!draft,
   });
+  const rounds = draft?.rounds ?? savedRounds;
   // Resume is auto-seeded and mandatory — never addable here. The optional
   // Intake Call is addable once per job (it's capped at one), always as
   // round 2 right after Resume.
@@ -128,14 +131,35 @@ const AddNewRound = () => {
       return;
     }
 
+    const duration = selectedRoundType?.requires_duration ? Number(data.duration) : null;
+    const variant = selectedRoundType?.available_variants?.length ? data.variant : null;
+
+    // Edit-flow tab: stage locally; the tab's Save & Next persists it.
+    if (draft) {
+      draft.addRound(
+        {
+          round: { id: data.round, name: selectedRoundType?.name ?? '', status: true },
+          roundId: String(data.round),
+          roundName: selectedRoundType?.name ?? null,
+          roundType: 'MANUAL',
+          description: data.description,
+          duration,
+          variant,
+        },
+        { afterResume: isIntakeSelected }
+      );
+      navigate(`/jobs/edit/${jobFromPath}/interview`);
+      return;
+    }
+
     const existing = toInterviewSequencePayload(rounds);
     const newRound = toInterviewRoundRequest(
       {
         roundId: String(data.round),
         sequence: existing.length + 1,
         description: data.description,
-        duration: selectedRoundType?.requires_duration ? Number(data.duration) : null,
-        variant: selectedRoundType?.available_variants?.length ? data.variant : null,
+        duration,
+        variant,
       },
       { isNew: true }
     );
@@ -234,10 +258,11 @@ const AddNewRound = () => {
                           field.onChange(value);
                           handleRoundChange(value);
                         }}
-                        className="w-full custom-select placeholder-style"
+                        // className="w-full custom-select placeholder-style add-round-select"
+                        className="w-full custom-select placeholder-style add-round-select [&_.ant-select-selector]:!pl-2"
                         showSearch
                         allowClear
-                        placeholder="Select Interview Round"
+                        placeholder="  Select Interview Round"
                         loading={interviewRoundsLoading}
                         filterOption={(input, option) =>
                           typeof option?.children === 'string' &&
