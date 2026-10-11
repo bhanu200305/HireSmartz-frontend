@@ -9,9 +9,12 @@ import jobApi from '../jobApi';
 // a friendly title there too (the detail response already has one).
 
 export type PublicJobLocation = {
+  address_line_1?: string | null;
   city: string | null;
   state: string | null;
   country: string | null;
+  // The office's id, to send as the applied location. Null for an address typed by hand.
+  job_location_id?: string | null;
 };
 
 // `skill_type` is a string category (e.g. "Required"), not a boolean —
@@ -27,6 +30,8 @@ export type PublicJobListing = {
   job_profile_code: string;
   job_title: string | null;
   location_city: string | null;
+  // Every location's city, in the order added.
+  location_cities?: string[];
   vacancies: number | null;
   job_open_date: string | null;
   min_experience_req: number | null;

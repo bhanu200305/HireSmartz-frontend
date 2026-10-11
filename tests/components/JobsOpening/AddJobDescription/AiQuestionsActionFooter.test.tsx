@@ -59,32 +59,24 @@ describe('AiQuestionsActionFooter', () => {
     );
   });
 
-  it('floats within the content column and docks when scrolled to its reserved space', () => {
-    let slotTop = window.innerHeight;
+  it('floats within the content column and stays fixed while scrolling', () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
       this: HTMLElement
     ) {
-      return new DOMRect(120, this.tagName === 'FOOTER' ? 0 : slotTop, 900, 80);
+      return new DOMRect(120, 0, 900, 80);
     });
 
     render(<AiQuestionsActionFooter {...defaultProps} />);
     const footer = screen.getByRole('contentinfo', { name: 'Questions actions' });
 
-    expect(footer).toHaveClass('fixed', 'bottom-0');
+    expect(footer).toHaveClass('fixed');
     expect(footer).toHaveStyle({ left: '120px', width: '900px' });
     expect(footer.parentElement).toHaveStyle({ height: '80px' });
 
-    slotTop = window.innerHeight - 80;
     fireEvent.scroll(window);
 
-    expect(footer).toHaveClass('relative');
-    expect(footer).not.toHaveClass('fixed');
-    expect(footer.style.left).toBe('');
-    expect(footer.parentElement).toHaveStyle({ height: '80px' });
-
-    slotTop = window.innerHeight;
-    fireEvent.scroll(document);
     expect(footer).toHaveClass('fixed');
+    expect(footer.parentElement).toHaveStyle({ height: '80px' });
   });
 
   it('updates the floating footer width and reserved height on resize', () => {

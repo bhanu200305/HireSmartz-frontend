@@ -23,6 +23,7 @@ import {
   formatPostedAgo,
 } from '../../shared/utils/publicJobDisplay';
 import { calendarDaysSince } from '../../shared/utils/calendarDate';
+import { jobCities } from '../../shared/utils/jobCities';
 
 const { Option, OptGroup } = Select;
 
@@ -277,10 +278,10 @@ const JobCard = ({ job, organizationId }: JobCardProps) => {
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-[3.5rem] md:pl-[3.75rem]">
-        {job.location_city && (
+        {jobCities(job).length > 0 && (
           <div className="flex items-center gap-1.5 text-sm text-gray-500">
             <EnvironmentOutlined className="text-xs shrink-0" />
-            <span className="truncate">{job.location_city}</span>
+            <span className="truncate">{jobCities(job).join(', ')}</span>
           </div>
         )}
         {experience && (
@@ -411,11 +412,9 @@ export const CareersListingPage = () => {
 
   const locationOptions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          allJobs.map((job) => job.location_city).filter((city): city is string => Boolean(city))
-        )
-      ).sort((a, b) => a.localeCompare(b)),
+      Array.from(new Set(allJobs.flatMap((job) => jobCities(job)))).sort((a, b) =>
+        a.localeCompare(b)
+      ),
     [allJobs]
   );
 
@@ -430,7 +429,7 @@ export const CareersListingPage = () => {
     return allJobs.filter((job) => {
       if (
         selectedLocations.length &&
-        (!job.location_city || !selectedLocations.includes(job.location_city))
+        !jobCities(job).some((city) => selectedLocations.includes(city))
       ) {
         return false;
       }

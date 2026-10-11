@@ -62,6 +62,8 @@ interface UploadAndGenerateHeaderProps {
   actionsContainer?: HTMLElement | null;
   onDownloadTemplate?: () => void;
   isDownloading?: boolean;
+  /** File types the upload accepts, e.g. ['.xlsx', '.csv'], from the backend. Empty: any file. */
+  acceptedExtensions?: string[];
 }
 
 export const UploadAndGenerateHeader = ({
@@ -83,6 +85,7 @@ export const UploadAndGenerateHeader = ({
   actionsContainer,
   onDownloadTemplate,
   isDownloading = false,
+  acceptedExtensions,
 }: UploadAndGenerateHeaderProps) => {
   // Non-empty action buttons render in the caller's slot (beside the round chip) when given.
   const place = (node: React.ReactNode) =>
@@ -125,7 +128,7 @@ export const UploadAndGenerateHeader = ({
         ref={fileInputRef}
         type="file"
         aria-label="Upload questions file"
-        accept=".xlsx,.csv"
+        accept={acceptedExtensions?.length ? acceptedExtensions.join(',') : undefined}
         className="hidden"
         onChange={onUpload}
         disabled={uploadDisabled}

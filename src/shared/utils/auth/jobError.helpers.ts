@@ -44,7 +44,9 @@ const ROUND_ERROR_MESSAGES: Record<string, string> = {
   INTAKE_CALL_POSITION_INVALID: 'The Intake Call must be round 2, right after Resume Review.',
   RESUME_ROUND_POSITION_INVALID: 'Resume Review must always be round 1.',
   ASSIGNEE_LOCATION_PERMISSION_DENIED:
-    'A selected hiring manager or recruiter is not allowed to work on jobs at this location. Pick someone who has access to it.',
+    'A selected hiring manager or recruiter is not allowed to work on jobs at any of the selected locations. Pick someone who has access to at least one of them.',
+  LOCATION_NEEDS_HIRING_MANAGER:
+    'Every selected location needs at least one hiring manager who can work there. Add one for each location.',
   RESUME_ROUND_CANNOT_BE_MODIFIED: 'Resume Review is required and cannot be removed or changed.',
 };
 

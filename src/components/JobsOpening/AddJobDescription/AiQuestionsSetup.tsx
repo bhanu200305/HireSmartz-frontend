@@ -338,8 +338,8 @@ const AiQuestionsSetup = () => {
     { skip: !activeJobOpeningId || !activeRoundInstanceId || !debouncedSearch }
   );
 
-  // The file types the upload accepts, from the backend (consumed by UploadAndGenerateHeader).
-  useGetQuestionImportFormatsQuery();
+  // The file types the upload accepts, from the backend.
+  const { data: importFormats } = useGetQuestionImportFormatsQuery();
   // Files bulk-imported into this round, newest first.
   const { data: questionImports } = useGetQuestionImportsQuery(
     { jobOpeningId: activeJobOpeningId ?? '', interviewRoundId: activeRoundInstanceId },
@@ -1283,6 +1283,7 @@ const AiQuestionsSetup = () => {
                   isUploading={isUploadingExcel}
                   onDownloadTemplate={handleDownloadTemplate}
                   isDownloading={isDownloadingTemplate}
+                  acceptedExtensions={importFormats?.extensions}
                 />
                 <QuestionList
                   key={activeRound.round_instance_id}

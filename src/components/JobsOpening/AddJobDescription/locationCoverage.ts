@@ -1,7 +1,11 @@
+/** Most locations one job may have (the server refuses more). */
+export const MAX_JOB_LOCATIONS = 50;
+
 /** Per office, the ids of the hiring managers who hold the role there. */
 export type OfficeCoverage = Record<string, string[]>;
 
-const sameId = (a: unknown, b: unknown): boolean => String(a) === String(b);
+const sameId = (a: unknown, b: unknown): boolean =>
+  String(a).toLowerCase() === String(b).toLowerCase();
 
 /**
  * The selected offices that no selected hiring manager covers. A manager covers
@@ -19,7 +23,7 @@ export const uncoveredOffices = (
     .filter(
       (officeId) =>
         !hiringManagerIds.some((managerId) =>
-          (coverage[officeId] ?? []).some((covered) => sameId(covered, managerId))
+          (coverage[officeId.toLowerCase()] ?? []).some((covered) => sameId(covered, managerId))
         )
     );
 };
@@ -58,6 +62,8 @@ export const managersWithoutAnyOffice = (
     .filter(
       (managerId) =>
         !officeIds.some((officeId) =>
-          (coverage[String(officeId)] ?? []).some((covered) => sameId(covered, managerId))
+          (coverage[String(officeId).toLowerCase()] ?? []).some((covered) =>
+            sameId(covered, managerId)
+          )
         )
     );

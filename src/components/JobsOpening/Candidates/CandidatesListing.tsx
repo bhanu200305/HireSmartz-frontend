@@ -435,7 +435,7 @@ const CandidatesListing = () => {
 
       <div className="mb-3 rounded-lg bg-white px-4 py-4 shadow-sm sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 flex-col gap-1 text-sm">
+          <div className="flex min-w-0 flex-col gap-1 text-sm lg:max-w-[40%] lg:shrink-0">
             {/* Same 44px height as the buttons, to share their line. */}
             <Link
               to={`/jobs/view/${parsedJobId}/details`}
@@ -463,7 +463,7 @@ const CandidatesListing = () => {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 lg:items-end">
+          <div className="flex min-w-0 flex-col gap-3 lg:items-end">
             <div className="flex flex-wrap items-center gap-3 lg:justify-end">
               <Search
                 appname="candidates listing"

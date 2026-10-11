@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Input, Checkbox } from 'antd';
+import { ConfigProvider, Input, Checkbox, Select } from 'antd';
 import { toast } from 'react-toastify';
 import ReCAPTCHA from 'react-google-recaptcha';
 import {
@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useSubmitPublicApplicationMutation } from '../../api/candidate-service/PublicApply/index';
 import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index';
+import { publicLocationLabels } from '../../shared/utils/publicJobDisplay';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
@@ -54,6 +55,10 @@ export const CareersApplyPage = () => {
     { skip: !organizationId || !jobId }
   );
 
+  // The job's offices a candidate can choose between (an address typed by hand has no id).
+  const applyLocations = (job?.locations ?? []).filter((location) => location.job_location_id);
+  const locationLabels = publicLocationLabels(job?.locations ?? []);
+  const applyLocationLabels = publicLocationLabels(applyLocations);
   const [resume, setResume] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState('');
@@ -65,6 +70,9 @@ export const CareersApplyPage = () => {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState<string | null>(null);
   const [resumeRequired, setResumeRequired] = useState(false);
+  // A job at several locations asks where the candidate is applying.
+  const [appliedLocationId, setAppliedLocationId] = useState('');
+  const [locationError, setLocationError] = useState(false);
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
@@ -102,9 +110,11 @@ export const CareersApplyPage = () => {
     const noEmail = !email.trim();
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
+    const noLocation = applyLocations.length > 1 && !appliedLocationId;
     const badPhone = phone.trim() ? !isPhoneValidForCountry(phone, countryCode) : false;
 
     setResumeRequired(noResume);
+    setLocationError(noLocation);
     setFirstNameError(noFirstName);
     setLastNameError(noLastName);
     setEmailError(noEmail);
@@ -119,6 +129,7 @@ export const CareersApplyPage = () => {
       noEmail ||
       noTos ||
       noCaptcha ||
+      noLocation ||
       badPhone ||
       !resume
     )
@@ -133,6 +144,7 @@ export const CareersApplyPage = () => {
         lastName: lastName.trim(),
         emailId: email.trim(),
         contactNo: phone.trim() ? toE164(countryCode, phone) : undefined,
+        appliedJobLocationId: appliedLocationId || undefined,
         termsAccepted: tosConsent,
         smsConsent,
         captchaToken: captchaToken ?? '',
@@ -221,15 +233,13 @@ export const CareersApplyPage = () => {
             </h2>
             <p className="text-xs text-gray-400 mb-3">{job.job_profile_code}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {(job.locations ?? []).map((location, index) => (
+              {locationLabels.map((label, index) => (
                 <div
-                  key={`${location.city}-${location.state}-${index}`}
+                  key={`${label}-${index}`}
                   className="flex items-center gap-2 text-sm text-gray-500"
                 >
                   <EnvironmentOutlined />
-                  <span>
-                    {[location.city, location.state, location.country].filter(Boolean).join(', ')}
-                  </span>
+                  <span>{label}</span>
                 </div>
               ))}
               {(job.min_experience_req !== null || job.max_experience_req !== null) && (
@@ -247,6 +257,51 @@ export const CareersApplyPage = () => {
         )}
 
         <div className="flex flex-col gap-5">
+          {applyLocations.length > 1 && (
+            <div>
+              <label
+                htmlFor="applied-location"
+                className="block text-sm font-medium text-gray-800 mb-2"
+              >
+                Which location are you applying for? <span className="text-red-500">*</span>
+              </label>
+              <ConfigProvider theme={{ components: { Select: { controlHeightLG: 44 } } }}>
+                <Select
+                  id="applied-location"
+                  value={appliedLocationId || undefined}
+                  placeholder="Select a location"
+                  onChange={(value) => {
+                    setAppliedLocationId(value);
+                    setLocationError(false);
+                  }}
+                  status={locationError ? 'error' : undefined}
+                  size="large"
+                  className="w-full [&_.ant-select-selector]:!rounded-full [&_.ant-select-selector]:!px-4 [&_.ant-select-selection-placeholder]:!top-0 [&_.ant-select-selection-placeholder]:!bottom-0 [&_.ant-select-selection-placeholder]:!translate-y-0 [&_.ant-select-selection-placeholder]:!transform-none"
+                  options={applyLocations.map((location, index) => ({
+                    value: location.job_location_id ?? '',
+                    label: applyLocationLabels[index],
+                    address: location.address_line_1,
+                    place: [location.city, location.state, location.country]
+                      .filter(Boolean)
+                      .join(', '),
+                  }))}
+                  optionRender={(option) => (
+                    <div className="py-0.5">
+                      <div className="text-sm font-medium text-gray-800">
+                        {option.data.address || option.data.place}
+                      </div>
+                      {option.data.address && (
+                        <div className="text-xs text-gray-500">{option.data.place}</div>
+                      )}
+                    </div>
+                  )}
+                />
+              </ConfigProvider>
+              {locationError && (
+                <p className="mt-1 text-sm text-red-500">Please choose a location.</p>
+              )}
+            </div>
+          )}
           {/* Resume Upload */}
           <div>
             <label htmlFor="resume-upload" className="block text-sm font-medium text-gray-800 mb-2">

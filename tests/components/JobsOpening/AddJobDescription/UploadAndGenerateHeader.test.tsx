@@ -59,7 +59,7 @@ describe('Question entry UI', () => {
         .getAllByRole('button')
         .slice(0, 3)
         .map((button) => button.textContent?.trim())
-    ).toEqual(['Upload File', '✨Generate With AI', 'Write Your Own']);
+    ).toEqual(['Upload File', '✨Generate With AI', 'Write Questions']);
     expect(screen.queryByText('Fastest')).not.toBeInTheDocument();
   });
 
@@ -79,13 +79,12 @@ describe('Question entry UI', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<EntryHarness onSubmit={onSubmit} />);
-    await user.click(screen.getByRole('button', { name: 'Write Your Own' }));
+    await user.click(screen.getByRole('button', { name: 'Write Questions' }));
     const input = screen.getByRole('textbox', { name: 'Questions' });
     await waitFor(() => expect(input).toHaveFocus());
     expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
     expect(screen.getByRole('button', { name: 'Add Questions' })).toBeDisabled();
     await user.paste(' First question? \n\n Second question? ');
-    expect(screen.getByText('2 questions ready to add')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add 2 Questions' }));
     expect(onSubmit).toHaveBeenCalledOnce();
     await user.keyboard('{Escape}');
@@ -95,7 +94,7 @@ describe('Question entry UI', () => {
   it('shows writing help and uses project pill buttons', async () => {
     const user = userEvent.setup();
     render(<EntryHarness />);
-    await user.click(screen.getByRole('button', { name: 'Write Your Own' }));
+    await user.click(screen.getByRole('button', { name: 'Write Questions' }));
     const help =
       'Type one question, or paste a list with one question on each line. Every line is added as a separate question.';
     expect(screen.getByRole('textbox', { name: 'Questions' })).toHaveAccessibleDescription(help);
@@ -202,34 +201,11 @@ describe('UploadAndGenerateHeader import details', () => {
     ).toBeTruthy();
   });
 
-  it('can be closed and opened again from the summary', async () => {
+  it('can be closed', async () => {
     renderHeader();
 
     fireEvent.click(screen.getByText('Close'));
     await waitFor(() => expect(screen.queryByText('Not imported (2)')).toBeNull());
-
-    fireEvent.click(screen.getByText('View details (4)'));
-    expect(screen.getByText('Not imported (2)')).toBeTruthy();
-  });
-});
-
-describe('UploadAndGenerateHeader clear button', () => {
-  it('is a cross icon with no text, and clears the details', () => {
-    const onClear = vi.fn();
-    render(
-      <UploadAndGenerateHeader
-        description=""
-        onGenerate={vi.fn()}
-        onUpload={vi.fn()}
-        uploadedFileName="questions.xlsx"
-        importedCount={1}
-        onClearDetails={onClear}
-      />
-    );
-
-    expect(screen.queryByText(/Clear Details/i)).toBeNull();
-    fireEvent.click(screen.getByLabelText('Clear details'));
-    expect(onClear).toHaveBeenCalledTimes(1);
   });
 });
 

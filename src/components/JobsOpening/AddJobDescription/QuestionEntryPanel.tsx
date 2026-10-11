@@ -67,8 +67,15 @@ const QuestionEntryPanel = ({
       if (!isFile(event) || headerProps.generateDisabled || headerProps.isUploading) return;
       const file = event.dataTransfer?.files[0];
       if (!file) return;
-      const error = !/\.(xlsx|csv)$/i.test(file.name)
-        ? 'Upload an Excel (.xlsx) or CSV (.csv) file.'
+      const allowed = headerProps.acceptedExtensions;
+      const fileType = /\.[^.]+$/.exec(file.name)?.[0].toLowerCase() ?? '';
+      const wrongType = allowed?.length
+        ? !allowed.includes(fileType)
+        : !/\.(xlsx|csv)$/i.test(file.name);
+      const error = wrongType
+        ? allowed?.length
+          ? `Upload a file of one of these types: ${allowed.join(', ')}.`
+          : 'Upload an Excel (.xlsx) or CSV (.csv) file.'
         : file.size === 0
           ? 'The file is empty. Choose a file containing questions.'
           : file.size > MAX_FILE_SIZE_BYTES
@@ -104,7 +111,7 @@ const QuestionEntryPanel = ({
       window.removeEventListener('keydown', escape);
       window.removeEventListener('blur', reset);
     };
-  }, [headerProps.generateDisabled, headerProps.isUploading]);
+  }, [headerProps.generateDisabled, headerProps.isUploading, headerProps.acceptedExtensions]);
 
   const canSubmit = !!count && !isSubmitting && !headerProps.generateDisabled;
 
@@ -125,7 +132,11 @@ const QuestionEntryPanel = ({
       <input
         ref={dropInput}
         type="file"
-        accept=".xlsx,.csv"
+        accept={
+          headerProps.acceptedExtensions?.length
+            ? headerProps.acceptedExtensions.join(',')
+            : undefined
+        }
         hidden
         onChange={headerProps.onUpload}
       />

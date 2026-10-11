@@ -118,8 +118,8 @@ export const SortableInterviewRounds = ({
       );
       showToast({
         message: hasIntake
-          ? 'Resume Review must stay round 1 and the Intake Call round 2. No other round can be moved ahead of them.'
-          : 'Resume Review must stay round 1. No other round can be moved ahead of it.',
+          ? 'Round 1 is always Resume Review and Round 2 is always the Intake Call. Other rounds can only come after them.'
+          : 'Round 1 is always Resume Review. Other rounds can only come after it.',
         type: 'error',
       });
       return;

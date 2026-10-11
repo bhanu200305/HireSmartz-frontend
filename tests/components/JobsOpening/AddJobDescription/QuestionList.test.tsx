@@ -59,7 +59,7 @@ describe('QuestionList', () => {
     const user = userEvent.setup();
     render(<ListHarness initialSelection={['sql']} />);
     await user.type(screen.getByRole('searchbox'), 'unmatched');
-    expect(screen.getByText('No questions match your search')).toBeInTheDocument();
+    expect(screen.getByText('No questions match “unmatched”')).toBeInTheDocument();
     expect(screen.getByText(/Selected Questions:/)).toHaveTextContent('Selected Questions: 1');
     expect(screen.getByRole('checkbox', { name: 'Select shown' })).toBeDisabled();
   });

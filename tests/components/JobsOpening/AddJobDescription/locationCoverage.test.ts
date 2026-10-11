@@ -101,3 +101,9 @@ describe('coverageIssue', () => {
     expect(coverageIssue(['a', 'b'], [], coverage, nameOf)).toBeNull();
   });
 });
+
+describe('ids written in upper or lower case', () => {
+  it('still match', () => {
+    expect(uncoveredOffices(['A-1'], ['M-1'], { 'a-1': ['m-1'] })).toEqual([]);
+  });
+});

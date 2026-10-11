@@ -24,14 +24,42 @@ describe('SelectedLocations', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows a chip and an address card for each selected location', () => {
+  it('shows a chip for each location and one address card at a time', () => {
     render(<SelectedLocations offices={[pune, delhi]} />);
 
     expect(screen.getByText('Selected Locations')).toBeTruthy();
     expect(screen.getByRole('region', { name: /Pune/ })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: /Delhi/ })).toBeNull();
+    expect(screen.getByText('1 of 2')).toBeTruthy();
+  });
+
+  it('steps through the locations with the arrows', () => {
+    render(<SelectedLocations offices={[pune, delhi]} />);
+    const previous = screen.getByLabelText('Previous location') as HTMLButtonElement;
+    const next = screen.getByLabelText('Next location') as HTMLButtonElement;
+    expect(previous.disabled).toBe(true);
+
+    fireEvent.click(next);
+
     expect(screen.getByRole('region', { name: /Delhi/ })).toBeTruthy();
-    expect(screen.getByText('1 Pune Road')).toBeTruthy();
     expect(screen.getByText('1 Delhi Road')).toBeTruthy();
+    expect(next.disabled).toBe(true);
+    fireEvent.click(previous);
+    expect(screen.getByRole('region', { name: /Pune/ })).toBeTruthy();
+  });
+
+  it('jumps to a location from its chip', () => {
+    render(<SelectedLocations offices={[pune, delhi]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Delhi/ }));
+
+    expect(screen.getByRole('region', { name: /Delhi/ })).toBeTruthy();
+  });
+
+  it('has no arrows for a single location', () => {
+    render(<SelectedLocations offices={[pune]} />);
+
+    expect(screen.queryByLabelText('Next location')).toBeNull();
   });
 
   it('removes a location from its chip', () => {

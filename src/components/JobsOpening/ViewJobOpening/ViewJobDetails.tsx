@@ -466,7 +466,9 @@ const ViewJobDetails = () => {
 
         <Section title="Location">
           {hasSeveralLocations ? (
-            <SelectedLocations offices={jobOffices} />
+            <div className="sm:col-span-2 lg:col-span-3">
+              <SelectedLocations offices={jobOffices} />
+            </div>
           ) : (
             <>
               <Field label="Location Name" value={locationDisplayName} />

@@ -130,7 +130,8 @@ import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import JobActionFooter from './JobActionFooter';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import SelectedLocations from './SelectedLocations';
-import { coverageIssue } from './locationCoverage';
+import { useDuplicateJobWarning } from '../../../hooks/useDuplicateJobWarning';
+import { MAX_JOB_LOCATIONS, coverageIssue } from './locationCoverage';
 import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import {
@@ -550,7 +551,11 @@ const JobDetails = () => {
   };
 
   const handleLocationsChange = (value: (string | number)[] | null) => {
-    const ids = [...new Set((value ?? []).filter((id) => id !== '').map(String))];
+    const picked = [...new Set((value ?? []).filter((id) => id !== '').map(String))];
+    if (picked.length > MAX_JOB_LOCATIONS) {
+      showToast({ message: `A job can have up to ${MAX_JOB_LOCATIONS} locations.`, type: 'error' });
+    }
+    const ids = picked.slice(0, MAX_JOB_LOCATIONS);
     const first = offices.find((office) => idsMatch(office.office_id, ids[0]));
 
     setSelectedLocationIdsForUsers(ids);
@@ -1091,6 +1096,11 @@ const JobDetails = () => {
     },
     { skip: !resolvedJobId || !selectedJobTitleOrgId || !selectedJobTitleText }
   );
+  const duplicateJobWarning = useDuplicateJobWarning({
+    jobTitleId: selectedJobTitleOrgId,
+    offices: selectedLocations,
+    excludeJobId: resolvedJobId,
+  });
   const suggestedSkills = suggestedSkillsData?.skills ?? [];
   // Each suggestion is auto-added once, so a skill the user removes stays removed.
   const offeredSuggestedSkills = useOfferedSuggestedSkills(resolvedJobId);
@@ -2548,6 +2558,7 @@ const JobDetails = () => {
   };
 
   const onSaveDraft = async (data: Partial<JobDetailsState>) => {
+    if (refuseUncoveredLocations()) return;
     setAllowNavigation(true);
     const { errors } = validateDraft<JobDetailsState>(data, jobDetailsDraftSchema);
 
@@ -2605,16 +2616,20 @@ const JobDetails = () => {
     }
   };
 
+  // Every selected location needs a hiring manager who can work there, whether the
+  // page is saved to continue or as a draft.
+  const refuseUncoveredLocations = (): boolean => {
+    if (!hiringManagerCoverageIssue) return false;
+    setError('hiringManagers', { type: 'manual', message: hiringManagerCoverageIssue });
+    showToast({ message: hiringManagerCoverageIssue, type: 'error' });
+    document
+      .getElementById('field-hiringManagers')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  };
+
   const onSubmit = async (data: JobDetailsState) => {
-    // Every selected location needs a hiring manager who can work there.
-    if (hiringManagerCoverageIssue) {
-      setError('hiringManagers', { type: 'manual', message: hiringManagerCoverageIssue });
-      showToast({ message: hiringManagerCoverageIssue, type: 'error' });
-      document
-        .getElementById('field-hiringManagers')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
+    if (refuseUncoveredLocations()) return;
     setShowValidationSummary(false);
     setAllowNavigation(true);
     dispatch(updateJobDetails(data));
@@ -3350,6 +3365,9 @@ const JobDetails = () => {
                         )}
                     </Form.Item>
                   </div>
+                  {duplicateJobWarning && (
+                    <p className="text-xs text-amber-600 mt-1 break-words">{duplicateJobWarning}</p>
+                  )}
                   <SelectedLocations
                     offices={selectedLocations}
                     disabled={fieldsLocked}
@@ -3415,7 +3433,7 @@ const JobDetails = () => {
                               {selectedHiringManagers.map((manager) => (
                                 <span
                                   key={manager.id}
-                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                                  className={`inline-flex max-w-full break-words items-center px-3 py-1 rounded-full text-xs font-medium border ${
                                     manager.isDeleted
                                       ? 'bg-gray-100 text-gray-600 border-gray-300'
                                       : 'bg-brand-100 text-brand-800 border-brand-200'
@@ -3486,7 +3504,7 @@ const JobDetails = () => {
                               {selectedRecruiters.map((recruiter) => (
                                 <span
                                   key={recruiter.id}
-                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                                  className={`inline-flex max-w-full break-words items-center px-3 py-1 rounded-full text-xs font-medium border ${
                                     recruiter.isDeleted
                                       ? 'bg-gray-100 text-gray-600 border-gray-300'
                                       : 'bg-brand-100 text-brand-800 border-brand-200'

@@ -181,7 +181,7 @@ const useJobOpeningDropdown = (
   const officeCoverage = useMemo(() => {
     const byOffice: Record<string, string[]> = {};
     for (const office of locationPermissions.data?.offices ?? []) {
-      byOffice[office.location_id] =
+      byOffice[String(office.location_id).toLowerCase()] =
         endpoint === 'RECRUITER' ? office.recruiter_ids : office.hiring_manager_ids;
     }
     return byOffice;

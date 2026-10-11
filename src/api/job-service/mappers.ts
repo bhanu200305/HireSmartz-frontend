@@ -1,5 +1,6 @@
 import type { JobSummaryResponse } from './types';
 import type { Jobs } from '../../types';
+import { citiesText } from '../../shared/utils/jobCities';
 
 /**
  * Map a job-service JobSummaryResponse into the listing row shape the
@@ -30,7 +31,7 @@ export const mapJobSummaryToListRow = (item: JobSummaryResponse): Jobs => {
     exemptionStatusName: '',
     jobTitleName: item.job_profile_code,
     departmentName: '',
-    officeLocationName: item.is_remote ? 'Remote' : (item.location_city ?? ''),
+    officeLocationName: item.is_remote ? 'Remote' : citiesText(item),
     jobTypeName: '',
     educationPreferenceName: '',
     mandatorySkillName: '',
@@ -44,7 +45,7 @@ export const mapJobSummaryToListRow = (item: JobSummaryResponse): Jobs => {
     invitationSentCount: 0,
     candidateCount: item.total_candidate_count ?? 0,
     interviewedCandidateCount: item.interviewed_count ?? 0,
-    location: item.location_city ? { id: item.location_city, name: item.location_city } : undefined,
+    location: citiesText(item) ? { id: citiesText(item), name: citiesText(item) } : undefined,
     // Extra fields the listing uses for name resolution
     jobTitleId: item.job_title_id,
     departmentId: item.department_id,

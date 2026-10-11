@@ -31,7 +31,8 @@ import {
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import SelectedLocations from '../AddJobDescription/SelectedLocations';
-import { coverageIssue } from '../AddJobDescription/locationCoverage';
+import { useDuplicateJobWarning } from '../../../hooks/useDuplicateJobWarning';
+import { MAX_JOB_LOCATIONS, coverageIssue } from '../AddJobDescription/locationCoverage';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -966,6 +967,11 @@ const EditJobDetail = () => {
     const found = offices.find((office) => idsMatch(office.office_id, officeId));
     return found ? officeDisplayName(found) : 'this location';
   };
+  const duplicateJobWarning = useDuplicateJobWarning({
+    jobTitleId: selectedJobTitleId ? resolveOrgJobTitleId(selectedJobTitleId) : undefined,
+    offices: selectedLocations,
+    excludeJobId: parsedJobId,
+  });
   const hiringManagerCoverageIssue = hiringManagerCoverageReady
     ? coverageIssue(
         selectedOfficeIds,
@@ -1509,7 +1515,11 @@ const EditJobDetail = () => {
   const pruneAssigneesRef = useRef(false);
 
   const handleLocationsChange = (value: (string | number)[] | null) => {
-    const ids = [...new Set((value ?? []).filter((id) => id !== '').map(String))];
+    const picked = [...new Set((value ?? []).filter((id) => id !== '').map(String))];
+    if (picked.length > MAX_JOB_LOCATIONS) {
+      showToast({ message: `A job can have up to ${MAX_JOB_LOCATIONS} locations.`, type: 'error' });
+    }
+    const ids = picked.slice(0, MAX_JOB_LOCATIONS);
     const first = offices.find((office) => idsMatch(office.office_id, ids[0]));
 
     setSelectedLocationIdsForUsers(ids);
@@ -3190,6 +3200,9 @@ const EditJobDetail = () => {
               </div>
             </Form.Item>
           </div>
+          {duplicateJobWarning && (
+            <p className="text-xs text-amber-600 mt-1 break-words">{duplicateJobWarning}</p>
+          )}
           <SelectedLocations
             offices={selectedLocations}
             disabled={fieldsLocked}
@@ -3247,7 +3260,7 @@ const EditJobDetail = () => {
                       {selectedHiringManagers.map((manager) => (
                         <span
                           key={manager.id}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                          className={`inline-flex max-w-full break-words items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             manager.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
                               : 'bg-brand-100 text-brand-800 border-brand-200'
@@ -3316,7 +3329,7 @@ const EditJobDetail = () => {
                       {selectedRecruiters.map((recruiter) => (
                         <span
                           key={recruiter.id}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+                          className={`inline-flex max-w-full break-words items-center px-3 py-1 rounded-full text-xs font-medium border ${
                             recruiter.isDeleted
                               ? 'bg-gray-100 text-gray-600 border-gray-300'
                               : 'bg-brand-100 text-brand-800 border-brand-200'

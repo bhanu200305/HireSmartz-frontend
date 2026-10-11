@@ -18,14 +18,8 @@ import {
   formatSalary,
   formatExperience,
   formatPostedAgo,
+  publicLocationLabels,
 } from '../../shared/utils/publicJobDisplay';
-
-const formatLocation = (
-  loc: { city: string | null; state: string | null; country: string | null } | undefined
-): string | null => {
-  if (!loc) return null;
-  return [loc.city, loc.state, loc.country].filter(Boolean).join(', ') || null;
-};
 
 // responsibilities/requirements/other_requirements/benefits are AI-extracted, one point per line.
 // jd is raw text extracted from the uploaded PDF/DOCX, so its line breaks are mostly
@@ -151,12 +145,12 @@ export const CareersJobDetailPage = () => {
         job.non_exempt_salary_max
       )
     : null;
-  const primaryLocation = job?.locations?.[0] ? formatLocation(job.locations[0]) : null;
+  const locationLabels = publicLocationLabels(job?.locations ?? []).filter(Boolean);
   const postedAgo = job ? formatPostedAgo(job.job_open_date) : null;
 
   const overviewItems = job
     ? [
-        primaryLocation && { icon: <EnvironmentOutlined />, label: primaryLocation },
+        ...locationLabels.map((label) => ({ icon: <EnvironmentOutlined />, label })),
         experience && { icon: <CalendarOutlined />, label: experience },
         job.job_type_name && { icon: <ScheduleOutlined />, label: job.job_type_name },
         job.job_mode_name && { icon: <LaptopOutlined />, label: job.job_mode_name },

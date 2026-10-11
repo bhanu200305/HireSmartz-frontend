@@ -463,7 +463,7 @@ const DropdownWithAddOption: React.FC<DropdownWithAddOptionProps> = ({
         />
       )}
 
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+      {error && <p className="text-red-500 text-sm mt-1 break-words">{error}</p>}
 
       <style>{`
       .hover-actions-container:hover .hover-actions {

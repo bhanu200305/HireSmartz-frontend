@@ -433,6 +433,8 @@ export type JobSummaryResponse = {
   non_exempt_salary_max: number | null;
   is_remote: boolean | null;
   location_city: string | null;
+  // Every location's city, in the order added.
+  location_cities?: string[];
   hiring_manager_ids: string[];
   recruiter_ids: string[];
   is_draft: boolean;

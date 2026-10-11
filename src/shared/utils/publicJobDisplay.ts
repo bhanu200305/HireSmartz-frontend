@@ -62,3 +62,22 @@ export const formatPostedAgo = (isoDate: string | null): string | null => {
   const years = Math.floor(months / 12);
   return `Posted ${years} year${years === 1 ? '' : 's'} ago`;
 };
+
+type PublicLocation = {
+  address_line_1?: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+};
+
+/** One label per location; offices in the same city add their address line to tell them apart. */
+export const publicLocationLabels = (locations: PublicLocation[]): string[] => {
+  const base = locations.map((loc) =>
+    [loc.city, loc.state, loc.country].filter(Boolean).join(', ')
+  );
+  return locations.map((loc, i) =>
+    loc.address_line_1 && base.filter((label) => label === base[i]).length > 1
+      ? `${base[i]} - ${loc.address_line_1}`
+      : base[i]
+  );
+};
