@@ -83,6 +83,11 @@ const extendedApi = jobApi.injectEndpoints({
         url: `/job-openings/${jobId}/publish/validate`,
         method: 'GET',
       }),
+      providesTags: (_r, _e, jobId) => [
+        { type: 'WizardState', id: jobId },
+        { type: 'JobQuestions', id: jobId },
+        { type: 'JobOpeningById', id: jobId },
+      ],
     }),
   }),
 });

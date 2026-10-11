@@ -2,7 +2,11 @@ import { Outlet, useParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { Loader } from '../../shared/ui/loader';
 import { useGetJobOpeningByIdQuery } from '../../../api/job-service/JobOpening/GetJobOpeningById';
-import { useGetJobIntakeQuestionsQuery } from '../../../api/job-service/JobOpening/jobQuestions';
+import {
+  useGetJobIntakeQuestionsQuery,
+  useGetJobQuestionsQuery,
+} from '../../../api/job-service/JobOpening/jobQuestions';
+import AiAnswerBadge from '../AddJobDescription/AiAnswerBadge';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getVariantBadge } from '../EditJobOpening/sortableInterviewRounds';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
@@ -22,6 +26,11 @@ const ViewInterviewRound = () => {
   );
   // Same endpoint the Edit screen's "Intake Call Questions" section reads and writes.
   const { data: intakeData } = useGetJobIntakeQuestionsQuery(jobId, { skip: !jobId });
+  // The round's own question list: it carries the answer and the round's order.
+  const { data: questionsData } = useGetJobQuestionsQuery(
+    { jobOpeningId: jobId },
+    { skip: !jobId }
+  );
   const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
   const variantLabelOverrides = useMemo(
     () => Object.assign({}, ...roundTypes.map((round) => round.variant_labels ?? {})),
@@ -31,6 +40,9 @@ const ViewInterviewRound = () => {
   const rounds = useMemo(() => {
     const intakeQuestions = intakeData?.questions ?? [];
     const generalQuestions = jobData?.data.generalQuestions ?? [];
+    const questionsByRound = new Map(
+      (questionsData?.rounds ?? []).map((r) => [String(r.round_instance_id), r.questions ?? []])
+    );
     return (jobData?.data.interviewRounds ?? []).map((round, index) => {
       const roundIdStr = round.id.toString();
       // Kind from the round type; name lookup is a fallback.
@@ -40,17 +52,33 @@ const ViewInterviewRound = () => {
       // Intake questions come from their own endpoint; Resume has none.
       const isIntakeCall = specialKind === 'intake_call';
       const isResume = specialKind === 'resume';
-      const questions = isIntakeCall
+      type RoundQuestion = {
+        id: string;
+        text: string;
+        answer?: string | null;
+        isAiAnswer?: boolean;
+        isAsked?: boolean;
+      };
+      const ownQuestions = questionsByRound.get(roundIdStr);
+      const questions: RoundQuestion[] = isIntakeCall
         ? intakeQuestions.map((q) => ({ id: q.job_intake_question_id, text: q.question_text }))
-        : generalQuestions
-            .filter((q) => String(q.interviewRoundId) === roundIdStr)
-            .map((q) => ({ id: String(q.id), text: q.question }));
+        : ownQuestions
+          ? ownQuestions.map((q) => ({
+              id: q.id,
+              text: q.question_text,
+              answer: q.answer_text,
+              isAiAnswer: q.is_answer_ai_generated,
+              isAsked: q.is_selected !== false,
+            }))
+          : generalQuestions
+              .filter((q) => String(q.interviewRoundId) === roundIdStr)
+              .map((q) => ({ id: String(q.id), text: q.question }));
       const typeDescription = roundTypes.find(
         (type) => String(type.id) === String(round.round?.id)
       )?.description;
       return { round, index, roundIdStr, isResume, specialKind, typeDescription, questions };
     });
-  }, [jobData, intakeData, roundTypes]);
+  }, [jobData, intakeData, questionsData, roundTypes]);
 
   const active = rounds.find((r) => r.roundIdStr === selectedRoundId) ?? rounds[0];
   const activeBadge = active ? getVariantBadge(active.round.variant, variantLabelOverrides) : null;
@@ -132,7 +160,23 @@ const ViewInterviewRound = () => {
                         <span className="w-5 shrink-0 text-right font-semibold text-gray-400">
                           {questionIndex + 1}.
                         </span>
-                        <span className="min-w-0">{q.text}</span>
+                        <div className="min-w-0 flex-1">
+                          <span>{q.text}</span>
+                          {q.isAsked === false && (
+                            <span className="ml-2 whitespace-nowrap rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                              Not asked
+                            </span>
+                          )}
+                          {q.answer && (
+                            <div className="mt-1.5 flex flex-wrap items-start gap-x-2 gap-y-1">
+                              <p className="m-0 min-w-0 flex-1 basis-48 break-words text-xs leading-relaxed text-gray-500">
+                                <span className="font-semibold text-gray-600">Answer: </span>
+                                {q.answer}
+                              </p>
+                              {q.isAiAnswer && <AiAnswerBadge />}
+                            </div>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ol>
