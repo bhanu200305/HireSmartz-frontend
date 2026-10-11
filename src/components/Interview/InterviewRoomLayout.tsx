@@ -9,7 +9,7 @@ import {
   LayoutContextProvider,
   type TrackReference,
 } from '@livekit/components-react';
-import { Track, ParticipantEvent, type Participant } from 'livekit-client';
+import { Track, ParticipantEvent } from 'livekit-client';
 import { MdChatBubbleOutline, MdOutlineSettings, MdListAlt } from 'react-icons/md';
 import { SoundwaveTile } from './soundwave/SoundwaveTile';
 import { useSpotlight } from './shared/useSpotlight';
@@ -22,6 +22,8 @@ import { SettingsPanel } from './shared/SettingsPanel';
 import { PanelQuestionsPanel, usePanelQuestions } from './shared/PanelQuestionsPanel';
 import { useFullscreenLock } from './shared/useFullscreenLock';
 import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
+import { isAiInterviewer } from './shared/participantKind';
+import { tileGridColumns } from './shared/tileGrid';
 
 // The custom room UI that replaces LiveKit's stock `<VideoConference />`
 // (what `SessionJoinScreen` used before this component existed — a generic
@@ -54,15 +56,6 @@ import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture'
 // becomes real. Panel rounds can have 3+ human interviewers on the call —
 // `SpotlightStage` handles that by falling back to a filmstrip of small
 // tiles instead of a single PIP once there's more than one non-pinned side.
-// interview-service gives every person in this room a UUID identity (or the
-// legacy "interviewer-link"); ai-service's interviewer joins as a plain
-// participant under a configured name ("Iris"), not as a LiveKit agent. So
-// anything that isn't a person's identity is the AI — the only participant
-// that should get the soundwave, since it never has a camera.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const isAiInterviewer = (participant: Participant): boolean =>
-  participant.isAgent ||
-  !(UUID_RE.test(participant.identity) || participant.identity === 'interviewer-link');
 
 const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean }) => {
   const { localParticipant, cameraTrack: localCameraPublication } = useLocalParticipant();
@@ -233,7 +226,7 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
           // 220px floor for a very large panel.
           <div
             className="grid h-full auto-rows-fr content-start gap-3 overflow-y-auto"
-            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}
+            style={{ gridTemplateColumns: tileGridColumns(allSides.length) }}
           >
             <div className="min-h-[220px]">{localTile}</div>
             {remoteSides.map((side) => (

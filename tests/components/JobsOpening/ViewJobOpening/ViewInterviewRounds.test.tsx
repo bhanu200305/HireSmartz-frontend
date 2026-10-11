@@ -139,44 +139,6 @@ describe('ViewInterviewRounds', () => {
     rounds: [{ round_instance_id: 3, questions }],
   });
 
-  it("shows each question's answer under it", () => {
-    questionsData = roundWith([
-      { id: 'q1', question_text: 'Tell me about yourself', answer_text: 'Look for a short story.' },
-    ]);
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '3. Live Video Interview' }));
-    expect(screen.getByText('Tell me about yourself')).toBeTruthy();
-    expect(screen.getByText('Look for a short story.')).toBeTruthy();
-  });
-
-  it('marks an answer the AI wrote', () => {
-    questionsData = roundWith([
-      {
-        id: 'q1',
-        question_text: 'Explain REST',
-        answer_text: 'Resources over HTTP.',
-        is_answer_ai_generated: true,
-      },
-    ]);
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '3. Live Video Interview' }));
-    expect(screen.getByText('AI-written answer')).toBeTruthy();
-  });
-
-  it('has no AI tag for an answer the user wrote', () => {
-    questionsData = roundWith([
-      {
-        id: 'q1',
-        question_text: 'Explain REST',
-        answer_text: 'Mine.',
-        is_answer_ai_generated: false,
-      },
-    ]);
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '3. Live Video Interview' }));
-    expect(screen.queryByText('AI-written answer')).toBeNull();
-  });
-
   it('marks a question that is not asked', () => {
     questionsData = roundWith([
       { id: 'q1', question_text: 'Skipped one', answer_text: null, is_selected: false },

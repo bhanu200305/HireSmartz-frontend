@@ -197,7 +197,6 @@ const AiQuestionsSetup = () => {
   const [duplicateRowCount, setDuplicateRowCount] = useState<number>(0);
   const [importedCount, setImportedCount] = useState<number>(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
-  const [, setHasAiWrittenAnswers] = useState(false);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
@@ -669,11 +668,6 @@ const AiQuestionsSetup = () => {
         interview_round_id: activeRoundInstanceId,
       }).unwrap();
       setUploadedFileName(file.name);
-      const aiAnswered = (res.questions ?? []).some((q) => q.is_answer_ai_generated);
-      setHasAiWrittenAnswers(aiAnswered);
-      const aiAnswerNote = aiAnswered
-        ? ' Some answers were written by AI. Please review them.'
-        : '';
       setImportedCount(res.imported_count || 0);
       setFailedRowCount(res.failed_rows?.length || 0);
       setDuplicateRowCount(res.skipped_duplicate_rows?.length || 0);
@@ -725,11 +719,11 @@ const AiQuestionsSetup = () => {
         });
       } else if (skipped > 0) {
         showToast({
-          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.${aiAnswerNote}`,
+          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.`,
           type: 'warning',
         });
       } else {
-        showToast({ message: `Questions uploaded successfully.${aiAnswerNote}`, type: 'success' });
+        showToast({ message: 'Questions uploaded successfully.', type: 'success' });
       }
     } catch (err) {
       showToast({

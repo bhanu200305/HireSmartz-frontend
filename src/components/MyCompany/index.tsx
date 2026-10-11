@@ -113,13 +113,45 @@ const MyCompany: React.FC = () => {
   const canViewJobCatalog = useHasAccess(Authorities.JOB_CATALOG_VIEW);
   const canViewJobSettings = canViewCompanySettings || canViewJobCatalog;
 
+  // Switching tabs keeps the scroll position. A new tab usually shows a loader
+  // first, which makes the page shorter, and the browser then pushes the scroll
+  // up (sometimes all the way to the top) and leaves it there once the content
+  // is back. So the position is remembered here and put back for a moment while
+  // the new tab loads; any scroll by the person themselves cancels it.
+  const savedScrollY = React.useRef<number | null>(null);
+
   const handleTabChange = (key: string) => {
+    savedScrollY.current = window.scrollY;
     setSearchParams({ tab: key });
-    // `?tab=` doesn't change the route pathname, so App.tsx's route-level
-    // scroll reset never fires for it — without this, switching tabs while
-    // scrolled down leaves you scrolled down on the new tab's content too.
-    window.scrollTo(0, 0);
   };
+
+  React.useEffect(() => {
+    const target = savedScrollY.current;
+    if (target === null) return undefined;
+    let frame = 0;
+    let rafId = 0;
+    const stop = () => {
+      savedScrollY.current = null;
+      cancelAnimationFrame(rafId);
+    };
+    const restore = () => {
+      // Only ever back down to the saved position (never pull the person up).
+      if (window.scrollY < target - 1) window.scrollTo(0, target);
+      frame += 1;
+      if (frame < 90) rafId = requestAnimationFrame(restore);
+      else savedScrollY.current = null;
+    };
+    rafId = requestAnimationFrame(restore);
+    window.addEventListener('wheel', stop, { once: true, passive: true });
+    window.addEventListener('touchmove', stop, { once: true, passive: true });
+    window.addEventListener('keydown', stop, { once: true });
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('wheel', stop);
+      window.removeEventListener('touchmove', stop);
+      window.removeEventListener('keydown', stop);
+    };
+  }, [currentTab]);
 
   if (!tenantId) {
     // A platform caller (Super Admin / internal staff) has no tenant of

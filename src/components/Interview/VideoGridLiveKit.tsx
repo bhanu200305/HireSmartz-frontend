@@ -29,6 +29,8 @@ import { SoundwaveTile } from './soundwave/SoundwaveTile';
 import { TileLabel } from './shared/TileLabel';
 import { CameraTile, NoCameraTile } from './shared/CameraTile';
 import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
+import { isAiInterviewer } from './shared/participantKind';
+import { tileGridColumns } from './shared/tileGrid';
 
 interface VideoGridProps {
   token: LiveKitTokenResponse;
@@ -156,8 +158,10 @@ const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName })
               // renders `participant.name`/`.identity` directly (no override),
               // which is the generic "candidate" text this tile exists to fix.
               <CameraTile trackRef={cameraRef} participant={participant} name={displayName} />
-            ) : participant.isAgent ? (
+            ) : isAiInterviewer(participant) ? (
               // Only the AI interviewer gets the soundwave — it has no camera.
+              // (It joins as a plain participant named "Iris", not as a LiveKit
+              // agent, so `isAgent` alone never matches it.)
               <>
                 <SoundwaveTile audioTrackRef={micRef} label="" className="h-full w-full" />
                 <TileLabel>{displayName}</TileLabel>
@@ -213,7 +217,7 @@ const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName })
           // floor and no longer all fit — scroll, never clip.
           <div
             className="grid h-full w-full auto-rows-fr content-start gap-3 overflow-y-auto p-3"
-            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}
+            style={{ gridTemplateColumns: tileGridColumns(allSides.length) }}
           >
             {allSides.map((side) => (
               <div key={side.key} className="min-h-[220px]">

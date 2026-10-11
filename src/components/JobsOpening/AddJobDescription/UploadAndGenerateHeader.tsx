@@ -50,8 +50,6 @@ interface UploadAndGenerateHeaderProps {
   importedCount?: number;
   failedCount?: number;
   duplicateCount?: number;
-  /** Some imported questions came back with an AI-written answer. */
-  hasAiWrittenAnswers?: boolean;
   warnings?: ImportWarningItem[];
   /** Files uploaded to this round before, newest first. */
   uploadedFiles?: UploadedFileItem[];
@@ -76,7 +74,6 @@ export const UploadAndGenerateHeader = ({
   importedCount: _importedCount = 0,
   failedCount = 0,
   duplicateCount = 0,
-  hasAiWrittenAnswers: _hasAiWrittenAnswers = false,
   warnings = [],
   uploadedFiles = [],
   onClearDetails: _onClearDetails,
@@ -351,11 +348,6 @@ export const UploadAndGenerateHeader = ({
               )}
             </span>
           </Typography>
-          {hasAiWrittenAnswers && importedCount > 0 && (
-            <Typography variant="body2" className="m-0 text-amber-800">
-              Some answers were written by AI. Please review them.
-            </Typography>
-          )}
           {warnings.length > 0 && (
             <button
               type="button"
