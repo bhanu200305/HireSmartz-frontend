@@ -56,11 +56,15 @@ export interface ScoringWeightCardProps {
   infoText: string;
   weights: ScoringWeight[];
   categoryMeta: ScoringCategoryMeta;
-  onSave: (weights: ScoringWeight[]) => Promise<void>;
-  onReset: () => Promise<void>;
-  isSaving: boolean;
-  isResetting: boolean;
+  onSave?: (weights: ScoringWeight[]) => Promise<void>;
+  onReset?: () => Promise<void>;
+  isSaving?: boolean;
+  isResetting?: boolean;
   editable: boolean;
+  value?: ScoringWeight[];
+  onChange?: (weights: ScoringWeight[]) => void;
+  disabled?: boolean;
+  saveDisabled?: boolean;
 }
 
 export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
@@ -71,13 +75,18 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
   categoryMeta,
   onSave,
   onReset,
-  isSaving,
-  isResetting,
+  isSaving = false,
+  isResetting = false,
   editable,
+  value,
+  onChange,
+  disabled = false,
+  saveDisabled = false,
 }) => {
-  const [localWeights, setLocalWeights] = useState<ScoringWeight[]>(() =>
+  const [internalWeights, setLocalWeights] = useState<ScoringWeight[]>(() =>
     normalizeScoringWeights(weights)
   );
+  const localWeights = value ?? internalWeights;
   // Raw typed text for each score input, kept separate from the derived number
   // so a mid-edit empty field survives unrelated re-renders.
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
@@ -88,19 +97,32 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
   }, [weights]);
 
   const total = localWeights.reduce((sum, w) => sum + w.weightPercentage, 0);
+  const hasChanges = localWeights.some(
+    (weight) =>
+      weights.find((savedWeight) => savedWeight.id === weight.id)?.weightPercentage !==
+      weight.weightPercentage
+  );
 
-  const handleSliderChange = useCallback((id: string | number, value: number) => {
-    setLocalWeights((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, weightPercentage: value } : w))
-    );
-  }, []);
+  const handleSliderChange = useCallback(
+    (id: string | number, percentage: number) => {
+      const nextWeights = localWeights.map((weight) =>
+        weight.id === id ? { ...weight, weightPercentage: percentage } : weight
+      );
+      if (onChange) {
+        onChange(nextWeights);
+      } else {
+        setLocalWeights(nextWeights);
+      }
+    },
+    [localWeights, onChange]
+  );
 
   const handleReset = async () => {
-    await onReset();
+    await onReset?.();
   };
 
   const handleSave = async () => {
-    await onSave(localWeights);
+    await onSave?.(localWeights);
   };
 
   return (
@@ -169,7 +191,7 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                   min={0}
                   max={maxForThis}
                   value={rawInputs[String(w.id)] ?? String(w.weightPercentage)}
-                  disabled={!editable}
+                  disabled={!editable || disabled}
                   onChange={(e) => {
                     // Digits only — blocks negatives/decimals/exponents outright.
                     const digitsOnly = e.target.value.replace(/[^0-9]/g, '');
@@ -205,7 +227,7 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                 min={0}
                 max={100}
                 value={w.weightPercentage}
-                disabled={!editable}
+                disabled={!editable || disabled}
                 onChange={(val) => {
                   // Track stays a true 0-100 scale (so a 10% value visibly
                   // fills 10%, not the whole bar) - the cap is enforced
@@ -224,27 +246,33 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
       </div>
 
       {/* Footer actions — hidden in view/read-only mode */}
-      {editable && (
+      {editable && (onSave || onReset) && (
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={isResetting}
-            className={`text-xs font-semibold border px-5 py-1.5 rounded-lg transition-colors cursor-pointer ${
-              isResetting
-                ? 'text-gray-300 border-gray-200 cursor-not-allowed'
-                : 'text-gray-600 hover:text-gray-800 border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            {isResetting ? 'Resetting...' : 'Reset To Defaults'}
-          </button>
-          <Button
-            onClick={handleSave}
-            disabled={total !== 100 || isSaving}
-            className="bg-button hover:opacity-90 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
+          {onReset && (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isResetting || isSaving || disabled}
+              className={`text-xs font-semibold border px-5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                isResetting || isSaving || disabled
+                  ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+                  : 'text-gray-600 hover:text-gray-800 border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              {isResetting ? 'Resetting...' : 'Reset To Defaults'}
+            </button>
+          )}
+          {onSave && (
+            <Button
+              onClick={handleSave}
+              disabled={
+                !hasChanges || total !== 100 || isSaving || isResetting || disabled || saveDisabled
+              }
+              className="bg-button hover:opacity-90 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+          )}
         </div>
       )}
     </div>

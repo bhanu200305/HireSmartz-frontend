@@ -688,7 +688,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
         // ListModal) so the header stays visible and usable above any
         // modal's mask instead of being buried under it — see Footer's
         // matching treatment in MainLayout.
-        className="sticky top-0 z-[1100] bg-white px-4 sm:px-7 py-3.5 flex items-center gap-3 w-full border-b"
+        className="z-[1100] bg-white px-4 sm:px-7 py-3.5 flex items-center gap-3 w-full border-b shadow-sm"
         style={{ borderColor: 'var(--border)' }}
       >
         {onOpenMobileMenu && (

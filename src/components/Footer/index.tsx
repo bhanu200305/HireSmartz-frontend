@@ -4,7 +4,7 @@ const Footer = ({ className }: { className?: string }) => {
   const currentYear = dayjs().year();
   return (
     <footer
-      className={`w-full py-5 flex flex-col items-center justify-center border-t border-neutral-100 ${className}`}
+      className={`w-full py-2 flex flex-col items-center justify-center border-t border-neutral-100 ${className}`}
     >
       <p className="text-xs text-neutral-400 text-center">
         Copyright ©{currentYear} Careerforce Pro. All Rights Reserved. (Version 1.5)

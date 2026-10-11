@@ -92,8 +92,11 @@ export const CategoryQuestionBlock = ({
                 number={index + 1}
                 checked={selectedIds.includes(question.id)}
                 onCheckChange={(checked) => onSelectOne(question.id, checked)}
-                onEdit={() => onEdit(question)}
                 onDelete={() => onDelete(question.id)}
+                isEditing={false}
+                onStartEdit={() => onEdit(question)}
+                onBlurSave={() => {}}
+                onCancelEdit={() => {}}
               />
             </div>
           ))}

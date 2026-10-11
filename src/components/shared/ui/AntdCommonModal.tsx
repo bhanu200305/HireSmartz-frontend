@@ -68,8 +68,8 @@ const AntdCommonModal: React.FC<CommonModalProps> = ({
       // rounded-hover-button treatment every other icon-only button in the
       // app already uses.
       closeIcon={
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600">
-          <MdClose size={18} />
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+          <MdClose size={20} />
         </span>
       }
       {...restModalProps}

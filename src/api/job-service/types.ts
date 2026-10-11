@@ -327,10 +327,10 @@ export type QuestionResponse = {
   is_answer_ai_generated?: boolean;
   interview_round_id: string;
   scoring_sections: string[];
-  // Only selected questions are asked in the round.
-  is_selected?: boolean;
-  // Place within the round, from 0.
-  question_order?: number;
+  /** Whether this question is active for the round (asked during the interview). */
+  is_selected: boolean;
+  /** 1-based display/send order within the round. */
+  question_order: number;
 };
 
 export type RoundQuestionsResponse = {
@@ -340,8 +340,8 @@ export type RoundQuestionsResponse = {
   sequence: number;
   variant: string | null;
   questions: QuestionResponse[];
-  /** Every question in the round, whatever page `questions` holds. */
-  total_count?: number;
+  /** Total questions in the round (regardless of the page returned). */
+  total_count: number;
 };
 
 export type JobQuestionsResponse = {
@@ -361,9 +361,9 @@ export type QuestionRequest = {
   answer_text?: string | null;
   interview_round_id?: string | null;
   scoring_sections?: string[];
-  // Only selected questions are asked in the round. Left out keeps the saved value.
+  /** Whether this question should be asked during the interview. */
   is_selected?: boolean;
-  // Place within the round, from 0. Left out: after the ones that have one.
+  /** 1-based position within the round; the PUT endpoint uses send-order to persist. */
   question_order?: number;
 };
 

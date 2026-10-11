@@ -187,9 +187,15 @@
 import { useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { UNSAFE_NavigationContext as NavigationContext, To, useLocation } from 'react-router-dom';
 
-export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean) => {
+export const useNavigationBlocker = (
+  shouldBlock: boolean,
+  isFormDirty: boolean,
+  isAllowedPath?: (pathname: string) => boolean
+) => {
   const { navigator } = useContext(NavigationContext);
   const location = useLocation();
+  const isAllowedPathRef = useRef(isAllowedPath);
+  isAllowedPathRef.current = isAllowedPath;
   const [isBlocked, setIsBlocked] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<{
     to: To;
@@ -213,9 +219,12 @@ export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean)
     }
 
     const original = originalMethodsRef.current;
+    // react-router resolves `to` to a Path object before calling the navigator.
+    const isAllowed = (to: To) =>
+      isAllowedPathRef.current?.(typeof to === 'string' ? to : (to.pathname ?? '')) === true;
 
     navigator.push = (to: To, state?: any, options?: any) => {
-      if (`${to}` === `${location.pathname}${location.search}`) {
+      if (`${to}` === `${location.pathname}${location.search}` || isAllowed(to)) {
         return original.push.call(navigator, to, state, options);
       }
       if (isFormDirty) {
@@ -229,7 +238,7 @@ export const useNavigationBlocker = (shouldBlock: boolean, isFormDirty: boolean)
     };
 
     navigator.replace = (to: To, state?: any, options?: any) => {
-      if (`${to}` === `${location.pathname}${location.search}`) {
+      if (`${to}` === `${location.pathname}${location.search}` || isAllowed(to)) {
         return original.replace.call(navigator, to, state, options);
       }
       if (isFormDirty) {

@@ -24,6 +24,7 @@ import {
   firstAvailableVariant,
   isUnavailableVariant,
 } from '../../../shared/utils/roundInfoContent';
+import { useInterviewRoundsDraft } from './interviewRoundsDraft';
 
 const { Option } = Select;
 
@@ -36,9 +37,11 @@ const UpdateInterviewRound = () => {
   const jobOpeningId = asJobId(useSelector((state: RootState) => state.EditJobSlice.jobOpeningId));
   const { jobOpeningDropdown: interviewRounds, loading: interviewRoundsLoading } =
     useJobOpeningDropdown('ROUNDS', 'create');
-  const { data: currentRounds = [] } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
-    skip: !jobOpeningId,
+  const draft = useInterviewRoundsDraft();
+  const { data: savedRounds = [] } = useGetInterviewRoundsByJobIdQuery(jobOpeningId, {
+    skip: !jobOpeningId || !!draft,
   });
+  const currentRounds = draft?.rounds ?? savedRounds;
   // Resume is never selectable. Intake Call is offered when the job has none and
   // this round is round 2; this round's own type always stays listed.
   const intakeTypeIds = roundTypeIdsOfKind(interviewRounds, 'intake_call');
@@ -102,6 +105,23 @@ const UpdateInterviewRound = () => {
   const onSubmit = async (editedRound: EditInterviewRoundRequest) => {
     if (isEditing || !jobOpeningId) return;
 
+    const duration = selectedRoundType?.requires_duration ? Number(editedRound.duration) : null;
+    const variant = selectedRoundType?.available_variants?.length ? editedRound.variant : null;
+
+    // Stage locally; the tab's Save & Next persists it.
+    if (draft) {
+      draft.updateRound(editedRound.id, {
+        round: { id: editedRound.round, name: selectedRoundType?.name ?? '', status: true },
+        roundId: String(editedRound.round),
+        roundName: selectedRoundType?.name ?? null,
+        description: editedRound.description,
+        duration,
+        variant,
+      });
+      navigate(`/jobs/edit/${jobOpeningId}/interview`);
+      return;
+    }
+
     const rounds = toInterviewSequencePayload(
       currentRounds.map((round) =>
         String(round.id) === String(editedRound.id)
@@ -110,8 +130,8 @@ const UpdateInterviewRound = () => {
               roundId: String(editedRound.round),
               description: editedRound.description,
               sequence: editedRound.sequence,
-              duration: selectedRoundType?.requires_duration ? Number(editedRound.duration) : null,
-              variant: selectedRoundType?.available_variants?.length ? editedRound.variant : null,
+              duration,
+              variant,
             }
           : round
       )

@@ -18,6 +18,7 @@ import { useValidateForPublishQuery } from '../api/job-service/JobOpening/CloseJ
 import useEffectivePermissions from '../hooks/useEffectivePermissions';
 import { hasFeatureAccess, isAssignedToJob } from '../shared/utils/auth/getAccess';
 import { JobDetailsHeaderSlotContext } from './jobDetailsHeaderSlot';
+import JobActionFooter from '../components/JobsOpening/AddJobDescription/JobActionFooter';
 
 interface JobDetailsLayoutProps {
   children?: ReactNode;
@@ -320,12 +321,12 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
   ]);
 
   return (
-    <div className="flex flex-col items-center px-4 mt-4 w-full">
+    <div className="flex flex-col items-center px-3 mt-2 w-full">
       {isCandidateDetailsPage ? (
         // A candidate's page mirrors its two back links: Job Openings on the
         // left, Candidate List on the right directly above the Previous /
         // Next switcher (portaled into the slot), both on the same top line.
-        <div className="w-full max-w-6xl mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="w-full max-w-6xl mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <BackButton onClick={() => navigate('/jobs')} label="Back to Job Openings" />
           {/* `ml-auto` keeps it on the right even when a narrow screen wraps it. */}
           <div className="ml-auto flex flex-col items-end gap-1">
@@ -350,7 +351,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
           </div>
         </div>
       ) : (
-        <div className="w-full max-w-6xl mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="w-full max-w-6xl mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <BackButton onClick={handleBackNavigation} label="Back" />
           <div ref={setHeaderSlot} className="flex items-center empty:hidden" />
           {viewEditPath && (
@@ -398,7 +399,7 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
       )}
       <div className="bg-white p-6 md:p-6 rounded-2xl shadow-sm border border-neutral-200 w-full max-w-6xl flex flex-col">
         {!isCandidatePage && (
-          <div className="mb-4 border-b border-neutral-200">
+          <div className="mb-2 border-b border-neutral-200">
             <div className="flex items-center justify-between gap-4">
               <div className="stepsContainer flex items-center gap-6 sm:gap-8 flex-1 min-w-0 overflow-x-auto">
                 {allSteps.map((step, index) => {
@@ -476,14 +477,14 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
           {children}
         </JobDetailsHeaderSlotContext.Provider>
         {nextViewPath && !isCandidatePage && (
-          <div className="mt-6 flex justify-end">
+          <JobActionFooter floating={viewTabIndex !== 0}>
             <Button
-              className="text-white bg-button rounded-3xl px-8 py-2 cursor-pointer"
+              className="bg-primary hover:bg-primary-hover text-white rounded-full px-5 py-2 text-sm font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center"
               onClick={() => navigate(sanitizedPath(nextViewPath + search) || '/')}
             >
               Next
             </Button>
-          </div>
+          </JobActionFooter>
         )}
       </div>
     </div>
