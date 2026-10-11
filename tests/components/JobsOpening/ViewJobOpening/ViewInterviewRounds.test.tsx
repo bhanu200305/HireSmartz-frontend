@@ -70,6 +70,8 @@ vi.mock('../../../../src/api/job-service/JobOpening/jobQuestions', () => ({
   useGetJobIntakeQuestionsQuery: () => ({
     data: { questions: [{ job_intake_question_id: 'i1', question_text: 'What is your name?' }] },
   }),
+  // No per-round list from the server: the page falls back to the job's own questions.
+  useGetJobQuestionsQuery: () => ({ data: undefined }),
 }));
 vi.mock('../../../../src/hooks/useJobOpeningDropdown', () => ({
   default: () => ({ jobOpeningDropdown: roundTypes }),

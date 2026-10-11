@@ -36,7 +36,6 @@ const renderHeader = () =>
         description=""
         onGenerate={vi.fn()}
         onUpload={vi.fn()}
-        onDownloadTemplate={vi.fn()}
         uploadedFileName="questions.xlsx"
         importedCount={3}
         failedCount={2}
@@ -91,7 +90,6 @@ describe('UploadAndGenerateHeader clear button', () => {
         description=""
         onGenerate={vi.fn()}
         onUpload={vi.fn()}
-        onDownloadTemplate={vi.fn()}
         uploadedFileName="questions.xlsx"
         importedCount={1}
         onClearDetails={onClear}
@@ -131,7 +129,6 @@ describe('UploadAndGenerateHeader uploaded files', () => {
           description=""
           onGenerate={vi.fn()}
           onUpload={vi.fn()}
-          onDownloadTemplate={vi.fn()}
           uploadedFiles={uploadedFiles}
         />
       </ConfigProvider>
@@ -170,7 +167,6 @@ describe('UploadAndGenerateHeader file types', () => {
         description=""
         onGenerate={vi.fn()}
         onUpload={vi.fn()}
-        onDownloadTemplate={vi.fn()}
         acceptedExtensions={extensions}
       />
     );

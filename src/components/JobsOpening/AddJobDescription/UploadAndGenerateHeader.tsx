@@ -123,9 +123,7 @@ export const UploadAndGenerateHeader = ({
           <span>{uploadLabel}</span>
         </Tooltip>
       </div>
-      <p className="m-0 text-xs text-gray-500">
-        Excel, CSV, Word, PDF or text. Missing answers are written for you.
-      </p>
+      <p className="m-0 text-xs text-gray-500">Excel, CSV, Word, PDF or text.</p>
 
       {uploadedFiles.length > 0 && (
         <button

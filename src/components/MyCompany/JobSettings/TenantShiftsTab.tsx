@@ -53,7 +53,8 @@ const TenantShiftsTab: React.FC = () => {
     page: 1,
     pageSize: 10,
     search: '',
-    sortBy: 'name',
+    // Oldest first, so a newly added row lands at the bottom (clicking Name sorts by name).
+    sortBy: 'created_at',
     sortDir: 'asc',
   });
   const { data, isLoading } = useSearchOrganizationShiftsQuery({
@@ -62,7 +63,8 @@ const TenantShiftsTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
-    includeInactive: true,
+    // A deleted row must not come back: the server returns soft-deleted rows only when
+    // `include_inactive` is sent, and deactivated (switched-off) rows are listed anyway.
   });
   const [create] = useCreateOrganizationShiftMutation();
   const [update] = useUpdateOrganizationShiftMutation();

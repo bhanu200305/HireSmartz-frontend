@@ -6,7 +6,6 @@ import {
   useGetJobIntakeQuestionsQuery,
   useGetJobQuestionsQuery,
 } from '../../../api/job-service/JobOpening/jobQuestions';
-import AiAnswerBadge from '../AddJobDescription/AiAnswerBadge';
 import { asJobId } from '../../../api/job-service/jobId';
 import { getVariantBadge } from '../EditJobOpening/sortableInterviewRounds';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
@@ -26,7 +25,7 @@ const ViewInterviewRound = () => {
   );
   // Same endpoint the Edit screen's "Intake Call Questions" section reads and writes.
   const { data: intakeData } = useGetJobIntakeQuestionsQuery(jobId, { skip: !jobId });
-  // The round's own question list: it carries the answer and the round's order.
+  // The round's own question list: it carries the round's order and which questions are asked.
   const { data: questionsData } = useGetJobQuestionsQuery(jobId, { skip: !jobId });
   const { jobOpeningDropdown: roundTypes } = useJobOpeningDropdown('ROUNDS', 'view');
   const variantLabelOverrides = useMemo(
@@ -52,8 +51,6 @@ const ViewInterviewRound = () => {
       type RoundQuestion = {
         id: string;
         text: string;
-        answer?: string | null;
-        isAiAnswer?: boolean;
         isAsked?: boolean;
       };
       const ownQuestions = questionsByRound.get(roundIdStr);
@@ -63,8 +60,6 @@ const ViewInterviewRound = () => {
           ? ownQuestions.map((q) => ({
               id: q.id,
               text: q.question_text,
-              answer: q.answer_text,
-              isAiAnswer: q.is_answer_ai_generated,
               isAsked: q.is_selected !== false,
             }))
           : generalQuestions
@@ -163,15 +158,6 @@ const ViewInterviewRound = () => {
                             <span className="ml-2 whitespace-nowrap rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
                               Not asked
                             </span>
-                          )}
-                          {q.answer && (
-                            <div className="mt-1.5 flex flex-wrap items-start gap-x-2 gap-y-1">
-                              <p className="m-0 min-w-0 flex-1 basis-48 break-words text-xs leading-relaxed text-gray-500">
-                                <span className="font-semibold text-gray-600">Answer: </span>
-                                {q.answer}
-                              </p>
-                              {q.isAiAnswer && <AiAnswerBadge />}
-                            </div>
                           )}
                         </div>
                       </li>

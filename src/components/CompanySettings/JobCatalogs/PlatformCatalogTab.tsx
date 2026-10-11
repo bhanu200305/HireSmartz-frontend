@@ -250,8 +250,27 @@ function PlatformCatalogTab<TItem, TFormValues extends Record<string, unknown>>(
       )
     : columns;
 
+  // A long text (e.g. a description) wraps to at most two lines, with the full text
+  // on hover, instead of stretching the row and the scrollbar. Columns that draw
+  // their own cell are left as they are.
+  const wrappedColumns = (baseColumns ?? []).map((col) =>
+    'render' in col && col.render
+      ? col
+      : {
+          ...col,
+          render: (value: unknown) =>
+            typeof value === 'string' && value ? (
+              <span className="block max-w-xl break-words line-clamp-2" title={value}>
+                {value}
+              </span>
+            ) : (
+              (value as React.ReactNode)
+            ),
+        }
+  );
+
   const allColumns: TableProps<TItem & { key: string }>['columns'] = [
-    ...(baseColumns ?? []),
+    ...wrappedColumns,
     onToggleActive && {
       title: 'Status',
       key: 'status',

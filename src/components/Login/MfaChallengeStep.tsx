@@ -147,7 +147,12 @@ const MfaChallengeStep = ({
     } catch (err) {
       const errorCode = getAuthErrorCode(err);
 
-      if (errorCode === 'mfa_session_expired') {
+      // A new code can only be sent while the sign-in itself is still alive. If it
+      // has expired the request is refused: `mfa_session_expired`, or, from a
+      // backend that hasn't shipped that code yet, the old `invalid_mfa_code`
+      // ("the verification request is not valid"). On a resend neither is a wrong
+      // code, so send the person back to log in instead of showing that message.
+      if (errorCode === 'mfa_session_expired' || errorCode === 'invalid_mfa_code') {
         showToast({
           message: 'Your sign-in expired, please log in again.',
           type: 'error',

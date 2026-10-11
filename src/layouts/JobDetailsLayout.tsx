@@ -56,7 +56,12 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     { jobOpeningId: asJobId(viewJobId) },
     { skip: !viewJobId }
   );
+  // `isViewMode` is part of this on purpose: the layout stays mounted when you go
+  // from the view page to the edit page, and RTK Query keeps the last loaded job
+  // after the query is skipped, so `viewJob` alone would still be set on the edit
+  // (or create) page and the Edit button would follow you there.
   const canEditViewedJob =
+    isViewMode &&
     !!viewJob &&
     !viewJob.data?.isClosed &&
     hasFeatureAccess('job_opening', 'edit', role, effectivePermissions) &&
@@ -245,7 +250,8 @@ const JobDetailsLayout = ({ children, button }: JobDetailsLayoutProps) => {
     }
     return null;
   };
-  const viewEditPath = canEditViewedJob && !isCandidatePage ? editPathForViewTab() : null;
+  const viewEditPath =
+    isViewMode && canEditViewedJob && !isCandidatePage ? editPathForViewTab() : null;
   const handleBackNavigation = () => {
     if (returnTo) {
       // From the calendar popup: land back on the page it was opened from, with

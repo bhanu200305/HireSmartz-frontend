@@ -190,7 +190,6 @@ const AiQuestionsSetup = () => {
   const [duplicateRowCount, setDuplicateRowCount] = useState<number>(0);
   const [importedCount, setImportedCount] = useState<number>(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
-  const [hasAiWrittenAnswers, setHasAiWrittenAnswers] = useState(false);
 
   const [showGenerateConsentModal, setShowGenerateConsentModal] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -546,11 +545,6 @@ const AiQuestionsSetup = () => {
         interview_round_id: activeRoundInstanceId,
       }).unwrap();
       setUploadedFileName(file.name);
-      const aiAnswered = (res.questions ?? []).some((q) => q.is_answer_ai_generated);
-      setHasAiWrittenAnswers(aiAnswered);
-      const aiAnswerNote = aiAnswered
-        ? ' Some answers were written by AI. Please review them.'
-        : '';
       setImportedCount(res.imported_count || 0);
       setFailedRowCount(res.failed_rows?.length || 0);
       setDuplicateRowCount(res.skipped_duplicate_rows?.length || 0);
@@ -588,11 +582,11 @@ const AiQuestionsSetup = () => {
         });
       } else if (skipped > 0) {
         showToast({
-          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.${aiAnswerNote}`,
+          message: `${res.imported_count} imported, ${skipped} skipped. See the details below.`,
           type: 'warning',
         });
       } else {
-        showToast({ message: `Questions uploaded successfully.${aiAnswerNote}`, type: 'success' });
+        showToast({ message: 'Questions uploaded successfully.', type: 'success' });
       }
     } catch (err) {
       showToast({
@@ -1166,8 +1160,6 @@ const AiQuestionsSetup = () => {
                             question={{
                               id: q.id,
                               question: q.question_text,
-                              answer: q.answer_text,
-                              isAnswerAiGenerated: q.is_answer_ai_generated,
                             }}
                             checked={selectedIds.includes(q.id)}
                             onCheckChange={(checked) => handleSelectOne(q.id, checked)}
@@ -1204,7 +1196,6 @@ const AiQuestionsSetup = () => {
                       importedCount={importedCount}
                       failedCount={failedRowCount}
                       duplicateCount={duplicateRowCount}
-                      hasAiWrittenAnswers={hasAiWrittenAnswers}
                       warnings={importWarnings}
                       uploadedFiles={uploadedFiles}
                       onClearDetails={() => {
@@ -1212,7 +1203,6 @@ const AiQuestionsSetup = () => {
                         setImportWarnings([]);
                         setFailedRowCount(0);
                         setDuplicateRowCount(0);
-                        setHasAiWrittenAnswers(false);
                       }}
                       isGenerating={isGenerating}
                       generateDisabled={noEligibleRound}
@@ -1254,9 +1244,6 @@ const AiQuestionsSetup = () => {
           submitLabel="Save"
           isSubmitting={isEditSubmitting}
           onQuestionChange={setEditedQuestionText}
-          answerText={editedAnswerText}
-          onAnswerChange={setEditedAnswerText}
-          isAnswerAiGenerated={Boolean(editingQuestion?.is_answer_ai_generated)}
           onSubmit={handleEditSave}
           onClose={closeEditModal}
           disableSubmit={!editedQuestionText.trim()}
