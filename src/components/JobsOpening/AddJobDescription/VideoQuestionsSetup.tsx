@@ -32,6 +32,8 @@ import { GenerateQuestionsConsentModal } from './GenerateQuestionsConsentModal';
 
 const { Option } = Select;
 
+import JobActionFooter from './JobActionFooter';
+
 const VideoQuestionsSetup = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -524,9 +526,9 @@ const VideoQuestionsSetup = () => {
           isLoading={isGenerating}
           showQuestionCount={false}
         />
-        <div className="mt-6 flex justify-center">
+        <JobActionFooter>
           <Button
-            className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+            className="bg-primary hover:bg-primary-hover text-white rounded-full px-5 py-2 text-sm font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center"
             onClick={() => {
               navigate(
                 pathname.includes('/edit/') && id
@@ -538,7 +540,7 @@ const VideoQuestionsSetup = () => {
           >
             Save & Next
           </Button>
-        </div>
+        </JobActionFooter>
         <Outlet />
       </div>
     </DndProvider>

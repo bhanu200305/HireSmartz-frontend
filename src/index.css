@@ -280,6 +280,30 @@ canvas[data-agora-recording='true'] {
   background-color: #ffffff !important;
 }
 
+/* Keep the antd close button wrapper at a fixed 36px circle that matches the
+   custom closeIcon span — antd otherwise adds its own hover square and can
+   sit off-center. `background: transparent` at both rest and hover lets the
+   span's bg-gray-100 show unobstructed. Focus ring is handled here (not on
+   the span, which is not focusable) so keyboard users still get it. */
+.ant-custom-modal .ant-modal-close,
+.qr-modal .ant-modal-close {
+  top: 12px;
+  inset-inline-end: 12px;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+}
+.ant-custom-modal .ant-modal-close:hover,
+.qr-modal .ant-modal-close:hover {
+  background: transparent;
+}
+.ant-custom-modal .ant-modal-close:focus-visible,
+.qr-modal .ant-modal-close:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
 /*
  * Clicking outside a modal that doesn't close on mask-click otherwise gives
  * no feedback at all — this flashes the close (X) button red instead, so
@@ -623,6 +647,18 @@ canvas[data-agora-recording='true'] {
 
 .custom-select .ant-select-arrow {
   color: var(--gray-800) !important;
+}
+
+/* Add-round modal select: the wrapper has p-1 (4px padding) so the selector's
+   left edge is already 4px inside the visual border. Zero out inset-inline-start
+   so placeholder, selected value and search input all start flush with the
+   selector's left edge — the 4px wrapper padding provides the visual breathing room.
+   Also zero padding-inline-start to cancel antd's default 11px on selection-item. */
+.add-round-select.ant-select-single .ant-select-selection-placeholder,
+.add-round-select.ant-select-single .ant-select-selection-item,
+.add-round-select.ant-select-single .ant-select-selection-search {
+  inset-inline-start: 4px !important;
+  padding-inline-start: 0 !important;
 }
 
 .custom-select.ant-select-focused .ant-select-selector {

@@ -25,6 +25,8 @@ import {
 } from '../intakeRoundPlacement';
 import { useDeleteDraftJobMutation } from '../../../api/job-service/JobOpening/AddJobOpening';
 
+import JobActionFooter from './JobActionFooter';
+
 const InterviewSetup = () => {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -211,10 +213,10 @@ const InterviewSetup = () => {
                 roundTypes={roundTypes}
               />
             )}
-            <div className="mt-6 flex justify-center gap-6">
+            <JobActionFooter>
               <Tooltip title="Save progress and come back later.">
                 <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  className="bg-primary hover:bg-brand-700 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-colors flex items-center justify-center"
                   onClick={handleSaveDraft}
                 >
                   Save As Draft
@@ -222,7 +224,7 @@ const InterviewSetup = () => {
               </Tooltip>
               <Tooltip title="Delete this job opening and everything in it.">
                 <Button
-                  className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  className="border border-neutral-300 bg-white text-neutral-600 hover:text-red-600 hover:border-red-300 hover:bg-red-50/50 rounded-full px-5 py-2 text-sm font-medium transition-colors flex items-center justify-center"
                   onClick={() => setShowCancelConfirm(true)}
                 >
                   Cancel
@@ -230,7 +232,7 @@ const InterviewSetup = () => {
               </Tooltip>
               <Tooltip title="Save this page and continue.">
                 <Button
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
+                  className="bg-primary hover:bg-primary-hover text-white rounded-full px-5 py-2 text-sm font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center"
                   onClick={() => {
                     if (!hasQuestionRound(data ?? [], roundTypes)) {
                       showToast({ message: NO_QUESTION_ROUND_MESSAGE, type: 'error' });
@@ -246,7 +248,7 @@ const InterviewSetup = () => {
                   Save & Next
                 </Button>
               </Tooltip>
-            </div>
+            </JobActionFooter>
           </JobDetailsLayout>
         </MainLayout>
         {showCancelConfirm && (

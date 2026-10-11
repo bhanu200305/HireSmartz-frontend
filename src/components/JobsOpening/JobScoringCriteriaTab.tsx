@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Tooltip } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../redux/provider/store';
 import { useIsEditingDraft } from '../../hooks/useIsEditingDraft';
@@ -34,6 +35,8 @@ import ConfirmationModal from '../shared/ui/ConfirmationModal';
 
 const normalizeWeights = (weights: unknown): JobScoringWeight[] => normalizeScoringWeights(weights);
 
+import JobActionFooter from './AddJobDescription/JobActionFooter';
+
 interface JobScoringCriteriaTabProps {
   jobId: string;
   isViewMode?: boolean;
@@ -55,9 +58,9 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
 
   const [updateScoring, { isLoading: isSaving }] = useUpdateJobScoringConfigMutation();
   const [resetScoring, { isLoading: isResetting }] = useResetJobScoringConfigMutation();
-  // Tracks which card's button should show as loading.
-  const [savingSection, setSavingSection] = useState<'resume' | 'interview' | null>(null);
-  const [resettingSection, setResettingSection] = useState<'resume' | 'interview' | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState<ScoringWeight[] | null>(null);
+  const [interviewDraft, setInterviewDraft] = useState<ScoringWeight[] | null>(null);
   const [deleteDraftJob, { isLoading: isCancelling }] = useDeleteDraftJobMutation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const isEditingDraft = useIsEditingDraft(jobId) === true;
@@ -98,6 +101,23 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
     () => normalizeWeights(jobScoringData?.data?.interviewConfig?.weights),
     [jobScoringData]
   );
+  const currentResumeWeights = resumeDraft ?? resumeWeights;
+  const currentInterviewWeights = interviewDraft ?? interviewWeights;
+  const hasChanges =
+    isEditable &&
+    [
+      { current: currentResumeWeights, saved: resumeWeights },
+      { current: currentInterviewWeights, saved: interviewWeights },
+    ].some(({ current, saved }) =>
+      current.some(
+        (weight) =>
+          saved.find((savedWeight) => savedWeight.id === weight.id)?.weightPercentage !==
+          weight.weightPercentage
+      )
+    );
+  const areWeightsValid = [currentResumeWeights, currentInterviewWeights].every(
+    (weights) => weights.reduce((total, weight) => total + weight.weightPercentage, 0) === 100
+  );
 
   // Patches the cache directly from the mutation's own response.
   const patchScoringCache = useCallback(
@@ -111,85 +131,64 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
     [dispatch, jobId]
   );
 
-  const handleSaveResume = useCallback(
-    async (weights: ScoringWeight[]) => {
-      setSavingSection('resume');
-      try {
-        const result = await updateScoring({
-          jobId,
-          resumeWeights: weights.map((w) => ({
-            id: w.id,
-            categoryName: w.categoryName,
-            weightPercentage: w.weightPercentage,
-          })),
-          interviewWeights,
-        }).unwrap();
-        patchScoringCache(result.data);
-        showToast({ message: 'Resume scoring configuration saved successfully.', type: 'success' });
-      } catch (err) {
-        showToast({
-          message: getJobErrorMessage(err, 'Failed to save resume scoring configuration.'),
-          type: 'error',
-        });
-      } finally {
-        setSavingSection(null);
-      }
-    },
-    [jobId, interviewWeights, updateScoring, patchScoringCache]
-  );
+  const handleSaveScoring = useCallback(async (): Promise<boolean> => {
+    if (!isEditable || !areWeightsValid || isSaving || isResetting) return false;
+    try {
+      const result = await updateScoring({
+        jobId,
+        resumeWeights: currentResumeWeights,
+        interviewWeights: currentInterviewWeights,
+      }).unwrap();
+      patchScoringCache(result.data);
+      setResumeDraft(null);
+      setInterviewDraft(null);
+      showToast({ message: 'Scoring configuration saved successfully.', type: 'success' });
+      return true;
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Failed to save scoring configuration.'),
+        type: 'error',
+      });
+      return false;
+    }
+  }, [
+    jobId,
+    currentResumeWeights,
+    currentInterviewWeights,
+    isEditable,
+    areWeightsValid,
+    isSaving,
+    isResetting,
+    updateScoring,
+    patchScoringCache,
+  ]);
 
-  const handleSaveInterview = useCallback(
-    async (weights: ScoringWeight[]) => {
-      setSavingSection('interview');
-      try {
-        const result = await updateScoring({
-          jobId,
-          resumeWeights,
-          interviewWeights: weights.map((w) => ({
-            id: w.id,
-            categoryName: w.categoryName,
-            weightPercentage: w.weightPercentage,
-          })),
-        }).unwrap();
-        patchScoringCache(result.data);
-        showToast({
-          message: 'Interview scoring configuration saved successfully.',
-          type: 'success',
-        });
-      } catch (err) {
-        showToast({
-          message: getJobErrorMessage(err, 'Failed to save interview scoring configuration.'),
-          type: 'error',
-        });
-      } finally {
-        setSavingSection(null);
-      }
-    },
-    [jobId, resumeWeights, updateScoring, patchScoringCache]
-  );
+  const handleNext = async (): Promise<void> => {
+    if (hasChanges && !(await handleSaveScoring())) return;
+    dispatch(setIsScoringCompleted(true));
+    dispatch(setEditScoringPassedJobId(jobId || null));
+    navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup');
+  };
 
-  // Reset resets both sections; only the clicked card shows as loading.
-  const handleReset = useCallback(
-    async (section: 'resume' | 'interview') => {
-      setResettingSection(section);
-      try {
-        const result = await resetScoring({ jobId }).unwrap();
-        patchScoringCache(result.data);
-        showToast({
-          message: 'Scoring configuration reset successfully.',
-          type: 'success',
-        });
-      } catch (err) {
-        showToast({
-          message: getJobErrorMessage(err, 'Failed to reset scoring configuration.'),
-          type: 'error',
-        });
-      } finally {
-        setResettingSection(null);
-      }
-    },
-    [jobId, resetScoring, patchScoringCache]
-  );
+  const handleReset = useCallback(async () => {
+    if (!isEditable || isSaving || isResetting) return;
+    try {
+      const result = await resetScoring({ jobId }).unwrap();
+      patchScoringCache(result.data);
+      setResumeDraft(null);
+      setInterviewDraft(null);
+      setShowResetConfirm(false);
+      showToast({
+        message: 'Scoring configuration reset successfully.',
+        type: 'success',
+      });
+    } catch (err) {
+      showToast({
+        message: getJobErrorMessage(err, 'Failed to reset scoring configuration.'),
+        type: 'error',
+      });
+    }
+  }, [jobId, isEditable, isSaving, isResetting, resetScoring, patchScoringCache]);
 
   if (!jobId) {
     return (
@@ -225,7 +224,20 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
 
   return (
     <div className="py-4">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-1">Scoring Weight Distribution</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+        <h2 className="text-2xl font-semibold text-gray-800">Scoring Weight Distribution</h2>
+        {isEditable && (
+          <button
+            type="button"
+            onClick={() => setShowResetConfirm(true)}
+            disabled={isSaving || isResetting}
+            className="inline-flex items-center justify-center gap-2 cursor-pointer border border-neutral-300 bg-white text-neutral-600 hover:bg-gray-50 hover:text-gray-800 hover:border-neutral-400 rounded-full px-5 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ReloadOutlined spin={isResetting} aria-hidden="true" />
+            {isResetting ? 'Resetting...' : 'Reset to Defaults'}
+          </button>
+        )}
+      </div>
       <p className="text-sm text-gray-500 mb-6">
         {isLocked
           ? lockedReason === 'organization'
@@ -242,11 +254,10 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           subtitle="Applies to Resume Review"
           infoText="Resume categories are always evaluated. All categories must total exactly 100%."
           weights={resumeWeights}
+          value={currentResumeWeights}
+          onChange={setResumeDraft}
           categoryMeta={RESUME_CATEGORY_META}
-          onSave={handleSaveResume}
-          onReset={() => handleReset('resume')}
-          isSaving={isSaving && savingSection === 'resume'}
-          isResetting={isResetting && resettingSection === 'resume'}
+          disabled={isSaving || isResetting}
           editable={isEditable}
         />
 
@@ -255,51 +266,57 @@ const JobScoringCriteriaTab: React.FC<JobScoringCriteriaTabProps> = ({
           subtitle="Applies to AI Agent Call and AI Video Interview"
           infoText="If a category is not covered in an interview, its weight is redistributed proportionally"
           weights={interviewWeights}
+          value={currentInterviewWeights}
+          onChange={setInterviewDraft}
           categoryMeta={INTERVIEW_CATEGORY_META}
-          onSave={handleSaveInterview}
-          onReset={() => handleReset('interview')}
-          isSaving={isSaving && savingSection === 'interview'}
-          isResetting={isResetting && resettingSection === 'interview'}
+          disabled={isSaving || isResetting}
           editable={isEditable}
         />
       </div>
 
       {!isViewMode && (
-        <div className="mt-8 flex justify-center gap-6">
-          {showDraftActions && (
-            <Tooltip title="Save progress and come back later.">
-              <Button
-                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-                onClick={handleSaveDraft}
-              >
-                Save As Draft
-              </Button>
-            </Tooltip>
-          )}
+        <JobActionFooter className="-mx-6 -mb-10 mt-8">
           {showDraftActions && (
             <Tooltip title="Delete this job opening and everything in it.">
               <Button
-                className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2"
+                className="border border-neutral-300 bg-white text-neutral-600 hover:text-red-600 hover:border-red-300 hover:bg-red-50/50 rounded-full px-5 py-2 text-sm font-medium transition-colors flex items-center justify-center"
                 onClick={() => setShowCancelConfirm(true)}
               >
                 Cancel
               </Button>
             </Tooltip>
           )}
-          <Tooltip title="Save this page and continue.">
+          {showDraftActions && (
+            <Tooltip title="Save progress and come back later.">
+              <Button
+                className="bg-primary hover:bg-brand-700 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-colors flex items-center justify-center"
+                onClick={handleSaveDraft}
+              >
+                Save As Draft
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip
+            title={hasChanges ? 'Save this page and continue.' : 'Continue to the next step.'}
+          >
             <Button
-              className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2"
-              onClick={() => {
-                dispatch(setIsScoringCompleted(true));
-                dispatch(setEditScoringPassedJobId(jobId || null));
-                // Edit mode needs the job-id-aware route, not the create wizard's bare path.
-                navigate(isEditMode ? `/jobs/edit/${jobId}/interview` : '/interview-setup');
-              }}
+              className="bg-primary hover:bg-primary-hover text-white rounded-full px-5 py-2 text-sm font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleNext}
+              disabled={isSaving || isResetting || (hasChanges && !areWeightsValid)}
             >
-              Save &amp; Next
+              {isSaving ? 'Saving...' : hasChanges ? 'Save & Next' : 'Next'}
             </Button>
           </Tooltip>
-        </div>
+        </JobActionFooter>
+      )}
+      {showResetConfirm && (
+        <ConfirmationModal
+          onClose={() => setShowResetConfirm(false)}
+          onConfirm={handleReset}
+          title="Reset both resume and interview scoring weights to defaults? Any unsaved changes will be discarded."
+          confirmText="Reset to Defaults"
+          isLoading={isResetting}
+        />
       )}
       {showCancelConfirm && (
         <ConfirmationModal

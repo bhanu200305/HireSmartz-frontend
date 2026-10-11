@@ -122,6 +122,7 @@ import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
+import JobActionFooter from '../AddJobDescription/JobActionFooter';
 import { useGetTenantCultureIntroQuery } from '../../../api/organization-service/Tenants/cultureIntro';
 import {
   useGetOrganizationShiftsQuery,
@@ -4061,7 +4062,18 @@ const EditJobDetail = () => {
             You don&apos;t have permission to edit this job.
           </p>
         )}
-        <div className="flex items-center justify-center mt-6 gap-6">
+        <JobActionFooter floating={false} className="mt-8">
+          {isDraft && (
+            <Tooltip title="Delete this job opening and everything in it.">
+              <Button
+                type="button"
+                className="border border-neutral-300 bg-white text-neutral-600 hover:text-red-600 hover:border-red-300 hover:bg-red-50/50 rounded-full px-5 py-2 text-sm font-medium transition-colors flex items-center justify-center"
+                onClick={() => setShowCancelConfirm(true)}
+              >
+                Cancel
+              </Button>
+            </Tooltip>
+          )}
           {isDraft && (
             <Tooltip
               title={nothingToSave ? nothingToSaveHint : 'Save progress and come back later.'}
@@ -4069,7 +4081,7 @@ const EditJobDetail = () => {
               <span className="inline-flex">
                 <Button
                   type="button"
-                  className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-primary hover:bg-brand-700 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => onSaveDraft(watch())}
                   disabled={isUpdatingDraft || !canEditThisJob || nothingToSave}
                 >
@@ -4078,22 +4090,11 @@ const EditJobDetail = () => {
               </span>
             </Tooltip>
           )}
-          {isDraft && (
-            <Tooltip title="Delete this job opening and everything in it.">
-              <Button
-                type="button"
-                className="text-white bg-gray-400 hover:bg-gray-500 rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer"
-                onClick={() => setShowCancelConfirm(true)}
-              >
-                Cancel
-              </Button>
-            </Tooltip>
-          )}
           <Tooltip title={nothingToSave ? nothingToSaveHint : 'Save this page and continue.'}>
             <span className="inline-flex">
               <Button
                 type="button"
-                className="text-white bg-button rounded-3xl px-8 py-2 flex items-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-primary hover:bg-primary-hover text-white rounded-full px-5 py-2 text-sm font-semibold shadow-xs hover:shadow transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleSubmit(onSubmit, (invalidFields) => {
                   showToast({
                     message: 'Please fill all required fields before saving.',
@@ -4107,7 +4108,7 @@ const EditJobDetail = () => {
               </Button>
             </span>
           </Tooltip>
-        </div>
+        </JobActionFooter>
       </Form>
       <Modal
         open={bulkNoticeOpen && Boolean(bulkUploadNotice)}

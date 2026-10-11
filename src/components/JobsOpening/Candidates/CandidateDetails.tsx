@@ -721,9 +721,10 @@ const CandidateDetails = () => {
   // repeat shares the same `round_id`, so sequence is the one key that
   // actually disambiguates which repeat this is (see BookingDetailDrawer's
   // own version of this same match for the full reasoning).
-  const { data: jobQuestions } = useGetJobQuestionsQuery(parsedJobId, {
-    skip: !isPanelRound || !parsedJobId,
-  });
+  const { data: jobQuestions } = useGetJobQuestionsQuery(
+    { jobOpeningId: parsedJobId ?? '' },
+    { skip: !isPanelRound || !parsedJobId }
+  );
   const roundQuestions = jobQuestions?.rounds.find((r) => r.sequence === selectedRound?.sequence);
   const [setPanelInterviewers, { isLoading: isSavingInterviewers }] =
     useSetPanelInterviewersMutation();
