@@ -104,7 +104,11 @@ const AssignJobModal = ({
   const jobTypeName = jobTypes.find(
     (t) => String(t.id) === String(detail?.jobType?.[0]?.id ?? '')
   )?.job_type_name;
-  const location = detail?.officeLocation?.[0];
+  // Every office the job is at.
+  const locationText = (detail?.officeLocation ?? [])
+    .map((item) => [item?.city?.name, item?.country?.name].filter(Boolean).join(', '))
+    .filter(Boolean)
+    .join(' · ');
   const salary = [
     salaryRange(detail?.exemptMinSalary, detail?.exemptMaxSalary),
     salaryRange(detail?.nonExemptMinSalary, detail?.nonExemptMaxSalary),
@@ -182,10 +186,7 @@ const AssignJobModal = ({
               <DetailRow label="Number of Openings" value={selectedSummary?.vacancies} />
               <DetailRow label="Job Type" value={jobTypeName} />
               <DetailRow label="Salary" value={salary} />
-              <DetailRow
-                label="Location"
-                value={[location?.city?.name, location?.country?.name].filter(Boolean).join(', ')}
-              />
+              <DetailRow label="Location" value={locationText} />
               <DetailRow label="Hiring Manager" value={detail?.hiringManager?.name} />
             </div>
           </div>

@@ -68,7 +68,8 @@ const useJobOpeningDropdown = (
   _mode: string,
   _jobOpeningId?: string | number,
   skip?: boolean,
-  locationId?: string | number,
+  // One office, or the job's several: people are listed if they hold the role at any of them.
+  locationId?: string | number | (string | number)[],
   _isRemote?: boolean
 ) => {
   const callerKind = useSelector((state: RootState) => state.LoginSlice.callerKind);
@@ -143,25 +144,48 @@ const useJobOpeningDropdown = (
       .map((user) => user.user_id);
     return [...new Set(ids)].slice(0, 300);
   }, [isAssigneeEndpoint, endpoint, users.data]);
+  // Keyed by value, so a fresh array of the same offices doesn't refetch or recompute.
+  const locationKey = (Array.isArray(locationId) ? locationId : [locationId])
+    .filter(Boolean)
+    .map(String)
+    .join('|');
+  const locationIds = useMemo(
+    () => (locationKey ? [...new Set(locationKey.split('|'))] : []),
+    [locationKey]
+  );
   const locationPermissions = useGetAssignableUsersQuery(
     {
-      locationId: locationId ? String(locationId) : '',
+      locationIds,
       ...(endpoint === 'RECRUITER'
         ? { recruiterIds: candidateUserIds }
         : { hiringManagerIds: candidateUserIds }),
     },
     {
-      skip: skip || isMaster || !isAssigneeEndpoint || !locationId || candidateUserIds.length === 0,
+      skip:
+        skip ||
+        isMaster ||
+        !isAssigneeEndpoint ||
+        locationIds.length === 0 ||
+        candidateUserIds.length === 0,
     }
   );
   const permittedUserIds = useMemo(() => {
-    if (!locationId || !locationPermissions.data) return null;
+    if (locationIds.length === 0 || !locationPermissions.data) return null;
     const allowed =
       endpoint === 'RECRUITER'
         ? locationPermissions.data.recruiter_ids
         : locationPermissions.data.hiring_manager_ids;
     return new Set(allowed);
-  }, [locationId, endpoint, locationPermissions.data]);
+  }, [locationIds, endpoint, locationPermissions.data]);
+  // Per office, who holds this role there: what the coverage check needs.
+  const officeCoverage = useMemo(() => {
+    const byOffice: Record<string, string[]> = {};
+    for (const office of locationPermissions.data?.offices ?? []) {
+      byOffice[office.location_id] =
+        endpoint === 'RECRUITER' ? office.recruiter_ids : office.hiring_manager_ids;
+    }
+    return byOffice;
+  }, [endpoint, locationPermissions.data]);
 
   const [searchSkills, skillsResult] = useLazySearchSkillsQuery();
   // Full active catalogue, shown until the recruiter types 2+ characters
@@ -345,6 +369,12 @@ const useJobOpeningDropdown = (
     loading,
     error,
     refetch,
+    officeCoverage,
+    // True once the per-office answer has arrived, so a check on it can be trusted.
+    coverageReady:
+      locationIds.length > 0 &&
+      Boolean(locationPermissions.data) &&
+      !locationPermissions.isFetching,
     searchSkills: (q: string) => {
       if (!isSkillsEndpoint(endpoint)) return;
       const query = q.trim();

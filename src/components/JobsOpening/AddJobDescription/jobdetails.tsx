@@ -128,6 +128,8 @@ import {
 
 import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
+import SelectedLocations from './SelectedLocations';
+import { coverageIssue } from './locationCoverage';
 import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import {
@@ -293,9 +295,11 @@ const JobDetails = () => {
   const { data: tenantCultureIntro } = useGetTenantCultureIntroQuery(tenantId ?? '', {
     skip: !tenantId,
   });
-  const [selectedLocationIdForUsers, setSelectedLocationIdForUsers] = useState<string | undefined>(
-    undefined
-  );
+  // The offices picked for this job, which decide who the dropdowns list.
+  const [selectedLocationIdsForUsers, setSelectedLocationIdsForUsers] = useState<string[]>([]);
+  // Set when the user changes the locations, so people who can no longer work at any of
+  // them are dropped once the new lists arrive (not on a plain page load).
+  const pruneAssigneesRef = useRef(false);
 
   const [allowNavigation, setAllowNavigation] = useState(false);
   const [isAddingToDropdown, setIsAddingToDropdown] = useState<string | null>(null);
@@ -462,20 +466,24 @@ const JobDetails = () => {
     totalSkillsCount: totalOptionalSkillsCount,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'create');
 
-  const { jobOpeningDropdown: hiringManagers, loading: hiringManagerLoading } =
-    useJobOpeningDropdown(
-      'HIRING_MANAGER',
-      'create',
-      undefined,
-      undefined,
-      selectedLocationIdForUsers
-    );
+  const {
+    jobOpeningDropdown: hiringManagers,
+    loading: hiringManagerLoading,
+    officeCoverage: hiringManagerCoverage,
+    coverageReady: hiringManagerCoverageReady,
+  } = useJobOpeningDropdown(
+    'HIRING_MANAGER',
+    'create',
+    undefined,
+    undefined,
+    selectedLocationIdsForUsers
+  );
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
     'create',
     undefined,
     undefined,
-    selectedLocationIdForUsers
+    selectedLocationIdsForUsers
   );
 
   const generateJobProfileCode = () => {
@@ -501,7 +509,7 @@ const JobDetails = () => {
       setValue(field as never, value as never, { shouldValidate: true, shouldDirty: true })
     );
     if (plan.officeId && offices.some((office) => idsMatch(office.office_id, plan.officeId))) {
-      handleLocationChange(plan.officeId);
+      handleLocationsChange([plan.officeId]);
       plan.labels.push('Location');
     }
     // The dropdowns only know skills they have loaded, so give them the labels.
@@ -540,17 +548,15 @@ const JobDetails = () => {
       : `Nothing new to fill from that description.${missingSkillsNote}`;
   };
 
-  const handleLocationChange = (locationId: string | number) => {
-    const id = locationId != null && locationId !== '' ? String(locationId) : '';
-    const selectedLocation = offices.find((office) => idsMatch(office.office_id, locationId));
+  const handleLocationsChange = (value: (string | number)[] | null) => {
+    const ids = [...new Set((value ?? []).filter((id) => id !== '').map(String))];
+    const first = offices.find((office) => idsMatch(office.office_id, ids[0]));
 
-    setSelectedLocationIdForUsers(id || undefined);
-    setValue('officeLocation', id ? [id] : [], {
-      shouldValidate: true,
-    });
-    setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
-    setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    // HM dropdown re-filters on location change; a stale pick is caught by validation.
+    setSelectedLocationIdsForUsers(ids);
+    setValue('officeLocation', ids, { shouldDirty: true, shouldValidate: true });
+    setValue('country', first?.country ?? '', { shouldValidate: true });
+    setValue('state', first?.state ?? '', { shouldValidate: true });
+    pruneAssigneesRef.current = ids.length > 0;
   };
 
   const {
@@ -860,6 +866,12 @@ const JobDetails = () => {
     name: 'officeLocation',
   });
   const selectedOfficeLocationId = selectedOfficeLocation?.[0];
+  const selectedOfficeIds = (selectedOfficeLocation ?? []).map((id) => String(id));
+  // Keep the lookups on whatever the form holds, however the offices were set.
+  const selectedOfficeKey = selectedOfficeIds.join('|');
+  useEffect(() => {
+    setSelectedLocationIdsForUsers(selectedOfficeKey ? selectedOfficeKey.split('|') : []);
+  }, [selectedOfficeKey]);
   const selectedHiringManagerIds = (watch('hiringManagers') || []).map((id) => String(id));
   const selectedRecruiterIds = (watch('recruiters') || []).map((id) => String(id));
   const selectedMandatorySkillIds = (watch('mandatorySkills') || []).map((id) => String(id));
@@ -927,14 +939,14 @@ const JobDetails = () => {
           (office) =>
             !permittedOfficesData ||
             permittedOfficeIds.has(office.office_id) ||
-            idsMatch(office.office_id, selectedOfficeLocationId)
+            selectedOfficeKey.split('|').some((id) => idsMatch(office.office_id, id))
         )
         .map((office) => ({
           id: office.office_id,
           name: officeDisplayName(office),
         }))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-    [offices, permittedOfficeIds, permittedOfficesData, selectedOfficeLocationId]
+    [offices, permittedOfficeIds, permittedOfficesData, selectedOfficeKey]
   );
 
   // True only when offices exist but none are permitted — distinct from
@@ -946,6 +958,48 @@ const JobDetails = () => {
     () => offices.find((office) => idsMatch(office.office_id, selectedOfficeLocationId)),
     [offices, selectedOfficeLocationId]
   );
+  // Every office picked, in the order picked, and the warning when one has no hiring manager.
+  const selectedLocations = selectedOfficeIds.flatMap((officeId) => {
+    const found = offices.find((office) => idsMatch(office.office_id, officeId));
+    return found ? [found] : [];
+  });
+  const officeNameOf = (officeId: string) => {
+    const found = offices.find((office) => idsMatch(office.office_id, officeId));
+    return found ? officeDisplayName(found) : 'this location';
+  };
+  const hiringManagerCoverageIssue = hiringManagerCoverageReady
+    ? coverageIssue(
+        selectedOfficeIds,
+        (watch('hiringManagers') || []).map((id) => String(id)),
+        hiringManagerCoverage,
+        officeNameOf
+      )
+    : null;
+
+  // After a location change: a chosen hiring manager or recruiter who holds the role at
+  // none of the selected offices is removed, so the save is not refused for them.
+  useEffect(() => {
+    if (!pruneAssigneesRef.current || !hiringManagerCoverageReady || recruitersLoading) return;
+    pruneAssigneesRef.current = false;
+    const stillListed = (options: { id: string | number }[], chosen: unknown) =>
+      ((chosen as (string | number)[] | undefined) ?? []).filter((id) =>
+        options.some((option) => idsMatch(option.id, id))
+      );
+    const keptManagers = stillListed(hiringManagers, getValues('hiringManagers'));
+    const keptRecruiters = stillListed(recruiters, getValues('recruiters'));
+    const removed =
+      (getValues('hiringManagers')?.length ?? 0) -
+      keptManagers.length +
+      ((getValues('recruiters')?.length ?? 0) - keptRecruiters.length);
+    if (removed === 0) return;
+    setValue('hiringManagers', keptManagers as never, { shouldDirty: true, shouldValidate: true });
+    setValue('recruiters', keptRecruiters as never, { shouldDirty: true, shouldValidate: true });
+    showToast({
+      message: `${removed} ${removed === 1 ? 'person was' : 'people were'} removed because they cannot work at the selected locations.`,
+      type: 'info',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiringManagerCoverageReady, recruitersLoading, hiringManagers, recruiters]);
 
   const {
     data: departmentJobTitlesData = [],
@@ -1205,10 +1259,10 @@ const JobDetails = () => {
       Object.entries(transformedAtsData).forEach(([key, value]) => {
         setValue(key as keyof JobDetailsState, value as any);
       });
-      setSelectedLocationIdForUsers(
-        transformedAtsData.officeLocation?.[0] != null
-          ? String(transformedAtsData.officeLocation[0])
-          : undefined
+      setSelectedLocationIdsForUsers(
+        (transformedAtsData.officeLocation ?? [])
+          .filter((id: unknown) => id != null && id !== '')
+          .map((id: unknown) => String(id))
       );
       refetchEducationPreference?.();
       refetchMandatorySkills?.();
@@ -1221,8 +1275,10 @@ const JobDetails = () => {
         setValue('country', jobDetails.country || '');
         setValue('state', jobDetails.state || '');
         setValue('officeLocation', jobDetails.officeLocation || []);
-        setSelectedLocationIdForUsers(
-          jobDetails.officeLocation?.[0] != null ? String(jobDetails.officeLocation[0]) : undefined
+        setSelectedLocationIdsForUsers(
+          (jobDetails.officeLocation ?? [])
+            .filter((id) => id != null && id !== '')
+            .map((id) => String(id))
         );
       }
     }
@@ -2549,6 +2605,15 @@ const JobDetails = () => {
   };
 
   const onSubmit = async (data: JobDetailsState) => {
+    // Every selected location needs a hiring manager who can work there.
+    if (hiringManagerCoverageIssue) {
+      setError('hiringManagers', { type: 'manual', message: hiringManagerCoverageIssue });
+      showToast({ message: hiringManagerCoverageIssue, type: 'error' });
+      document
+        .getElementById('field-hiringManagers')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setShowValidationSummary(false);
     setAllowNavigation(true);
     dispatch(updateJobDetails(data));
@@ -3252,15 +3317,23 @@ const JobDetails = () => {
                     >
                       <div id="field-officeLocation">
                         <DropdownWithAddOption
-                          className="w-full custom-select-jobs placeholder-style"
-                          value={watch('officeLocation')?.[0]}
-                          onChange={handleLocationChange}
+                          className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
+                          value={watch('officeLocation') || []}
+                          onChange={handleLocationsChange}
                           options={jobLocationOptions}
                           loading={loadingJobLocations}
                           disabled={fieldsLocked}
                           label="Location"
                           placeholder="Select Location"
                           type="location"
+                          mode="multiple"
+                          maxTagCount={0}
+                          maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
+                            <span>
+                              {omittedValues.length} of {jobLocationOptions.length} locations
+                              selected
+                            </span>
+                          )}
                           error={errors.officeLocation?.message}
                           emptyMessage={officesErrorMessage}
                           enableEditDelete={false}
@@ -3275,88 +3348,16 @@ const JobDetails = () => {
                           </p>
                         )}
                     </Form.Item>
-                    {selectedOfficeLocationId && (
-                      <>
-                        <Form.Item label={<span>Location Code</span>}>
-                          <Input
-                            value={selectedLocationDetails?.location_code || 'Not set'}
-                            readOnly
-                            disabled
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                        </Form.Item>
-                      </>
-                    )}
                   </div>
-                  {selectedOfficeLocationId && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-                        <Form.Item label={<span>Address Line 1</span>}>
-                          <Input
-                            value={selectedLocationDetails?.address_line_1 ?? ''}
-                            readOnly
-                            disabled
-                            placeholder="Address Line 1"
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                          {errors.officeLocation && (
-                            <p className="text-red-500">{errors.officeLocation.message}</p>
-                          )}
-                        </Form.Item>
-                        <Form.Item label={<span>Address Line 2</span>}>
-                          <Input
-                            value={selectedLocationDetails?.address_line_2 ?? ''}
-                            readOnly
-                            disabled
-                            placeholder="Address Line 2"
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                        </Form.Item>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-                        <Form.Item label={<span>City</span>}>
-                          <Input
-                            value={selectedLocationDetails?.city ?? ''}
-                            readOnly
-                            disabled
-                            placeholder="City"
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                        </Form.Item>
-                        <Form.Item label={<span>State</span>}>
-                          <Input
-                            value={selectedLocationDetails?.state ?? watch('state') ?? ''}
-                            readOnly
-                            disabled
-                            placeholder="State"
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                          {errors.state && <p className="text-red-500">{errors.state.message}</p>}
-                        </Form.Item>
-                        <Form.Item label={<span>Zip Code</span>}>
-                          <Input
-                            value={selectedLocationDetails?.zip_code ?? ''}
-                            readOnly
-                            disabled
-                            placeholder="Zip Code"
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                        </Form.Item>
-                        <Form.Item label={<span>Country</span>}>
-                          <Input
-                            value={selectedLocationDetails?.country ?? watch('country') ?? ''}
-                            readOnly
-                            disabled
-                            placeholder="Country"
-                            className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                          />
-                          {errors.country && (
-                            <p className="text-red-500">{errors.country.message}</p>
-                          )}
-                        </Form.Item>
-                      </div>
-                    </>
-                  )}
+                  <SelectedLocations
+                    offices={selectedLocations}
+                    disabled={fieldsLocked}
+                    onRemove={(officeId) =>
+                      handleLocationsChange(
+                        selectedOfficeIds.filter((id) => !idsMatch(id, officeId))
+                      )
+                    }
+                  />
                 </div>
                 <div className="mt-2">
                   <div className="w-full">
@@ -3395,7 +3396,11 @@ const JobDetails = () => {
                           )}
                           disabled={fieldsLocked}
                           enableEditDelete={false}
-                          error={errors.hiringManagers?.message}
+                          error={
+                            errors.hiringManagers?.message ??
+                            hiringManagerCoverageIssue ??
+                            undefined
+                          }
                         />
 
                         {selectedHiringManagers.length > 0 && (

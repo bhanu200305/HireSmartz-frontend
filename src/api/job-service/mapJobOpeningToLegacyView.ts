@@ -87,15 +87,13 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
     department: details?.department_id
       ? [{ id: details.department_id as unknown as number, departmentName: '' }]
       : [],
-    officeLocation: location
-      ? [
-          {
-            country: { id: 0, name: location.country ?? '' },
-            city: { id: 0, name: location.city ?? '' },
-            state: { id: 0, name: location.state ?? '' },
-          },
-        ]
-      : [],
+    // Every location of the job, each with its own id.
+    officeLocation: (details?.locations ?? []).map((item) => ({
+      id: (item.job_location_id ?? '') as unknown as number,
+      country: { id: 0, name: item.country ?? '' },
+      city: { id: 0, name: item.city ?? '' },
+      state: { id: 0, name: item.state ?? '' },
+    })),
     location: location
       ? {
           id: (location.job_location_id ?? '') as unknown as number,
@@ -143,7 +141,9 @@ export const mapJobOpeningToLegacyView = (job: JobOpeningDetailResponse): Legacy
 export const mapDetailsToJobDetailsState = (
   details: JobDetailsResponse
 ): Partial<JobDetailsState> => {
-  const locationId = details.locations?.[0]?.job_location_id;
+  const locationIds = (details.locations ?? [])
+    .map((location) => location.job_location_id)
+    .filter((id): id is string => Boolean(id));
   return {
     jobProfileCode: details.job_profile_code,
     jobTitle: details.job_title_id ? [details.job_title_id as unknown as number] : [],
@@ -151,7 +151,7 @@ export const mapDetailsToJobDetailsState = (
     jobType: details.job_type_id ? [details.job_type_id as unknown as number] : [],
     jobMode: details.mode_id ? [details.mode_id as unknown as number] : [],
     shift: details.shift_id ? [details.shift_id as unknown as number] : [],
-    officeLocation: locationId ? [locationId as unknown as number] : [],
+    officeLocation: locationIds as unknown as number[],
     country: details.locations?.[0]?.country ?? '',
     state: details.locations?.[0]?.state ?? '',
     openings: details.vacancies,

@@ -30,6 +30,8 @@ import {
 } from '../../../shared/utils/jdSync';
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
+import SelectedLocations from '../AddJobDescription/SelectedLocations';
+import { coverageIssue } from '../AddJobDescription/locationCoverage';
 import {
   setEditJobOpeningId,
   updateEditAiJobDescription,
@@ -289,9 +291,8 @@ const EditJobDetail = () => {
   const canDeleteSkill =
     canManageCatalogueEntries || effectivePermissions.includes(Authorities.SKILL_DELETE);
   const tenantId = useSessionTenantId();
-  const [selectedLocationIdForUsers, setSelectedLocationIdForUsers] = useState<string | undefined>(
-    undefined
-  );
+  // The offices picked for this job, which decide who the dropdowns list.
+  const [selectedLocationIdsForUsers, setSelectedLocationIdsForUsers] = useState<string[]>([]);
   const [dismissedUnresolvedAiFields, setDismissedUnresolvedAiFields] = useState<Set<string>>(
     new Set()
   );
@@ -369,20 +370,24 @@ const EditJobDetail = () => {
     totalSkillsCount: totalOptionalSkillsCount,
     refetch: refetchOptionalSkills,
   } = useJobOpeningDropdown('OPTIONAL_SKILLS', 'edit', parsedJobId);
-  const { jobOpeningDropdown: hiringManagers, loading: hiringManagerLoading } =
-    useJobOpeningDropdown(
-      'HIRING_MANAGER',
-      'edit',
-      parsedJobId,
-      undefined,
-      selectedLocationIdForUsers
-    );
+  const {
+    jobOpeningDropdown: hiringManagers,
+    loading: hiringManagerLoading,
+    officeCoverage: hiringManagerCoverage,
+    coverageReady: hiringManagerCoverageReady,
+  } = useJobOpeningDropdown(
+    'HIRING_MANAGER',
+    'edit',
+    parsedJobId,
+    undefined,
+    selectedLocationIdsForUsers
+  );
   const { jobOpeningDropdown: recruiters, loading: recruitersLoading } = useJobOpeningDropdown(
     'RECRUITER',
     'edit',
     parsedJobId,
     undefined,
-    selectedLocationIdForUsers
+    selectedLocationIdsForUsers
   );
 
   const [updateJobType] = useUpdateJobTypeMutation();
@@ -641,6 +646,12 @@ const EditJobDetail = () => {
     name: 'officeLocation',
   });
   const selectedOfficeLocationId = selectedOfficeLocation?.[0];
+  const selectedOfficeIds = (selectedOfficeLocation ?? []).map((id) => String(id));
+  // Keep the lookups on whatever the form holds, however the offices were set.
+  const selectedOfficeKey = selectedOfficeIds.join('|');
+  useEffect(() => {
+    setSelectedLocationIdsForUsers(selectedOfficeKey ? selectedOfficeKey.split('|') : []);
+  }, [selectedOfficeKey]);
   const selectedHiringManagerIds = (watch('hiringManagers') || []).map((id) => String(id));
   const selectedRecruiterIds = (watch('recruiters') || []).map((id) => String(id));
   const selectedMandatorySkillIds = (watch('mandatorySkills') || []).map((id) => String(id));
@@ -932,7 +943,7 @@ const EditJobDetail = () => {
       (office) =>
         !permittedOfficesData ||
         permittedOfficeIds.has(office.office_id) ||
-        idsMatch(office.office_id, selectedLocationIdForUsers)
+        selectedLocationIdsForUsers.some((id) => idsMatch(office.office_id, id))
     )
     .map((office) => ({
       id: office.office_id,
@@ -945,6 +956,23 @@ const EditJobDetail = () => {
   const selectedLocationDetails = offices.find((office) =>
     idsMatch(office.office_id, selectedOfficeLocationId)
   );
+  // Every office picked, in the order picked, and the warning when one has no hiring manager.
+  const selectedLocations = selectedOfficeIds.flatMap((officeId) => {
+    const found = offices.find((office) => idsMatch(office.office_id, officeId));
+    return found ? [found] : [];
+  });
+  const officeNameOf = (officeId: string) => {
+    const found = offices.find((office) => idsMatch(office.office_id, officeId));
+    return found ? officeDisplayName(found) : 'this location';
+  };
+  const hiringManagerCoverageIssue = hiringManagerCoverageReady
+    ? coverageIssue(
+        selectedOfficeIds,
+        (watch('hiringManagers') || []).map((id) => String(id)),
+        hiringManagerCoverage,
+        officeNameOf
+      )
+    : null;
 
   // The "not set up yet" banner list is derived, not something the user edited.
   const withoutDerivedFields = (values: Record<string, unknown>) => {
@@ -973,12 +1001,16 @@ const EditJobDetail = () => {
     const locationData = jobData.data.location;
     const countryName = locationData?.country || '';
     const stateName = locationData?.state || '';
+    // Every office the job is at, not only the first.
+    const officeLocationIds: string[] = (jobData.data.officeLocation ?? [])
+      .map((item: any) => asLocationId(item?.id ?? item?.city?.id))
+      .filter((locationId: string | null): locationId is string => locationId !== null);
     const resolvedOfficeLocation =
-      asLocationId(locationData?.id) !== null
-        ? [asLocationId(locationData?.id) as string]
-        : jobData.data.officeLocation
-            ?.map((item: any) => asLocationId(item?.id ?? item?.city?.id))
-            .filter((locationId: string | null): locationId is string => locationId !== null) || [];
+      officeLocationIds.length > 0
+        ? [...new Set(officeLocationIds)]
+        : asLocationId(locationData?.id) !== null
+          ? [asLocationId(locationData?.id) as string]
+          : [];
 
     return {
       ...jobData.data,
@@ -1090,10 +1122,10 @@ const EditJobDetail = () => {
         trigger('department');
       }, 0);
     }
-    setSelectedLocationIdForUsers(
-      processedData.officeLocation?.[0] != null && processedData.officeLocation[0] !== ''
-        ? String(processedData.officeLocation[0])
-        : undefined
+    setSelectedLocationIdsForUsers(
+      (processedData.officeLocation ?? [])
+        .filter((id: unknown) => id != null && id !== '')
+        .map((id: unknown) => String(id))
     );
   };
 
@@ -1120,10 +1152,10 @@ const EditJobDetail = () => {
           }, 0);
         }
         setInitialFormValues(formData);
-        setSelectedLocationIdForUsers(
-          jobDetails.officeLocation?.[0] != null && jobDetails.officeLocation[0] !== ''
-            ? String(jobDetails.officeLocation[0])
-            : undefined
+        setSelectedLocationIdsForUsers(
+          (jobDetails.officeLocation ?? [])
+            .filter((id) => id != null && id !== '')
+            .map((id) => String(id))
         );
         return;
       }
@@ -1471,18 +1503,45 @@ const EditJobDetail = () => {
     dispatch(setIsChanged(isFormDirty));
   }, [isFormDirty, dispatch]);
 
-  const handleLocationChange = (locationId: string | number) => {
-    const id = locationId != null && locationId !== '' ? String(locationId) : '';
-    const selectedLocation = offices.find((office) => idsMatch(office.office_id, locationId));
+  // Set when the user changes the locations, so people who can no longer work at any of
+  // them are dropped once the new lists arrive (not on a plain page load).
+  const pruneAssigneesRef = useRef(false);
 
-    setSelectedLocationIdForUsers(id || undefined);
-    setValue('officeLocation', id ? [id] : [], {
-      shouldValidate: true,
-    });
-    setValue('country', selectedLocation?.country ?? '', { shouldValidate: true });
-    setValue('state', selectedLocation?.state ?? '', { shouldValidate: true });
-    // HM dropdown re-filters on location change; a stale pick is caught by validation.
+  const handleLocationsChange = (value: (string | number)[] | null) => {
+    const ids = [...new Set((value ?? []).filter((id) => id !== '').map(String))];
+    const first = offices.find((office) => idsMatch(office.office_id, ids[0]));
+
+    setSelectedLocationIdsForUsers(ids);
+    setValue('officeLocation', ids, { shouldDirty: true, shouldValidate: true });
+    setValue('country', first?.country ?? '', { shouldValidate: true });
+    setValue('state', first?.state ?? '', { shouldValidate: true });
+    pruneAssigneesRef.current = ids.length > 0;
   };
+
+  // After a location change: a chosen hiring manager or recruiter who holds the role at
+  // none of the selected offices is removed, so the save is not refused for them.
+  useEffect(() => {
+    if (!pruneAssigneesRef.current || !hiringManagerCoverageReady || recruitersLoading) return;
+    pruneAssigneesRef.current = false;
+    const stillListed = (options: { id: string | number }[], chosen: unknown) =>
+      ((chosen as (string | number)[] | undefined) ?? []).filter((id) =>
+        options.some((option) => idsMatch(option.id, id))
+      );
+    const keptManagers = stillListed(hiringManagers, getValues('hiringManagers'));
+    const keptRecruiters = stillListed(recruiters, getValues('recruiters'));
+    const removed =
+      (getValues('hiringManagers')?.length ?? 0) -
+      keptManagers.length +
+      ((getValues('recruiters')?.length ?? 0) - keptRecruiters.length);
+    if (removed === 0) return;
+    setValue('hiringManagers', keptManagers as never, { shouldDirty: true, shouldValidate: true });
+    setValue('recruiters', keptRecruiters as never, { shouldDirty: true, shouldValidate: true });
+    showToast({
+      message: `${removed} ${removed === 1 ? 'person was' : 'people were'} removed because they cannot work at the selected locations.`,
+      type: 'info',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiringManagerCoverageReady, recruitersLoading, hiringManagers, recruiters]);
 
   useEffect(() => {
     if (!selectedLocationDetails) return;
@@ -2590,6 +2649,15 @@ const EditJobDetail = () => {
   };
 
   const onSubmit = async (data: JobDetailsState) => {
+    // Every selected location needs a hiring manager who can work there.
+    if (hiringManagerCoverageIssue) {
+      setError('hiringManagers', { type: 'manual', message: hiringManagerCoverageIssue });
+      showToast({ message: hiringManagerCoverageIssue, type: 'error' });
+      document
+        .getElementById('field-hiringManagers')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setAllowNavigation(true);
 
     // Ensure the language selection cannot be changed if interviews have started
@@ -3099,100 +3167,35 @@ const EditJobDetail = () => {
             >
               <div id="field-officeLocation">
                 <DropdownWithAddOption
-                  className="w-full custom-select-jobs placeholder-style"
-                  value={watch('officeLocation')?.[0]}
-                  onChange={handleLocationChange}
+                  className="w-full custom-select-jobs placeholder-style hide-rest-item-while-open"
+                  value={watch('officeLocation') || []}
+                  onChange={handleLocationsChange}
                   options={jobLocationOptions}
                   loading={loadingJobLocations}
                   disabled={fieldsLocked}
                   label="Location"
                   placeholder="Select Location"
                   type="location"
+                  mode="multiple"
+                  maxTagCount={0}
+                  maxTagPlaceholder={(omittedValues: { value: number | string }[]) => (
+                    <span>
+                      {omittedValues.length} of {jobLocationOptions.length} locations selected
+                    </span>
+                  )}
                   error={errors.officeLocation?.message}
                   enableEditDelete={false}
                 />
               </div>
             </Form.Item>
-            {selectedOfficeLocationId && (
-              <>
-                <Form.Item label={<span>Location Code</span>}>
-                  <Input
-                    value={selectedLocationDetails?.location_code || 'Not set'}
-                    readOnly
-                    disabled
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                </Form.Item>
-              </>
-            )}
           </div>
-          {selectedOfficeLocationId && (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-                <Form.Item label={<span>Address Line 1</span>}>
-                  <Input
-                    value={selectedLocationDetails?.address_line_1 ?? ''}
-                    readOnly
-                    disabled
-                    placeholder="Address Line 1"
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                  {errors.officeLocation && (
-                    <p className="text-red-500">{errors.officeLocation.message}</p>
-                  )}
-                </Form.Item>
-                <Form.Item label={<span>Address Line 2</span>}>
-                  <Input
-                    value={selectedLocationDetails?.address_line_2 ?? ''}
-                    readOnly
-                    disabled
-                    placeholder="Address Line 2"
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                </Form.Item>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 mt-2">
-                <Form.Item label={<span>City</span>}>
-                  <Input
-                    value={selectedLocationDetails?.city ?? ''}
-                    readOnly
-                    disabled
-                    placeholder="City"
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                </Form.Item>
-                <Form.Item label={<span>State</span>}>
-                  <Input
-                    value={selectedLocationDetails?.state ?? watch('state') ?? ''}
-                    readOnly
-                    disabled
-                    placeholder="State"
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                  {errors.state && <p className="text-red-500">{errors.state.message}</p>}
-                </Form.Item>
-                <Form.Item label={<span>Zip Code</span>}>
-                  <Input
-                    value={selectedLocationDetails?.zip_code ?? ''}
-                    readOnly
-                    disabled
-                    placeholder="Zip Code"
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                </Form.Item>
-                <Form.Item label={<span>Country</span>}>
-                  <Input
-                    value={selectedLocationDetails?.country ?? watch('country') ?? ''}
-                    readOnly
-                    disabled
-                    placeholder="Country"
-                    className="bg-gray-50 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed w-full px-4 py-2 border rounded-3xl border-[var(--border)]"
-                  />
-                  {errors.country && <p className="text-red-500">{errors.country.message}</p>}
-                </Form.Item>
-              </div>
-            </>
-          )}
+          <SelectedLocations
+            offices={selectedLocations}
+            disabled={fieldsLocked}
+            onRemove={(officeId) =>
+              handleLocationsChange(selectedOfficeIds.filter((id) => !idsMatch(id, officeId)))
+            }
+          />
         </div>
         <div className="mt-2">
           <div className="w-full">
@@ -3229,7 +3232,7 @@ const EditJobDetail = () => {
                   )}
                   disabled={fieldsLocked}
                   enableEditDelete={false}
-                  error={errors.hiringManagers?.message}
+                  error={errors.hiringManagers?.message ?? hiringManagerCoverageIssue ?? undefined}
                 />
 
                 {selectedHiringManagers.length > 0 && (

@@ -473,6 +473,8 @@ export type JobOpeningByIdResponse = {
       departmentName: string;
     }[];
     officeLocation: {
+      /** The job location's own id, one per selected office. */
+      id?: number;
       country: {
         id: number;
         name: string;

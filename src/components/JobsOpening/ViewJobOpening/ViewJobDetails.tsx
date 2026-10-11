@@ -15,6 +15,7 @@ import {
   useListTenantJobTitleCatalogueQuery,
 } from '../../../api/organization-service/Tenants/jobTitles';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
+import SelectedLocations from '../AddJobDescription/SelectedLocations';
 import { useListUsersQuery } from '../../../api/organization-service/Users/users';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import { useParams } from 'react-router-dom';
@@ -307,7 +308,21 @@ const ViewJobDetails = () => {
     selectedOffice?.zip_code || locationData?.zipCode || locationData?.zip || '';
   const cultureInfoText = String(tenantCultureIntro?.intro_text || '').trim();
   const hasCultureInfo = Boolean(cultureInfoText);
-  const selectedLocationIdForUsers = locationData?.id;
+  // Every office the job is at; the hiring panel names are looked up across all of them.
+  const jobLocationIds = [
+    ...new Set(
+      (jobData?.data?.officeLocation ?? [])
+        .map((item) => (item?.id != null && item.id !== ('' as never) ? String(item.id) : ''))
+        .filter(Boolean)
+    ),
+  ];
+  const jobOffices = jobLocationIds.flatMap((officeId) => {
+    const found = offices.find((office) => idsMatch(office.office_id, officeId));
+    return found ? [found] : [];
+  });
+  const hasSeveralLocations = jobLocationIds.length > 1;
+  const selectedLocationIdForUsers: string | string[] | undefined =
+    jobLocationIds.length > 1 ? jobLocationIds : (jobLocationIds[0] ?? locationData?.id);
   const isRemoteJob = jobData?.data?.isRemote ?? false;
 
   const { jobOpeningDropdown: hiringManagerOptions } = useJobOpeningDropdown(
@@ -450,14 +465,20 @@ const ViewJobDetails = () => {
         </Section>
 
         <Section title="Location">
-          <Field label="Location Name" value={locationDisplayName} />
-          <Field label="Location Code" value={locationCode} />
-          <Field label="Address Line 1" value={locationAddressLine1} />
-          <Field label="Address Line 2" value={locationAddressLine2} />
-          <Field label="City" value={locationCity} />
-          <Field label="State" value={locationState} />
-          <Field label="Zip Code" value={locationZipCode} />
-          <Field label="Country" value={locationCountry} />
+          {hasSeveralLocations ? (
+            <SelectedLocations offices={jobOffices} />
+          ) : (
+            <>
+              <Field label="Location Name" value={locationDisplayName} />
+              <Field label="Location Code" value={locationCode} />
+              <Field label="Address Line 1" value={locationAddressLine1} />
+              <Field label="Address Line 2" value={locationAddressLine2} />
+              <Field label="City" value={locationCity} />
+              <Field label="State" value={locationState} />
+              <Field label="Zip Code" value={locationZipCode} />
+              <Field label="Country" value={locationCountry} />
+            </>
+          )}
         </Section>
 
         <Section title="Hiring Panel">

@@ -221,16 +221,17 @@ export const CareersApplyPage = () => {
             </h2>
             <p className="text-xs text-gray-400 mb-3">{job.job_profile_code}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {job.locations?.[0] && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+              {(job.locations ?? []).map((location, index) => (
+                <div
+                  key={`${location.city}-${location.state}-${index}`}
+                  className="flex items-center gap-2 text-sm text-gray-500"
+                >
                   <EnvironmentOutlined />
                   <span>
-                    {[job.locations[0].city, job.locations[0].state, job.locations[0].country]
-                      .filter(Boolean)
-                      .join(', ')}
+                    {[location.city, location.state, location.country].filter(Boolean).join(', ')}
                   </span>
                 </div>
-              )}
+              ))}
               {(job.min_experience_req !== null || job.max_experience_req !== null) && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <CalendarOutlined />

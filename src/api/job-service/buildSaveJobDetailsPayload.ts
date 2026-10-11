@@ -82,26 +82,36 @@ export const buildSaveJobDetailsPayload = ({
   offices = [],
   suggestedSkills = [],
 }: BuildSaveDetailsArgs): SaveJobDetailsRequest => {
-  const officeId =
-    firstId(data.officeLocation) || (data.locationId != null ? String(data.locationId) : null);
-  const office = offices.find((o) => o.office_id === officeId);
-
-  const locations: JobLocationPayload[] = office
-    ? [
-        {
-          job_location_id: isUuid(office.office_id) ? office.office_id : null,
-          address_line_1: office.address_line_1,
-          address_line_2: office.address_line_2,
-          city: office.city,
-          state: office.state,
-          country: office.country,
-          zip: office.zip_code,
-          location_code: office.location_code,
-        },
-      ]
-    : officeId && isUuid(officeId)
-      ? [{ job_location_id: officeId }]
-      : [];
+  // Every selected office becomes a location row; the older single id is a fallback.
+  const selectedOfficeIds = [
+    ...new Set(
+      toIdList(data.officeLocation).length > 0
+        ? toIdList(data.officeLocation)
+        : data.locationId != null && data.locationId !== ''
+          ? [String(data.locationId)]
+          : []
+    ),
+  ];
+  const locations: JobLocationPayload[] = selectedOfficeIds.flatMap(
+    (officeId): JobLocationPayload[] => {
+      const office = offices.find((o) => o.office_id === officeId);
+      if (office) {
+        return [
+          {
+            job_location_id: isUuid(office.office_id) ? office.office_id : null,
+            address_line_1: office.address_line_1,
+            address_line_2: office.address_line_2,
+            city: office.city,
+            state: office.state,
+            country: office.country,
+            zip: office.zip_code,
+            location_code: office.location_code,
+          },
+        ];
+      }
+      return isUuid(officeId) ? [{ job_location_id: officeId }] : [];
+    }
+  );
 
   const mandatory: JobSkillPayload[] = toIdList(data.mandatorySkills)
     .filter(isUuid)
