@@ -93,6 +93,8 @@ export const UploadAndGenerateHeader = ({
   // Retained for the commented-out upload summary panel below; not currently rendered.
   void (failedCount + duplicateCount);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // The types the server accepts, as "Excel .xlsx, ..." text; generic until the list arrives.
+  const fileTypesText = acceptedExtensions?.length ? acceptedExtensions.join(', ') : null;
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [filesOpen, setFilesOpen] = React.useState(false);
   // A fresh set of skipped rows opens the details once. Keyed on the rows, not the array.
@@ -186,7 +188,9 @@ export const UploadAndGenerateHeader = ({
               {[
                 {
                   title: 'Upload a file',
-                  description: 'Excel (.xlsx) or CSV, one question per row.',
+                  description: fileTypesText
+                    ? `A file with your questions (${fileTypesText}).`
+                    : 'A file with your questions.',
                   icon: HiOutlineUpload,
                   button: uploadLabel,
                 },
@@ -279,7 +283,13 @@ export const UploadAndGenerateHeader = ({
             )}
             <div className={`${onWrite ? 'hidden sm:flex' : 'flex'} flex-wrap items-center gap-2`}>
               {description && <span className="w-full text-sm text-gray-500">{description}</span>}
-              <Tooltip title="Import questions from an .xlsx or .csv file.">
+              <Tooltip
+                title={
+                  fileTypesText
+                    ? `Import questions from a file (${fileTypesText}).`
+                    : 'Import questions from a file.'
+                }
+              >
                 <span>{uploadLabel}</span>
               </Tooltip>
               <Tooltip title="Generates questions from the job description and this round's focus areas.">
