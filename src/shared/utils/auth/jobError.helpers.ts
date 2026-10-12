@@ -48,6 +48,15 @@ const ROUND_ERROR_MESSAGES: Record<string, string> = {
   LOCATION_NEEDS_HIRING_MANAGER:
     'Every selected location needs at least one hiring manager who can work there. Add one for each location.',
   RESUME_ROUND_CANNOT_BE_MODIFIED: 'Resume Review is required and cannot be removed or changed.',
+  // Its raw message is only an id, which means nothing in a toast.
+  JOB_TYPE_NOT_FOUND: 'This job type no longer exists. Refresh the page to see the latest list.',
+  JOB_MODE_NOT_FOUND: 'This job mode no longer exists. Refresh the page to see the latest list.',
+  SHIFT_TYPE_NOT_FOUND: 'This shift no longer exists. Refresh the page to see the latest list.',
+  CLOSURE_REASON_NOT_FOUND:
+    'This closure reason no longer exists. Refresh the page to see the latest list.',
+  EDUCATION_PREFERENCE_NOT_FOUND:
+    'This education preference no longer exists. Refresh the page to see the latest list.',
+  SKILL_NOT_FOUND: 'This skill no longer exists. Refresh the page to see the latest list.',
 };
 
 /** The message to show a user — on a PERMISSION_DENIED error, replaces the

@@ -94,6 +94,19 @@ const MfaChallengeStep = ({
     } catch (err) {
       const errorCode = getAuthErrorCode(err);
 
+      // The company was suspended after the password step. No code will ever
+      // work, so show why and go back to login: no "try again", no resend.
+      if (errorCode === 'tenant_suspended') {
+        showToast({
+          message: getAuthErrorMessage(
+            err,
+            "Your organization's account has been suspended; contact your administrator."
+          ),
+          type: 'error',
+        });
+        onBack();
+        return;
+      }
       if (errorCode === 'mfa_session_expired') {
         showToast({
           message: 'Your sign-in expired, please log in again.',

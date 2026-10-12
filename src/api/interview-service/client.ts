@@ -965,10 +965,25 @@ export const interviewApi = createApi({
       query: (jobId) => platform({ url: '/dashboard/summary', params: { job_id: jobId } }),
       providesTags: ['Dashboard'],
     }),
+    // `job_id` is required by the server. `candidate_id`/`round_id`/`sequence_no` are the
+    // optional ones that make it narrow the pool to interviewers who work at the office
+    // this booking is for: without them the full job pool comes back.
     getInterviewers: build.query<
       { interviewers: Array<{ id: string; display_name: string; email: string }> },
-      void
-    >({ query: () => platform({ url: '/interviewers' }), providesTags: ['Interviewer'] }),
+      { jobId: string; candidateId?: string; roundId?: string; sequenceNo?: number }
+    >({
+      query: ({ jobId, candidateId, roundId, sequenceNo }) =>
+        platform({
+          url: '/interviewers',
+          params: {
+            job_id: jobId,
+            candidate_id: candidateId,
+            round_id: roundId,
+            sequence_no: sequenceNo,
+          },
+        }),
+      providesTags: ['Interviewer'],
+    }),
     getTimezones: build.query<{ timezones: Array<{ id: string; utc_offset: string }> }, void>({
       query: () => publicRequest({ url: '/timezones' }),
       providesTags: ['Timezone'],

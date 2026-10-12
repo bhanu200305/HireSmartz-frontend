@@ -57,6 +57,7 @@ import {
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
 import {
+  candidateAppliedLocation,
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
   getSmsBlockedReason,
@@ -1987,17 +1988,29 @@ const CandidateDetails = () => {
                         <button
                           type="button"
                           aria-label="Upload audio recording"
-                          // Larger than the other round icons (h-9) so the
-                          // in-person upload is easy to spot.
-                          className={`${candidateHeaderIconCircle} !h-11 !w-11 shrink-0 ${hasRecording ? '!border-green-200 !bg-green-50 !text-green-700' : ''} ${!hasRecording && !hasInterviewStarted ? '!bg-gray-100 !text-gray-400' : ''}`}
+                          // A filled, labelled button rather than a small icon circle, so the
+                          // in-person upload is hard to miss: solid primary when it can be used,
+                          // green once uploaded, grey until the interview has started.
+                          className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40 cursor-pointer disabled:cursor-not-allowed ${
+                            hasRecording
+                              ? 'border border-green-200 bg-green-50 text-green-700'
+                              : !hasInterviewStarted
+                                ? 'border border-[var(--border)] bg-gray-100 text-gray-400'
+                                : 'bg-[var(--primary)] text-white hover:brightness-110'
+                          }`}
                           disabled={isUploadingAudio || hasRecording || !hasInterviewStarted}
                           onClick={() => audioFileInputRef.current?.click()}
                         >
                           {hasRecording ? (
-                            <LuCircleCheck size={22} strokeWidth={2} aria-hidden />
+                            <LuCircleCheck size={20} strokeWidth={2} aria-hidden />
                           ) : (
-                            <LuUpload size={22} strokeWidth={2} aria-hidden />
+                            <LuUpload size={20} strokeWidth={2} aria-hidden />
                           )}
+                          {isUploadingAudio
+                            ? 'Uploading…'
+                            : hasRecording
+                              ? 'Audio Uploaded'
+                              : 'Upload Audio'}
                         </button>
                       </span>
                     </Tooltip>
@@ -2676,6 +2689,11 @@ const CandidateDetails = () => {
                 {formatDateTime(candidate?.applied_date) ?? 'N/A'}
               </HeaderInfoRow>
               <HeaderInfoRow label="Source:">{sourceLabel ?? 'N/A'}</HeaderInfoRow>
+              {candidate && candidateAppliedLocation(candidate) && (
+                <HeaderInfoRow label="Applied Office:">
+                  {candidateAppliedLocation(candidate)}
+                </HeaderInfoRow>
+              )}
               <HeaderInfoRow label="Email:">{candidate?.email_id ?? 'N/A'}</HeaderInfoRow>
               <HeaderInfoRow label="Phone:">
                 {candidate?.contact_no ?? 'N/A'}

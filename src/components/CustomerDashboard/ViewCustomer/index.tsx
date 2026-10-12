@@ -33,7 +33,10 @@ import {
   useUpdatePlatformTenantProfileMutation,
   useUploadPlatformTenantLogoMutation,
 } from '../../../api/organization-service/Platform/tenantProfile';
-import { useSuspendTenantMutation } from '../../../api/organization-service/Tenants/tenants';
+import {
+  useReactivateTenantMutation,
+  useSuspendTenantMutation,
+} from '../../../api/organization-service/Tenants/tenants';
 import { useListMySupportAccessGrantsQuery } from '../../../api/organization-service/Platform/supportAccess';
 import { useGetOwnPlatformProfileQuery } from '../../../api/organization-service/Platform/staff';
 import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
@@ -176,6 +179,8 @@ const ViewCustomer = () => {
     useUpdatePlatformTenantEntitlementsMutation();
   const [suspendTenant, { isLoading: isSuspending }] = useSuspendTenantMutation();
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [reactivateTenant, { isLoading: isReactivating }] = useReactivateTenantMutation();
+  const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
   const [showCorrectEmail, setShowCorrectEmail] = useState(false);
 
   // Same profile query CompanyProfilePanel uses (shared cache — a logo
@@ -289,10 +294,27 @@ const ViewCustomer = () => {
     }
   }, [tenantId, navigate]);
 
+  const handleReactivate = async () => {
+    try {
+      await reactivateTenant({ tenantId }).unwrap();
+      showToast({ message: 'Company reactivated.', type: 'success' });
+    } catch (err) {
+      showToast({
+        message: getOrgErrorMessage(err, 'Failed to reactivate company.'),
+        type: 'error',
+      });
+    } finally {
+      setShowReactivateConfirm(false);
+    }
+  };
+
   const handleSuspend = async () => {
     try {
       await suspendTenant({ tenantId }).unwrap();
-      showToast({ message: 'Company suspended.', type: 'success' });
+      showToast({
+        message: 'Company suspended. Find it under Status → Suspended to reactivate.',
+        type: 'success',
+      });
     } catch (err) {
       showToast({ message: getOrgErrorMessage(err, 'Failed to suspend company.'), type: 'error' });
     } finally {
@@ -550,6 +572,14 @@ const ViewCustomer = () => {
                       Suspend Company
                     </Button>
                   )}
+                  {tenant.status === 'suspended' && (
+                    <Button
+                      className="rounded-full border border-primary-300 text-primary-600 px-5 py-2 hover:bg-primary-50 transition-colors"
+                      onClick={() => setShowReactivateConfirm(true)}
+                    >
+                      Reactivate Company
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -606,6 +636,16 @@ const ViewCustomer = () => {
           isLoading={isSuspending}
           onConfirm={handleSuspend}
           onClose={() => setShowSuspendConfirm(false)}
+        />
+      )}
+
+      {showReactivateConfirm && (
+        <ConfirmationModal
+          title={`Reactivate "${tenant.company_name}"? Every user in this company will be able to sign in and work again.`}
+          confirmText="Reactivate"
+          isLoading={isReactivating}
+          onConfirm={handleReactivate}
+          onClose={() => setShowReactivateConfirm(false)}
         />
       )}
 

@@ -71,7 +71,10 @@ const forceReauthentication = (reason: ForcedReauthReason): void => {
     // Best-effort — still redirect below even if storage access throws.
   }
   if (typeof window !== 'undefined') {
-    window.location.href = `/login?reason=${reason}`;
+    // replace(), not href: assigning would leave the page the user was on as
+    // the previous history entry, so Back from the login screen would land on
+    // the (now signed-out) app instead of staying out of it.
+    window.location.replace(`/login?reason=${reason}`);
   }
 };
 

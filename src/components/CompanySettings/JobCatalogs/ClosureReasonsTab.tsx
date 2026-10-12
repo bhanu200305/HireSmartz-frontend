@@ -40,7 +40,8 @@ const ClosureReasonsTab: React.FC = () => {
     search: query.search || undefined,
     sortBy: query.sortBy,
     sortDir: query.sortDir,
-    includeInactive: true,
+    // A deleted row must not come back: the server returns soft-deleted rows only when
+    // `include_inactive` is sent, and deactivated (switched-off) rows are listed anyway.
   });
   const [create] = useCreatePlatformClosureReasonMutation();
   const [update] = useUpdatePlatformClosureReasonMutation();

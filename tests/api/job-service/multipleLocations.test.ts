@@ -32,8 +32,8 @@ describe('saving a job at several offices', () => {
       offices,
     });
 
-    expect(result.locations.map((l) => l.job_location_id)).toEqual([PUNE, DELHI]);
-    expect(result.locations.map((l) => l.city)).toEqual(['Pune', 'Delhi']);
+    expect(result.locations?.map((l) => l.job_location_id)).toEqual([PUNE, DELHI]);
+    expect(result.locations?.map((l) => l.city)).toEqual(['Pune', 'Delhi']);
   });
 
   it('keeps the order the offices were picked in', () => {
@@ -42,7 +42,7 @@ describe('saving a job at several offices', () => {
       offices,
     });
 
-    expect(result.locations.map((l) => l.job_location_id)).toEqual([GOA, PUNE]);
+    expect(result.locations?.map((l) => l.job_location_id)).toEqual([GOA, PUNE]);
   });
 
   it('sends an office once even if it is listed twice', () => {
@@ -72,7 +72,7 @@ describe('saving a job at several offices', () => {
   it('still reads the older single location id', () => {
     const result = buildSaveJobDetailsPayload({ data: { locationId: PUNE }, offices });
 
-    expect(result.locations.map((l) => l.job_location_id)).toEqual([PUNE]);
+    expect(result.locations?.map((l) => l.job_location_id)).toEqual([PUNE]);
   });
 });
 

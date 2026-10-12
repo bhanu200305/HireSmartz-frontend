@@ -147,7 +147,9 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
   if (result.error && result.error.status === 401 && errorMessage === 'ACCOUNT_INACTIVE') {
     clearImpersonationStorage();
     clearLocalStorage();
-    window.location.href = '/login';
+    sessionStorage.clear();
+    // replace(), not href: keeps the signed-out app out of Back's reach.
+    window.location.replace('/login');
     return result;
   }
 

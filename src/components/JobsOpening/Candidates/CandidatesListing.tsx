@@ -57,7 +57,11 @@ import ChangeCandidateStatusModal, {
 } from './Modal/ChangeCandidateStatusModal';
 import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
+import { useGetJobDetailsQuery } from '../../../api/job-service/JobOpening/AddJobOpening';
+import { locationsToChoose } from '../../shared/AppliedLocationPicker';
+import { publicLocationLabels } from '../../../shared/utils/publicJobDisplay';
 import {
+  candidateAppliedLocation,
   candidateDisplayName,
   candidateDisplayStatusColor,
   candidateDisplayStatusLabel,
@@ -126,6 +130,7 @@ const CandidatesListing = () => {
   const [search, setSearch] = useState('');
   const [displayStatus, setDisplayStatus] = useState<CandidateDisplayStatus | undefined>();
   const [source, setSource] = useState<string | undefined>();
+  const [appliedJobLocationId, setAppliedJobLocationId] = useState<string | undefined>();
   const [roundId, setRoundId] = useState<string | undefined>();
   // Sorts the backend has no field for (last name, status) are applied here,
   // over the same up-to-200 window as the Round filter.
@@ -234,6 +239,7 @@ const CandidatesListing = () => {
       search: search || undefined,
       displayStatus,
       source,
+      appliedJobLocationId,
       // The Resume Review option has no job-service round behind it, so
       // it narrows nothing on the server (see `scopedItems` below).
       roundId: roundId && roundId !== RESUME_ROUND_FILTER ? roundId : undefined,
@@ -260,6 +266,22 @@ const CandidatesListing = () => {
   const { data: jobRoundPlan } = useGetInterviewRoundsByJobIdQuery(parsedJobId ?? '', {
     skip: !parsedJobId,
   });
+  // The job's offices, for the Office filter (shown only when there are two or more).
+  const { data: jobDetailsForOffices } = useGetJobDetailsQuery(parsedJobId ?? '', {
+    skip: !parsedJobId,
+  });
+  const locationOptions = useMemo(() => {
+    const offices = locationsToChoose(jobDetailsForOffices?.locations);
+    const labels = publicLocationLabels(
+      offices.map((o) => ({
+        address_line_1: o.address_line_1,
+        city: o.city,
+        state: o.state,
+        country: o.country,
+      }))
+    );
+    return offices.map((o, i) => ({ label: labels[i], value: o.job_location_id ?? '' }));
+  }, [jobDetailsForOffices]);
   const roundOptions = useMemo(
     () =>
       ((jobRoundPlan ?? []) as Array<{ roundId?: string; roundName?: string | null }>)
@@ -380,6 +402,7 @@ const CandidatesListing = () => {
   const handleFilterChange = (next: Partial<CandidateListFilterValues>) => {
     if ('displayStatus' in next) setDisplayStatus(next.displayStatus);
     if ('source' in next) setSource(next.source);
+    if ('appliedJobLocationId' in next) setAppliedJobLocationId(next.appliedJobLocationId);
     if ('roundId' in next) setRoundId(next.roundId);
     setPage(0);
   };
@@ -530,9 +553,10 @@ const CandidatesListing = () => {
             </div>
             <div className="w-full lg:w-auto">
               <FilterMenu
-                filters={{ displayStatus, source, roundId }}
+                filters={{ displayStatus, source, roundId, appliedJobLocationId }}
                 onFilterChange={handleFilterChange}
                 roundOptions={roundOptions}
+                locationOptions={locationOptions}
               />
             </div>
           </div>
@@ -905,6 +929,17 @@ const CandidatesListing = () => {
                                 </Tooltip>
                               )}
                             </p>
+                            {candidateAppliedLocation(candidate) && (
+                              <p
+                                className="truncate"
+                                title={candidateAppliedLocation(candidate) ?? ''}
+                              >
+                                <span className="font-semibold text-neutral-500">Office: </span>
+                                <span className="text-neutral-700">
+                                  {candidateAppliedLocation(candidate)}
+                                </span>
+                              </p>
+                            )}
                             <p className="truncate">
                               <span className="font-semibold text-neutral-500">Source: </span>
                               <span className="text-neutral-700">

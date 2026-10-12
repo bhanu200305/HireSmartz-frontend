@@ -20,6 +20,22 @@ export const getSmsBlockedReason = (
   return null;
 };
 
+/** The office a candidate applied under as one line, or `null` when the server gave none
+ * (none chosen, or not resolvable for this load): then the row is left out, not shown as N/A. */
+export const candidateAppliedLocation = (c: CandidateView): string | null => {
+  const parts = [
+    c.applied_location_address_line_1,
+    c.applied_location_address_line_2,
+    c.applied_location_city,
+    c.applied_location_state,
+    c.applied_location_zip_code,
+    c.applied_location_country,
+  ]
+    .map((part) => part?.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : null;
+};
+
 export const candidateDisplayName = (c: CandidateView) =>
   `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || 'N/A';
 

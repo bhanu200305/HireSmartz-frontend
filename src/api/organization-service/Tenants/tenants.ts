@@ -116,6 +116,14 @@ const extendedApi = orgApi.injectEndpoints({
       }),
       invalidatesTags: ['Tenant'],
     }),
+    // Super Admin only: puts a suspended company back to active.
+    reactivateTenant: build.mutation<SuspendTenantResponse, { tenantId: string }>({
+      query: ({ tenantId }) => ({
+        url: `/v1/platform/tenants/${tenantId}/reactivate`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Tenant', 'PlatformTenants'],
+    }),
     // Sales/Ops-tier fix for a mistyped admin_email on a DRAFT/PRE_APPROVED
     // tenant (422 TENANT_ADMIN_EMAIL_NOT_EDITABLE once ACTIVE — the Company
     // Admin has already logged in with the original email). Invalidates
@@ -145,6 +153,7 @@ export const {
   useCreateTenantMutation,
   useConfirmTenantMutation,
   useSuspendTenantMutation,
+  useReactivateTenantMutation,
   useCorrectAdminEmailMutation,
   useLazyCheckAdminEmailAvailabilityQuery,
 } = extendedApi;

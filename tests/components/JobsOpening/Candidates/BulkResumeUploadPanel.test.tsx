@@ -27,18 +27,30 @@ const showToastMock = vi.fn();
 let progress: Progress | undefined;
 let pollError: unknown;
 const pollingIntervals: number[] = [];
+let jobLocations: {
+  job_location_id: string | null;
+  address_line_1: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+}[] = [];
+const uploadCalls: { appliedJobLocationId?: string }[] = [];
 
 vi.mock('../../../../src/api/candidate-service/Candidates/CandidateLifecycle', () => ({
   useBulkUploadResumesMutation: () => [
-    () => ({
-      unwrap: () => Promise.resolve(uploadResponse),
-    }),
+    (args: { appliedJobLocationId?: string }) => {
+      uploadCalls.push(args);
+      return { unwrap: () => Promise.resolve(uploadResponse) };
+    },
     { isLoading: false },
   ],
   useGetBatchProgressQuery: (_id: string, opts: { pollingInterval?: number }) => {
     pollingIntervals.push(opts.pollingInterval ?? 0);
     return { data: progress, error: pollError, fulfilledTimeStamp: progress ? 1 : undefined };
   },
+}));
+vi.mock('../../../../src/api/job-service/JobOpening/AddJobOpening', () => ({
+  useGetJobDetailsQuery: () => ({ data: { locations: jobLocations } }),
 }));
 vi.mock('../../../../src/hooks/useSessionTenantId', () => ({ useSessionTenantId: () => 't1' }));
 vi.mock('../../../../src/components/shared/ui/toast', () => ({
@@ -86,6 +98,8 @@ describe('BulkResumeUploadPanel progress', () => {
     progress = undefined;
     uploadResponse = { batch_id: 'b1', total_files: 4, valid_files: 4, invalid_files: [] };
     showToastMock.mockReset();
+    jobLocations = [];
+    uploadCalls.length = 0;
     pollError = undefined;
     pollingIntervals.length = 0;
   });
@@ -261,5 +275,51 @@ describe('BulkResumeUploadPanel progress', () => {
     progress = batch({ parsed_files: 0, valid_files: 1, items: [] });
     await renderPanel();
     expect(showToastMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('BulkResumeUploadPanel office', () => {
+  const office = (id: string, city: string) => ({
+    job_location_id: id,
+    address_line_1: 'Main Road',
+    city,
+    state: null,
+    country: null,
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    progress = undefined;
+    uploadResponse = { batch_id: 'b1', total_files: 1, valid_files: 1, invalid_files: [] };
+    showToastMock.mockReset();
+    uploadCalls.length = 0;
+    pollError = undefined;
+    pollingIntervals.length = 0;
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('asks for an office and refuses to upload without one when the job has several', async () => {
+    jobLocations = [office('o1', 'Pune'), office('o2', 'Delhi')];
+    await renderPanel();
+    expect(screen.getByText('Which office are these candidates applying for?')).toBeTruthy();
+    expect(uploadCalls).toHaveLength(0);
+    expect(showToastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Please select an office for this job.' })
+    );
+  });
+
+  it('does not ask, and sends no office, when the job has one', async () => {
+    jobLocations = [office('o1', 'Pune')];
+    await renderPanel();
+    expect(screen.queryByText('Which office are these candidates applying for?')).toBeNull();
+    expect(uploadCalls).toHaveLength(1);
+    expect(uploadCalls[0].appliedJobLocationId).toBeUndefined();
+  });
+
+  it('does not ask when the job has no offices', async () => {
+    jobLocations = [];
+    await renderPanel();
+    expect(screen.queryByText('Which office are these candidates applying for?')).toBeNull();
+    expect(uploadCalls).toHaveLength(1);
   });
 });

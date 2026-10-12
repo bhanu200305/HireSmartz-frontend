@@ -9,7 +9,15 @@ import {
   useBulkUploadResumesMutation,
   useGetBatchProgressQuery,
 } from '../../../../api/candidate-service/Candidates/CandidateLifecycle';
-import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
+import {
+  getAppliedLocationErrorMessage,
+  getCandidateErrorMessage,
+} from '../../../../shared/utils/auth/candidateError.helpers';
+import { useGetJobDetailsQuery } from '../../../../api/job-service/JobOpening/AddJobOpening';
+import AppliedLocationPicker, {
+  locationsToChoose,
+  mustPickLocation,
+} from '../../../shared/AppliedLocationPicker';
 
 // The bulk-resume side of Add Candidate's "Bulk Import Resume" tab — same
 // `POST /candidates/bulk-resume` (up to 30 files, invalid ones rejected
@@ -132,6 +140,11 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
   const { id: jobOpeningId } = useParams<{ id: string }>();
   const tenantId = useSessionTenantId();
   const [bulkUploadResumes, { isLoading: isUploading }] = useBulkUploadResumesMutation();
+
+  // A job at several offices asks which one this batch of candidates applied under.
+  const { data: jobDetails } = useGetJobDetailsQuery(jobOpeningId ?? '', { skip: !jobOpeningId });
+  const [appliedLocationId, setAppliedLocationId] = useState('');
+  const [locationError, setLocationError] = useState(false);
 
   // The batch whose screen was given up on (no progress for STALL_TIMEOUT_MS,
   // or the progress request kept failing). Keyed by batch id so a new upload
@@ -306,12 +319,18 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
       showToast({ message: 'Job opening or organization is missing.', type: 'error' });
       return;
     }
+    if (mustPickLocation(jobDetails?.locations) && !appliedLocationId) {
+      setLocationError(true);
+      showToast({ message: 'Please select an office for this job.', type: 'error' });
+      return;
+    }
 
     try {
       const res = await bulkUploadResumes({
         organizationId: tenantId,
         jobOpeningId,
         files,
+        appliedJobLocationId: appliedLocationId || undefined,
       }).unwrap();
 
       // Rejected files (duplicates, unreadable ones) are listed in this panel
@@ -339,7 +358,9 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
       }
     } catch (error) {
       showToast({
-        message: getCandidateErrorMessage(error, 'An error occurred while uploading resumes.'),
+        message:
+          getAppliedLocationErrorMessage(error) ??
+          getCandidateErrorMessage(error, 'An error occurred while uploading resumes.'),
         type: 'error',
       });
     }
@@ -415,6 +436,19 @@ const BulkResumeUploadPanel = ({ onCompleted, onDone }: BulkResumeUploadPanelPro
 
   return (
     <div className="flex flex-col">
+      <div className="mb-3">
+        <AppliedLocationPicker
+          id="bulk-applied-location"
+          label="Which office are these candidates applying for?"
+          locations={locationsToChoose(jobDetails?.locations)}
+          value={appliedLocationId}
+          onChange={(value) => {
+            setAppliedLocationId(value);
+            setLocationError(false);
+          }}
+          hasError={locationError}
+        />
+      </div>
       <Upload.Dragger
         multiple
         beforeUpload={(file) => {

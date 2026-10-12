@@ -10,7 +10,7 @@ import {
   useListUserRoleAssignmentsQuery,
   useRevokeRoleMutation,
 } from '../../../api/organization-service/Roles/assignments';
-import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { getOrgErrorCode, getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 
 type AssignRoleModalProps = {
@@ -51,6 +51,16 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
   const [revokeRole, { isLoading: isRevoking }] = useRevokeRoleMutation();
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
+  // Same role at the same place (no location = everywhere) is already granted:
+  // the backend would refuse it, so say so here instead of after a click.
+  const isAlreadyHeld =
+    Boolean(roleId) &&
+    Boolean(
+      currentAssignments?.some(
+        (a) => a.role_id === roleId && (a.location_id ?? null) === (locationId ?? null)
+      )
+    );
+
   const roleName = (id: string) =>
     systemRoleLabel(roles?.find((r) => r.role_id === id)?.name ?? id);
   const locationLabel = (id: string | null) => {
@@ -82,7 +92,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
   };
 
   const handleAssign = async () => {
-    if (!roleId) return;
+    if (!roleId || isAlreadyHeld) return;
     try {
       const result = await assignRole({
         user_id: userId,
@@ -93,7 +103,14 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
       onAssigned();
       handleClose();
     } catch (err) {
-      showToast({ message: getOrgErrorMessage(err, 'Failed to assign role.'), type: 'error' });
+      // The backend's own message for this is a bare user id + role id.
+      showToast({
+        message:
+          getOrgErrorCode(err) === 'DUPLICATE_ROLE_ASSIGNMENT'
+            ? `"${roleName(roleId)}" is already assigned to this user.`
+            : getOrgErrorMessage(err, 'Failed to assign role.'),
+        type: 'error',
+      });
     }
   };
 
@@ -184,6 +201,12 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
           />
         </div>
 
+        {isAlreadyHeld && (
+          <p className="m-0 text-xs text-gray-500">
+            This user already has this role there. Pick another role or location to add one.
+          </p>
+        )}
+
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
           <Button
             className="text-sm font-semibold text-gray-600 border border-gray-200 rounded-full px-5 py-2"
@@ -195,7 +218,7 @@ const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
           <Button
             className="text-sm font-semibold text-white bg-primary-600 rounded-full px-5 py-2 disabled:opacity-60"
             onClick={handleAssign}
-            disabled={!roleId || isAssigning}
+            disabled={!roleId || isAlreadyHeld || isAssigning}
           >
             {isAssigning ? 'Assigning…' : 'Assign Role'}
           </Button>

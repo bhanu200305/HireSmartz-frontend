@@ -50,6 +50,15 @@ export type CandidateView = {
   source: string | null;
   /** Which of the job's locations this candidate applied under, if it has more than one; `null` otherwise. */
   applied_job_location_id: string | null;
+  /** That office's address, looked up live on every read. All `null` when no office was
+   * chosen OR it could not be looked up for this page load: read `null` as "not shown
+   * right now", never as "this candidate has no office". */
+  applied_location_address_line_1?: string | null;
+  applied_location_address_line_2?: string | null;
+  applied_location_city?: string | null;
+  applied_location_state?: string | null;
+  applied_location_country?: string | null;
+  applied_location_zip_code?: string | null;
 
   /** Funnel position — `null` until the first explicit status transition. */
   status_code: string | null;
@@ -147,6 +156,8 @@ export type ListCandidatesArgs = {
   /** Filters rows and `total` by `display_status`; combines with every other filter. */
   displayStatus?: CandidateDisplayStatus;
   source?: string;
+  /** Only candidates who applied under this one of the job's offices. */
+  appliedJobLocationId?: string;
   appliedFrom?: string;
   appliedTo?: string;
   roundId?: string;
@@ -239,6 +250,10 @@ export type BulkUploadResumesArgs = {
   jobOpeningId: string;
   /** Up to 30 files — `422 TOO_MANY_RESUMES` past that. */
   files: File[];
+  /** The office every candidate in this batch applied under. Required (else
+   * `422 APPLIED_LOCATION_REQUIRED`) when the job has two or more offices; the
+   * server fills it in for a job with one. */
+  appliedJobLocationId?: string;
 };
 
 export type RejectedFileView = { filename: string; reason: string };
@@ -344,6 +359,7 @@ const extendedApi = candidateApi.injectEndpoints({
         statusCode,
         displayStatus,
         source,
+        appliedJobLocationId,
         appliedFrom,
         appliedTo,
         roundId,
@@ -359,6 +375,7 @@ const extendedApi = candidateApi.injectEndpoints({
           status_code: statusCode,
           display_status: displayStatus,
           source,
+          applied_job_location_id: appliedJobLocationId,
           applied_from: appliedFrom,
           applied_to: appliedTo,
           round_id: roundId,
@@ -397,10 +414,11 @@ const extendedApi = candidateApi.injectEndpoints({
     // batch. Poll `getBatchProgress` while ai-service parses each accepted
     // resume (FRONTEND_INTEGRATION_DETAILS.md §4.2).
     bulkUploadResumes: build.mutation<BulkUploadResumesResultView, BulkUploadResumesArgs>({
-      query: ({ organizationId, jobOpeningId, files }) => {
+      query: ({ organizationId, jobOpeningId, files, appliedJobLocationId }) => {
         const body = new FormData();
         body.append('organization_id', organizationId);
         body.append('job_opening_id', jobOpeningId);
+        if (appliedJobLocationId) body.append('applied_job_location_id', appliedJobLocationId);
         files.forEach((file) => body.append('files', file));
         return { url: '/candidates/bulk-resume', method: 'POST', body };
       },

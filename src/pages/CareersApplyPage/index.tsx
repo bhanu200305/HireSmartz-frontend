@@ -15,6 +15,10 @@ import { useGetPublicJobQuery } from '../../api/job-service/PublicCareers/index'
 import { publicLocationLabels } from '../../shared/utils/publicJobDisplay';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
+import {
+  getAppliedLocationErrorMessage,
+  getCandidateErrorMessage,
+} from '../../shared/utils/auth/candidateError.helpers';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
 import {
   isPhoneValidForCountry,
@@ -171,13 +175,11 @@ export const CareersApplyPage = () => {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
       const fetchErr = err as { status?: number; data?: { message?: string } };
-      // 409 is specifically DuplicateApplicationError (candidate_exceptions.py)
-      // — this email already has an application on this job, most often a
-      // double-clicked Submit. Worth its own copy: the generic fallback below
-      // reads like a system failure and invites a retry that will just 409
-      // again, when nothing actually needs fixing on the candidate's end.
+      // 409 is DuplicateApplicationError (DUPLICATE_APPLICATION): the same resume
+      // file, or the same email, is already on this job. The server's message says
+      // which of the two matched, so it is shown as sent instead of guessing here.
       if (fetchErr?.status === 409) {
-        toast.error("You've already applied to this job with this email address.", {
+        toast.error(getCandidateErrorMessage(err, "You've already applied to this job."), {
           autoClose: 6000,
         });
         return;
@@ -190,9 +192,14 @@ export const CareersApplyPage = () => {
         });
         return;
       }
-      toast.error(fetchErr?.data?.message ?? 'Failed to submit application. Please try again.', {
-        autoClose: 6000,
-      });
+      toast.error(
+        getAppliedLocationErrorMessage(err) ??
+          fetchErr?.data?.message ??
+          'Failed to submit application. Please try again.',
+        {
+          autoClose: 6000,
+        }
+      );
     }
   };
 

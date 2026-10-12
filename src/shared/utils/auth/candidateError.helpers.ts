@@ -55,6 +55,31 @@ export const getCandidateErrorBody = (err: unknown): CandidateApiErrorBody | und
 /** The message to show a user — the backend's own wording, never invented client-side. */
 export const getCandidateErrorMessage = getPlatformErrorMessage;
 
+const APPLIED_LOCATION_MESSAGES: Record<string, string> = {
+  APPLIED_LOCATION_REQUIRED: 'Please select an office for this job.',
+  APPLIED_LOCATION_NOT_ON_JOB:
+    'Selected office is no longer valid for this job - please choose again.',
+};
+
+/**
+ * The two office-related refusals when a candidate is created under a job with
+ * several offices. Both come back as a 422 whose code is not guaranteed to sit
+ * in any one field, so it is looked for in each place a code can appear and in
+ * the message text. `undefined` for any other error.
+ */
+export const getAppliedLocationErrorMessage = (err: unknown): string | undefined => {
+  const haystack = [
+    get(err, 'data.error_code'),
+    get(err, 'data.data.error_code'),
+    get(err, 'data.code'),
+    get(err, 'data.message'),
+  ]
+    .filter((value) => typeof value === 'string')
+    .join(' ');
+  const code = Object.keys(APPLIED_LOCATION_MESSAGES).find((key) => haystack.includes(key));
+  return code ? APPLIED_LOCATION_MESSAGES[code] : undefined;
+};
+
 /**
  * The HTTP status code — this is what `FRONTEND_INTEGRATION_DETAILS.md`
  * says to actually branch error handling on (status_code + route + message

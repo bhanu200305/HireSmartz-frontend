@@ -135,9 +135,17 @@ export const BookingDetailDrawer = ({
     return () => clearInterval(timer);
   }, [open, isOfflinePanel]);
   const roundStarted = hasRoundStarted(booking?.start_time, nowMs);
-  const { data: interviewers } = useGetInterviewersQuery(undefined, {
-    skip: !open || !isPanel || !canUpdate,
-  });
+  // Asking with this booking's candidate, round and sequence lets the server list only
+  // the interviewers who can work at the office this interview is for.
+  const { data: interviewers } = useGetInterviewersQuery(
+    {
+      jobId: booking?.job_id ?? '',
+      candidateId: booking?.candidate_id,
+      roundId: booking?.round_id,
+      sequenceNo: booking?.sequence_no,
+    },
+    { skip: !open || !isPanel || !canUpdate || !booking?.job_id }
+  );
   const { data: calendarStatus } = useGetInterviewerCalendarStatusQuery(id, {
     skip: !open || !isPanel,
     refetchOnMountOrArgChange: true,

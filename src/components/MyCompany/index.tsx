@@ -125,6 +125,18 @@ const MyCompany: React.FC = () => {
     setSearchParams({ tab: key });
   };
 
+  // The "Getting Started" checklist rows. The step's tab may already be the open one
+  // (Business Profile is the default), so switching alone can look like nothing
+  // happened: always bring the tab's content into view as well.
+  const tabContentRef = React.useRef<HTMLDivElement>(null);
+  const handleChecklistNavigate = (key: string) => {
+    savedScrollY.current = null;
+    if (key !== currentTab) setSearchParams({ tab: key });
+    requestAnimationFrame(() =>
+      tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    );
+  };
+
   React.useEffect(() => {
     const target = savedScrollY.current;
     if (target === null) return undefined;
@@ -443,7 +455,7 @@ const MyCompany: React.FC = () => {
                   hasDepartment: (departments?.length ?? 0) > 0,
                   hasInvitedTeam: (invitations?.total ?? 0) > 0,
                 }}
-                onNavigateToTab={handleTabChange}
+                onNavigateToTab={handleChecklistNavigate}
               />
             )}
 
@@ -457,12 +469,14 @@ const MyCompany: React.FC = () => {
               }))}
               className="my-company-group-tabs many-tabs"
             />
-            <Tabs
-              activeKey={effectiveCurrentTab}
-              onChange={handleTabChange}
-              items={activeGroup.tabs}
-              className="my-company-tabs many-tabs mt-1"
-            />
+            <div ref={tabContentRef} className="scroll-mt-24">
+              <Tabs
+                activeKey={effectiveCurrentTab}
+                onChange={handleTabChange}
+                items={activeGroup.tabs}
+                className="my-company-tabs many-tabs mt-1"
+              />
+            </div>
           </div>
         </div>
       </div>

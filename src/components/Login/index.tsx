@@ -20,6 +20,7 @@ import Footer from '../Footer';
 import MfaChallengeStep from './MfaChallengeStep';
 import {
   clearImpersonationStorage,
+  clearLocalStorage,
   getLocalStorageItem,
   removeLocalStorageItem,
   setLocalStorageItem,
@@ -32,6 +33,7 @@ import {
 import { getAuthErrorCode, getAuthErrorMessage } from '../../shared/utils/auth/authError.helpers';
 import { getOrgErrorMessage } from '../../shared/utils/auth/orgError.helpers';
 import { LOCALSTORAGE_KEYS } from '../../constants/webAPI';
+import { verifyAuthToken } from '../../shared/utils/business-logic';
 import { jwtDecode } from 'jwt-decode';
 import { useLazyGetUserDashboardQuery } from '../../api/organization-service/Roles/dashboard';
 import { useLazyGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
@@ -104,6 +106,26 @@ const Login = () => {
   // instead of leaving the visitor stuck on the generic toast with no way
   // forward besides waiting out the lockout.
   const [isAccountLocked, setIsAccountLocked] = useState(false);
+
+  // Reaching the login screen with a stored but no-longer-valid session (it
+  // expired, or PrivateRoute sent us here after a refresh that failed for a
+  // transient reason and so left the tokens in place) means the user has to
+  // sign in again. A leftover refresh token would let Back — or a restored
+  // page — quietly refresh straight back into the app, so drop it here. A
+  // still-valid token never gets this far: PublicRoute bounces it to the app.
+  useEffect(() => {
+    try {
+      const hasStoredSession =
+        Boolean(getLocalStorageItem(LOCALSTORAGE_KEYS.ACCESS)) ||
+        Boolean(getLocalStorageItem(LOCALSTORAGE_KEYS.REFRESH));
+      if (hasStoredSession && !verifyAuthToken()) {
+        clearLocalStorage();
+        sessionStorage.clear();
+      }
+    } catch {
+      // Best-effort — storage can be unavailable.
+    }
+  }, []);
 
   // StrictMode (dev only) double-invokes this mount effect within the same
   // render, before the replace-navigate below has a chance to clear

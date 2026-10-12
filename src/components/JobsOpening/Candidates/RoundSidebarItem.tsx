@@ -201,7 +201,7 @@ const RoundSidebarItem = ({
         )}
         {overdue && (
           <span className="text-xs text-danger">
-            No update since the scheduled time; may not have gone through.
+            Scheduled time has passed with no update yet — outcome not yet confirmed.
           </span>
         )}
         {linkExpired && !isResumeScored && (

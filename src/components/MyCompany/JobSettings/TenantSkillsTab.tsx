@@ -31,9 +31,11 @@ const TenantSkillsTab: React.FC = () => {
   const [orgOnly, setOrgOnly] = useState(false);
   // Org-added skills first; `orgOnly` narrows to just those.
   const skills = useMemo(() => {
-    const sorted = [...skillsData].sort(
-      (a, b) => Number(b.is_organization_specific) - Number(a.is_organization_specific)
-    );
+    // `includeInactive` is needed to list this org's switched-off skills so they can be
+    // turned back on, but the server sends its deleted ones along with them: drop those.
+    const sorted = skillsData
+      .filter((s) => !s.is_deleted)
+      .sort((a, b) => Number(b.is_organization_specific) - Number(a.is_organization_specific));
     return orgOnly ? sorted.filter((s) => s.is_organization_specific) : sorted;
   }, [skillsData, orgOnly]);
   const [create] = useCreateOrganizationSkillMutation();

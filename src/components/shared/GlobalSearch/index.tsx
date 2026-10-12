@@ -349,10 +349,15 @@ const JobResultItem: React.FC<{
         onClick={() => onClose(false)}
       >
         <p className="font-semibold text-primary roboto-font" style={{ margin: 0 }}>
-          {(item?.extraJson?.job_title_name as string) || 'N/A'}
+          {((item?.extraJson?.job_title ?? item?.extraJson?.job_title_name) as string) || 'N/A'}
         </p>
       </Link>
-      <InfoRow label="Department:" value={(item?.extraJson?.department_name as string) || 'N/A'} />
+      <InfoRow
+        label="Department:"
+        value={
+          ((item?.extraJson?.department ?? item?.extraJson?.department_name) as string) || 'N/A'
+        }
+      />
       <InfoRow label="Job Type:" value={(item?.extraJson?.job_type_name as string) || 'N/A'} />
     </div>
   </div>

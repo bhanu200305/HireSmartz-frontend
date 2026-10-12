@@ -61,6 +61,7 @@ import VideoGrid from './VideoGridLiveKit';
 import Sidebar from '../InterviewUser/Sidebar';
 import { ChatPanel, useUnreadChatCount } from './shared/ChatPanel';
 import { SettingsPanel } from './shared/SettingsPanel';
+import { usePanelQuestions } from './shared/PanelQuestionsPanel';
 import InterviewEndedScreen from './InterviewEndedScreen';
 import FeedbackPromptModal from './FeedbackPromptModal';
 import QuickFeedbackModal from './QuickFeedbackModal';
@@ -105,26 +106,6 @@ interface InterviewState {
    * `idle` to `chooser` once the conditions below are met. */
   feedbackFlow: 'idle' | 'chooser' | 'quick';
 }
-
-/**
- * A Hiring Panel round's reference question set, pushed over the LiveKit
- * data channel by ai-service once the room opens — distinct from the
- * `{ role: ... }` presence message every participant broadcasts (see
- * `handleDataReceived` below, which tells the two apart by shape:
- * `resume_based`/`instructions` only ever appear on this one). Read-only —
- * unlike `categorizedQuestions`/`assessmentScores` above, nothing here is
- * scored or saved back.
- */
-type PanelQuestionItem = {
-  question_text: string;
-  scoring_sections?: string[];
-};
-
-type PanelQuestionsMessage = {
-  resume_based: PanelQuestionItem[];
-  jd_based: PanelQuestionItem[];
-  instructions: string;
-};
 
 type InterviewTokenPayload = {
   role?: string;
@@ -992,11 +973,6 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
     selectedVideoDevice: null,
   });
 
-  // Hiring Panel reference questions — pushed by ai-service over the data
-  // channel, see PanelQuestionsMessage's own docstring above. `null` until
-  // the message arrives (which can be never, if this round isn't a Panel
-  // round or ai-service hasn't published yet).
-  const [panelQuestions, setPanelQuestions] = useState<PanelQuestionsMessage | null>(null);
   // Whether the "please introduce yourselves"-style instructions banner is
   // still showing — separate from `panelQuestions` itself so dismissing the
   // banner doesn't lose the question set from the sidebar, and re-shown
@@ -1077,6 +1053,24 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
     useEditAiQuestionForScoringMutation();
 
   const isRecruiter = token.role === 'RECRUITER' || token.role === 'INTERVIEWER';
+
+  // Hiring Panel reference questions, pushed by ai-service over the data channel.
+  // `null` until the message arrives (which can be never, if this round isn't a
+  // Panel round or ai-service hasn't published yet). The listener itself is the
+  // shared hook that the interviewer-join room also uses, so the two routes can't
+  // drift apart; the banner and toast below are this page's own.
+  const panelQuestions = usePanelQuestions(isRecruiter);
+  useEffect(() => {
+    if (!panelQuestions) return;
+    setShowInstructionsBanner(true);
+    if (
+      panelQuestions.instructions &&
+      lastToastedInstructionsRef.current !== panelQuestions.instructions
+    ) {
+      lastToastedInstructionsRef.current = panelQuestions.instructions;
+      message.info(panelQuestions.instructions, 8);
+    }
+  }, [panelQuestions]);
   const [isSmsPanelOpen, setIsSmsPanelOpen] = useState(false);
 
   type InterviewJwtPayload = {
@@ -1363,37 +1357,6 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
         checkForInterviewer();
         return;
       }
-
-      if (decoded.resume_based !== undefined || decoded.instructions !== undefined) {
-        // Hiring Panel question set — distinguished from the role message
-        // above by shape, not by sender identity (see PanelQuestionsMessage's
-        // own docstring). Unlike the role message, this is pushed by
-        // ai-service through LiveKit's server-side RoomService/SendData API
-        // (see ai-service's livekit_room_data_publisher.py), not a real
-        // connected participant's own publishData — the LiveKit protocol's
-        // DataPacket then carries no sending participant at all, so
-        // `participant` is `undefined` here. Deliberately NOT gated on it.
-        //
-        // ai-service targets `destination_identities` at the LiveKit
-        // transport level for this message in online mode, so a candidate's
-        // client never receives it in the first place; this `isRecruiter`
-        // check is a defensive fallback only, for the documented case where
-        // ai-service falls back to broadcasting because
-        // `interviewer_identities` wasn't populated upstream.
-        if (isRecruiter) {
-          const next: PanelQuestionsMessage = {
-            resume_based: Array.isArray(decoded.resume_based) ? decoded.resume_based : [],
-            jd_based: Array.isArray(decoded.jd_based) ? decoded.jd_based : [],
-            instructions: typeof decoded.instructions === 'string' ? decoded.instructions : '',
-          };
-          setPanelQuestions(next);
-          setShowInstructionsBanner(true);
-          if (next.instructions && lastToastedInstructionsRef.current !== next.instructions) {
-            lastToastedInstructionsRef.current = next.instructions;
-            message.info(next.instructions, 8);
-          }
-        }
-      }
     };
 
     // Clean up roles when a participant disconnects
@@ -1412,7 +1375,7 @@ const InterviewContent: React.FC<InterviewContentProps> = ({
       room.off('dataReceived', handleDataReceived as any);
       room.off('participantDisconnected', handleParticipantDisconnected as any);
     };
-  }, [room, token.role, isRecruiter, onUpdateRecordingState]);
+  }, [room, token.role, onUpdateRecordingState]);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) {

@@ -48,6 +48,12 @@ export const Select = ({
         <option value="" disabled hidden>
           {placeholder}
         </option>
+        {/* A native list with nothing in it opens as a thin empty box: say so instead. */}
+        {options.length === 0 && (
+          <option value="" disabled>
+            No data available
+          </option>
+        )}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

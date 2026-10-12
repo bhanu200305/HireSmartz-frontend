@@ -11,11 +11,10 @@ export type PanelQuestionItem = {
 /**
  * A Hiring Panel round's reference question set, pushed over the LiveKit
  * data channel by ai-service once the room opens (see that service's
- * `livekit_room_data_publisher.py`). Ported from Flow A's identical
- * `InterviewLiveKit.tsx`, which had the only listener for this message —
- * Flow B (`InterviewRoomLayout.tsx`, what the real `/interviewer-join` link
- * actually renders) never subscribed to it at all, so ai-service's push was
- * received by the LiveKit SDK and silently dropped.
+ * `livekit_room_data_publisher.py`). The one listener for this message: both
+ * the generic `/interview` route (`InterviewLiveKit.tsx`) and the emailed
+ * `/interviewer-join` route (`InterviewRoomLayout.tsx`) read it through
+ * `usePanelQuestions` below, so a change to the payload shape is made once.
  */
 export type PanelQuestionsMessage = {
   resume_based: PanelQuestionItem[];
@@ -25,8 +24,7 @@ export type PanelQuestionsMessage = {
 
 /**
  * Subscribes to the room's data channel and returns the latest Hiring Panel
- * question set received. `isInterviewer` gates it the same way Flow A's
- * `isRecruiter` check does — ai-service already targets
+ * question set received. `isInterviewer` gates it (Flow A's `isRecruiter`) — ai-service already targets
  * `destination_identities` at the interviewer, this is a defensive
  * fallback for the documented broadcast case, not the primary guard.
  */

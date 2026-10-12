@@ -27,7 +27,7 @@ import {
   useListUserRoleAssignmentsQuery,
   useRevokeRoleMutation,
 } from '../../../api/organization-service/Roles/assignments';
-import { getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
+import { getOrgErrorCode, getOrgErrorMessage } from '../../../shared/utils/auth/orgError.helpers';
 import { systemRoleLabel } from '../../RolesManagement/data/roleTemplates';
 import {
   isPhoneValidForCountry,
@@ -100,19 +100,39 @@ const EditOrgUser = () => {
     return office ? `${office.city}, ${office.address_line_1}` : locationId;
   };
 
+  // Shows the role the person already holds (the first one) until someone
+  // picks another, so reopening this page doesn't read "Select a Role" for
+  // someone who has a role.
+  const selectedRoleId = assignRoleId ?? currentAssignments?.[0]?.role_id;
+  const isAlreadyHeld =
+    Boolean(selectedRoleId) &&
+    Boolean(
+      currentAssignments?.some(
+        (a) =>
+          a.role_id === selectedRoleId && (a.location_id ?? null) === (assignLocationId ?? null)
+      )
+    );
+
   const handleAssignRole = async () => {
-    if (!assignRoleId) return;
+    if (!selectedRoleId || isAlreadyHeld) return;
     try {
       const result = await assignRole({
         user_id: userId,
-        role_id: assignRoleId,
+        role_id: selectedRoleId,
         location_id: assignLocationId ?? null,
       }).unwrap();
       showToast({ message: `"${result.role_name}" assigned.`, type: 'success' });
       setAssignRoleId(undefined);
       setAssignLocationId(undefined);
     } catch (err) {
-      showToast({ message: getOrgErrorMessage(err, 'Failed to assign role.'), type: 'error' });
+      // The backend's own message for this is a bare user id + role id.
+      showToast({
+        message:
+          getOrgErrorCode(err) === 'DUPLICATE_ROLE_ASSIGNMENT'
+            ? `"${roleName(selectedRoleId)}" is already assigned to this user.`
+            : getOrgErrorMessage(err, 'Failed to assign role.'),
+        type: 'error',
+      });
     }
   };
 
@@ -347,7 +367,7 @@ const EditOrgUser = () => {
               <Select
                 className="w-full mt-1"
                 placeholder="Select a Role"
-                value={assignRoleId}
+                value={selectedRoleId}
                 onChange={(value) => setAssignRoleId(value)}
                 showSearch
                 optionFilterProp="label"
@@ -379,10 +399,15 @@ const EditOrgUser = () => {
           <Button
             className="mt-4 rounded-full bg-button text-white px-6 py-2 disabled:opacity-60"
             onClick={handleAssignRole}
-            disabled={!assignRoleId || isAssigningRole}
+            disabled={!selectedRoleId || isAlreadyHeld || isAssigningRole}
           >
             {isAssigningRole ? 'Assigning…' : 'Assign Role'}
           </Button>
+          {isAlreadyHeld && (
+            <p className="mt-2 mb-0 text-xs text-gray-500">
+              This user already has this role there. Pick another role or location to add one.
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3 mt-8">

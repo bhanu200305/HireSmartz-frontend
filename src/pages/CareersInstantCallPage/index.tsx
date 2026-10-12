@@ -11,6 +11,11 @@ import {
 } from '../../api/job-service/PublicCareers/index';
 import { PublicFooter } from '../../components/shared/PublicFooter';
 import { PhoneNumberField, ResponsiveRecaptcha } from '../../components/shared';
+import AppliedLocationPicker, {
+  locationsToChoose,
+  mustPickLocation,
+} from '../../components/shared/AppliedLocationPicker';
+import { getAppliedLocationErrorMessage } from '../../shared/utils/auth/candidateError.helpers';
 import { usePublicCareersBranding } from '../../hooks/usePublicCareersBranding';
 import {
   isPhoneValidForCountry,
@@ -70,6 +75,10 @@ export const CareersInstantCallPage = () => {
   const [tosError, setTosError] = useState(false);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
 
+  // A job at several offices asks which one the candidate is applying for.
+  const [appliedLocationId, setAppliedLocationId] = useState('');
+  const [locationError, setLocationError] = useState(false);
+
   const [startIntakeCall, { isLoading: isSubmitting }] = useStartIntakeCallMutation();
 
   const handleSubmit = async () => {
@@ -80,7 +89,9 @@ export const CareersInstantCallPage = () => {
     const badPhone = !noPhone && !isPhoneValidForCountry(phone, countryCode);
     const noTos = !tosConsent;
     const noCaptcha = !captchaToken;
+    const noLocation = mustPickLocation(job?.locations) && !appliedLocationId;
 
+    setLocationError(noLocation);
     setFirstNameError(noFirstName);
     setLastNameError(noLastName);
     setEmailError(noEmail);
@@ -90,7 +101,17 @@ export const CareersInstantCallPage = () => {
     setTosError(noTos);
     if (noCaptcha) setCaptchaError('Please confirm you are not a robot');
 
-    if (noFirstName || noLastName || noEmail || noPhone || badPhone || noTos || noCaptcha) return;
+    if (
+      noFirstName ||
+      noLastName ||
+      noEmail ||
+      noPhone ||
+      badPhone ||
+      noTos ||
+      noCaptcha ||
+      noLocation
+    )
+      return;
 
     try {
       const res = await startIntakeCall({
@@ -100,6 +121,7 @@ export const CareersInstantCallPage = () => {
         lastName: lastName.trim(),
         emailId: email.trim(),
         contactNo: toE164(countryCode, phone),
+        appliedJobLocationId: appliedLocationId || undefined,
         termsAccepted: tosConsent,
         smsConsent,
         captchaToken: captchaToken ?? '',
@@ -129,7 +151,9 @@ export const CareersInstantCallPage = () => {
         navigate(`/careers/${organizationId}/jobs/${jobId}/apply`, { replace: true });
         return;
       }
-      const apiMessage = (err as { data?: { message?: string } })?.data?.message;
+      const apiMessage =
+        getAppliedLocationErrorMessage(err) ??
+        (err as { data?: { message?: string } })?.data?.message;
       toast.error(apiMessage ?? 'Failed to submit. Please try again.', { autoClose: 6000 });
     }
   };
@@ -199,6 +223,17 @@ export const CareersInstantCallPage = () => {
         )}
 
         <div className="flex flex-col gap-5">
+          <AppliedLocationPicker
+            id="applied-location"
+            label="Which location are you applying for?"
+            locations={locationsToChoose(job?.locations)}
+            value={appliedLocationId}
+            onChange={(value) => {
+              setAppliedLocationId(value);
+              setLocationError(false);
+            }}
+            hasError={locationError}
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-800 mb-2">
