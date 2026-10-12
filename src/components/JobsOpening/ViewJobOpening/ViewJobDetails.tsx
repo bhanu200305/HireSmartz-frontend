@@ -16,7 +16,7 @@ import {
 } from '../../../api/organization-service/Tenants/jobTitles';
 import useJobOpeningDropdown from '../../../hooks/useJobOpeningDropdown';
 import SelectedLocations from '../AddJobDescription/SelectedLocations';
-import { useListUsersQuery } from '../../../api/organization-service/Users/users';
+import { useListAllUsersQuery } from '../../../api/organization-service/Users/users';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
 import { useParams } from 'react-router-dom';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
@@ -352,7 +352,7 @@ const ViewJobDetails = () => {
       languageOptions.find((option) => idsMatch(option.id, id))?.name || 'Unavailable language'
   );
   // Unfiltered users, only to name people who no longer qualify for the pickers.
-  const { data: allUsers } = useListUsersQuery({ limit: 200 }, { skip: !tenantId });
+  const { data: allUsers } = useListAllUsersQuery(undefined, { skip: !tenantId });
 
   // Hiring-manager/recruiter ids are UUIDs, not numbers — normalize to strings
   // and compare with `idsMatch` like the other dropdowns in this file.

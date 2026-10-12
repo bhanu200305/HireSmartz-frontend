@@ -10,7 +10,7 @@ import {
   useUpdateJobOpeningNoteMutation,
   useDeleteJobOpeningNoteMutation,
 } from '../../../api/job-service/JobOpening/JobOpeningNotes';
-import { useListUsersQuery } from '../../../api/organization-service/Users/users';
+import { useListAllUsersQuery } from '../../../api/organization-service/Users/users';
 
 export type { CandidateNoteItem } from './notesTypes';
 
@@ -165,7 +165,7 @@ const JobListingNotesPanel = ({
   // resolved here, against this tenant's user list, the same list Hiring
   // Manager/Recruiter pickers already use. Skipped along with the notes
   // query itself while the panel is closed.
-  const { data: usersData } = useListUsersQuery({ limit: 200 }, { skip: !open || !jobOpeningId });
+  const { data: usersData } = useListAllUsersQuery(undefined, { skip: !open || !jobOpeningId });
   const userById = useMemo(() => {
     const map = new Map<string, { name: string; role: string | null }>();
     for (const user of usersData?.items ?? []) {

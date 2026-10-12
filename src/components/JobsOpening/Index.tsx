@@ -57,7 +57,7 @@ import {
 import { useListTenantDepartmentsQuery } from '../../api/organization-service/Tenants/departments';
 import { useJobTitleNameMap } from '../../hooks/useJobTitleNameMap';
 import { useRovingFocus } from '../../hooks/useRovingFocus';
-import { useListUsersQuery } from '../../api/organization-service/Users/users';
+import { useListAllUsersQuery } from '../../api/organization-service/Users/users';
 import { useListJobTypesQuery } from '../../api/job-service/JobOpening/catalogs';
 import { showToast } from '../shared';
 import ConfirmationModal from '../shared/ui/ConfirmationModal';
@@ -311,7 +311,7 @@ const JobsOpening = () => {
   const { data: jobTypes = [] } = useListJobTypesQuery({ isMaster: callerKind === 'platform' });
   // List endpoint only returns job_title_id; this resolves the real name.
   const { titleMap } = useJobTitleNameMap();
-  const { data: orgUsers } = useListUsersQuery({ limit: 200 }, { skip: !hasTenantContext });
+  const { data: orgUsers } = useListAllUsersQuery(undefined, { skip: !hasTenantContext });
 
   const resolvedJobs = useMemo((): Jobs[] => {
     const deptMap = Object.fromEntries(

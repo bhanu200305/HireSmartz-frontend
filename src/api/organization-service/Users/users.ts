@@ -118,6 +118,10 @@ export type UploadOwnAvatarResult = {
   storage_key: string;
 };
 
+const USERS_PAGE_SIZE = 200;
+// Stops a runaway loop; 50 pages is 10,000 users.
+const ALL_USERS_MAX_PAGES = 50;
+
 const extendedApi = orgApi.injectEndpoints({
   endpoints: (build) => ({
     listUsers: build.query<ListUsersResponse, ListUsersArgs | void>({
@@ -132,6 +136,27 @@ const extendedApi = orgApi.injectEndpoints({
           role: args?.role,
         },
       }),
+      providesTags: ['OrgUsers'],
+    }),
+    // Every active user, fetched a page at a time (the server caps a page at 200), for
+    // screens that turn user ids into names and must not miss anyone in a large company.
+    listAllUsers: build.query<ListUsersResponse, void>({
+      async queryFn(_arg, _api, _extra, fetchWithBQ) {
+        const items: OrgUser[] = [];
+        let total = 0;
+        for (let page = 0; page < ALL_USERS_MAX_PAGES; page += 1) {
+          const result = await fetchWithBQ({
+            url: '/v1/users',
+            params: { limit: USERS_PAGE_SIZE, offset: items.length },
+          });
+          if (result.error) return { error: result.error };
+          const body = result.data as ListUsersResponse;
+          total = body.total;
+          items.push(...body.items);
+          if (body.items.length === 0 || items.length >= total) break;
+        }
+        return { data: { items, total, limit: items.length, offset: 0 } };
+      },
       providesTags: ['OrgUsers'],
     }),
     createUser: build.mutation<OrgUser, CreateUserRequest>({
@@ -257,6 +282,7 @@ const extendedApi = orgApi.injectEndpoints({
 
 export const {
   useListUsersQuery,
+  useListAllUsersQuery,
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeactivateUserMutation,

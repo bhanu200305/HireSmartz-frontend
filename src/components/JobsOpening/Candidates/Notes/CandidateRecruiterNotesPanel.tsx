@@ -11,7 +11,7 @@ import {
   type RecruiterNoteView,
 } from '../../../../api/candidate-service/Candidates/notes';
 import { getCandidateErrorMessage } from '../../../../shared/utils/auth/candidateError.helpers';
-import { useListUsersQuery } from '../../../../api/organization-service/Users/users';
+import { useListAllUsersQuery } from '../../../../api/organization-service/Users/users';
 
 // candidate-service's own recruiter-notes CRUD
 // (api/candidate-service/Candidates/notes.ts, `/candidates/{id}/notes`) —
@@ -70,7 +70,7 @@ const CandidateRecruiterNotesPanel = ({
     { skip: !open || !hasCandidate }
   );
 
-  const { data: usersData } = useListUsersQuery({ limit: 200 }, { skip: !open || !hasCandidate });
+  const { data: usersData } = useListAllUsersQuery(undefined, { skip: !open || !hasCandidate });
   const userById = useMemo(() => {
     const map = new Map<string, AuthorInfo>();
     for (const user of usersData?.items ?? []) {
