@@ -11,7 +11,7 @@ import { isAudioScreeningRound, isIntakeCallRound } from './roundProgress';
 
 export const PHONE_NUMBER_ISSUE_MESSAGES: Record<PhoneNumberIssue, string> = {
   missing_country_code: "This number has no country code, so it can't be called or texted.",
-  invalid_for_country: "This number's digit count doesn't match its country code.",
+  invalid_for_country: "This phone number isn't valid for its country code.",
 };
 
 export const phoneNumberIssueMessage = (issue: PhoneNumberIssue | null | undefined) =>

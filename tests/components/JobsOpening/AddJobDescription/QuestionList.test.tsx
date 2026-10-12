@@ -70,7 +70,8 @@ describe('QuestionList', () => {
     await user.click(screen.getAllByRole('button', { name: 'Edit question' })[0]);
     expect(screen.getByDisplayValue('Explain React hooks')).toBeInTheDocument();
     await user.keyboard('{Escape}');
-    expect(screen.getByText('Explain React hooks')).toBeInTheDocument();
+    // Waits for the revert to render instead of checking the instant Escape is pressed.
+    expect(await screen.findByText('Explain React hooks')).toBeInTheDocument();
   });
 
   it('calls onLocalEdit with trimmed text on blur', async () => {

@@ -59,6 +59,7 @@ import JobListingNotesPanel from '../Notes/JobListingNotesPanel';
 import { useGetInterviewRoundsByJobIdQuery } from '../../../api/job-service/JobOpening/GetInterviewRound';
 import { useGetJobDetailsQuery } from '../../../api/job-service/JobOpening/AddJobOpening';
 import { locationsToChoose } from '../../shared/AppliedLocationPicker';
+import { formatStoredPhoneForDisplay } from '../../../shared/utils/validation/phoneValidation';
 import { publicLocationLabels } from '../../../shared/utils/publicJobDisplay';
 import {
   candidateAppliedLocation,
@@ -912,7 +913,7 @@ const CandidatesListing = () => {
                             <p className="truncate">
                               <span className="font-semibold text-neutral-500">Phone: </span>
                               <span className="text-neutral-700">
-                                {candidate.contact_no || 'N/A'}
+                                {formatStoredPhoneForDisplay(candidate.contact_no) || 'N/A'}
                               </span>
                               {phoneNumberIssueMessage(candidate.phone_number_issue) && (
                                 <Tooltip

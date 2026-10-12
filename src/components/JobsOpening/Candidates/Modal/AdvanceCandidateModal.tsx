@@ -6,8 +6,10 @@ import AntdCommonModal from '../../../shared/ui/AntdCommonModal';
 import { Loader } from '../../../shared/ui/loader';
 import {
   useAdvanceCandidateMutation,
+  useLazyListCandidateInterviewRoundsQuery,
   type CandidateInterviewRoundView,
 } from '../../../../api/candidate-service/Candidates/interviewRounds';
+import { advanceInviteToast, wasInviteSent } from './inviteOutcome';
 import {
   useRecordRecruiterRoundScoreMutation,
   useRecordRecruiterRoundFeedbackMutation,
@@ -95,6 +97,7 @@ const AdvanceCandidateModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [advanceCandidate] = useAdvanceCandidateMutation();
+  const [fetchRounds] = useLazyListCandidateInterviewRoundsQuery();
   const [recordResumeReview] = useRecordResumeReviewMutation();
   const [recordRoundScore] = useRecordRecruiterRoundScoreMutation();
   const [recordRoundFeedback] = useRecordRecruiterRoundFeedbackMutation();
@@ -184,6 +187,15 @@ const AdvanceCandidateModal = ({
       }
 
       let result;
+      let invitedForReal: boolean | null = willSendInvite;
+      const checkInviteSent = async (roundId: string): Promise<boolean | null> => {
+        try {
+          const rounds = await fetchRounds(candidate.id, false).unwrap();
+          return wasInviteSent(rounds, roundId);
+        } catch {
+          return null;
+        }
+      };
       try {
         result = await advanceCandidate({
           candidateId: candidate.id,
@@ -243,17 +255,16 @@ const AdvanceCandidateModal = ({
           type: 'success',
         });
       } else if (willSendInvite) {
-        showToast({
-          message:
-            'Interview scheduling invitation email has been sent to the candidate. If SMS notifications are enabled, an SMS will also be sent.',
-          type: 'success',
-        });
+        // The server skips the invite without saying so when it can't be sent, so ask
+        // the round (fresh from the server) whether one went out before saying it did.
+        invitedForReal = await checkInviteSent(result.next_round.id);
+        showToast(advanceInviteToast(invitedForReal));
       } else {
         showToast({ message: 'Candidate advanced to the next round.', type: 'success' });
       }
       // Stay disabled: the modal closes and the parent keeps Advance locked
       // until the refreshed round list shows the candidate on the next round.
-      onSuccess(result.next_round ?? null, willSendInvite);
+      onSuccess(result.next_round ?? null, invitedForReal !== false && willSendInvite);
     } catch {
       setIsSubmitting(false);
     }

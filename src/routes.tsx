@@ -38,6 +38,7 @@ const AIQuestionsSetupPage = lazyImport(
 const CustomersPage = lazy(() => import('./pages/CustomerPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const BookDemoPage = lazy(() => import('./pages/BookDemoPage'));
+const RecorderPage = lazy(() => import('./pages/RecorderPage'));
 const EditAiJobDescriptionPage = lazy(() => import('./pages/EditAiJobDescriptionPage'));
 const EditDetailedInterviewRoundPage = lazy(() => import('./pages/EditDetailedInterviewPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
@@ -747,6 +748,14 @@ export const Routes: RouteType[] = [
     name: 'InterviewerJoin',
     path: '/interviewer-join',
     component: InterviewerJoinPage,
+    isOpen: true,
+  },
+  {
+    // Loaded by LiveKit's own headless browser to record a room (it adds ?url=&token=&layout=).
+    // No sign-in: the LiveKit token in the URL is the only credential.
+    name: 'Recorder',
+    path: '/recorder',
+    component: RecorderPage,
     isOpen: true,
   },
   {

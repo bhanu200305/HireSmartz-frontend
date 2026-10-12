@@ -412,6 +412,7 @@ export const interviewRoundsEndpoints = extendedApi.endpoints;
 
 export const {
   useListCandidateInterviewRoundsQuery,
+  useLazyListCandidateInterviewRoundsQuery,
   useListCandidateInterviewRoundArtifactsQuery,
   useAdvanceCandidateMutation,
   useBulkAdvanceCandidatesMutation,

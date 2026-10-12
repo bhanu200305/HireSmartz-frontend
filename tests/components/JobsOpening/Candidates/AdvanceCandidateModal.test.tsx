@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 vi.mock('../../../../src/api/candidate-service/Candidates/interviewRounds', () => ({
   useAdvanceCandidateMutation: () => [vi.fn()],
+  useLazyListCandidateInterviewRoundsQuery: () => [vi.fn()],
 }));
 vi.mock('../../../../src/api/candidate-service/Candidates/scoring', () => ({
   useRecordRecruiterRoundScoreMutation: () => [vi.fn()],

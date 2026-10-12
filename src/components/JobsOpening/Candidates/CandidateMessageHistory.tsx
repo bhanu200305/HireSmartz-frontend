@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { LuSquarePen, LuTriangleAlert } from 'react-icons/lu';
 import { Badge, Button, type BadgeStatus } from '../../shared';
@@ -30,6 +30,22 @@ const deliveryBadge = (status: string): { status: BadgeStatus; label: string } =
   return { status: 'neutral', label: s.replace(/[_-]+/g, ' ') || 'Queued' };
 };
 
+// A message that is not yet delivered or failed can still change, so the list keeps refreshing
+// itself while it is open. `sent` is only worth waiting on for a while: some providers never
+// report a later delivery status.
+const FINAL_STATUSES = ['delivered', 'read', 'failed', 'bounced', 'undelivered'];
+const SENT_IS_FINAL_AFTER_MS = 10 * 60 * 1000;
+const FAST_POLL_MS = 4000;
+const SLOW_POLL_MS = 20000;
+
+const isStillChanging = (item: MessageHistoryItemView): boolean => {
+  const status = item.status.toLowerCase();
+  if (FINAL_STATUSES.includes(status)) return false;
+  if (status !== 'sent') return true;
+  const when = dayjs(item.sent_at ?? item.created_at);
+  return when.isValid() && Date.now() - when.valueOf() < SENT_IS_FINAL_AFTER_MS;
+};
+
 /** Plain text of a message: the backend's `body_text`, else the HTML body
  * with tags stripped (rendered as text — never as HTML). */
 const messageText = (item: MessageHistoryItemView) => {
@@ -50,10 +66,15 @@ const CandidateMessageHistory = ({ candidateId, smsBlockedReason, onSendSms }: P
   const canSms = smsBlockedReason === null;
   const [channel, setChannel] = useState<ChannelFilter>('sms');
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [pollMs, setPollMs] = useState(SLOW_POLL_MS);
   const { data, isFetching, error } = useListCandidateMessageHistoryQuery(
     { candidateId, limit },
-    { skip: !candidateId }
+    { skip: !candidateId, pollingInterval: pollMs, skipPollingIfUnfocused: true }
   );
+  const hasChangingMessage = (data?.items ?? []).some(isStillChanging);
+  useEffect(() => {
+    setPollMs(hasChangingMessage ? FAST_POLL_MS : SLOW_POLL_MS);
+  }, [hasChangingMessage]);
 
   const items = (data?.items ?? []).filter(
     (item) => channel === 'all' || item.channel.toLowerCase() === channel

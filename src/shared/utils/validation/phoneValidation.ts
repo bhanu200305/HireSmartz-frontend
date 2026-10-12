@@ -58,7 +58,7 @@ export const isPhoneValidForCountry = (nationalNumber: string, dialCode: string)
 };
 
 export const PHONE_VALIDATION_MESSAGE =
-  'Enter a valid phone number for the selected country; the digit count must match.';
+  'Enter a valid phone number for the selected country, including the country code.';
 
 /** Digits only, capped at the E.164 ceiling — see that constant's own comment. */
 export const restrictPhoneDigits = (raw: string): string =>
@@ -163,6 +163,18 @@ export const splitStoredPhone = (
   if (trimmed.startsWith('+')) return splitE164(trimmed);
   if (trimmed.startsWith('00')) return splitE164(`+${trimmed.slice(2)}`);
   return { countryCode: '', phoneNumber: trimmed.replace(/\D/g, '') };
+};
+
+/**
+ * A stored `contact_no` for showing in a header or list: the country code and
+ * the number apart ("+44 7911123456"), so they can be told apart at a glance.
+ * A value with no country code is shown as it is, never with one guessed.
+ */
+export const formatStoredPhoneForDisplay = (value: string | null | undefined): string => {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return '';
+  const { countryCode, phoneNumber } = splitStoredPhone(trimmed);
+  return countryCode && phoneNumber ? `${countryCode} ${phoneNumber}` : trimmed;
 };
 
 /**

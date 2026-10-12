@@ -30,7 +30,7 @@ import { TileLabel } from './shared/TileLabel';
 import { CameraTile, NoCameraTile } from './shared/CameraTile';
 import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
 import { isAiInterviewer } from './shared/participantKind';
-import { tileGridColumns } from './shared/tileGrid';
+import { tileCellClass, tileGridClass, tileGridColumns } from './shared/tileGrid';
 
 interface VideoGridProps {
   token: LiveKitTokenResponse;
@@ -216,11 +216,11 @@ const VideoGridInner: React.FC<{ candidateName?: string }> = ({ candidateName })
           // the fallback once a very large panel's tiles hit their 220px
           // floor and no longer all fit — scroll, never clip.
           <div
-            className="grid h-full w-full auto-rows-fr content-start gap-3 overflow-y-auto p-3"
+            className={`${tileGridClass(allSides.length)} w-full p-3`}
             style={{ gridTemplateColumns: tileGridColumns(allSides.length) }}
           >
             {allSides.map((side) => (
-              <div key={side.key} className="min-h-[220px]">
+              <div key={side.key} className={tileCellClass(allSides.length)}>
                 {side.node}
               </div>
             ))}

@@ -1,5 +1,26 @@
 import candidateApi from '../candidateApi';
 
+// A sent message is created, then handed to the SMS provider, by notification-service some
+// moments AFTER the send request returns. The history refetch the send itself triggers can
+// therefore run before the message exists, so it is re-checked a couple of times shortly after.
+const RECHECK_AFTER_SEND_MS = [2000, 6000];
+const recheckHistoryAfterSend = (
+  dispatch: (action: unknown) => unknown,
+  candidateIds: string[]
+) => {
+  RECHECK_AFTER_SEND_MS.forEach((delay) =>
+    setTimeout(
+      () =>
+        dispatch(
+          candidateApi.util.invalidateTags(
+            candidateIds.map((id) => ({ type: 'CandidateMessageHistory' as const, id }))
+          )
+        ),
+      delay
+    )
+  );
+};
+
 // Candidate Messaging — API_CONTRACT.md's "Candidate Messaging" section.
 // New since a previous version of this API; this whole section has no
 // legacy equivalent to replace. Bulk send SILENTLY SKIPS a candidate with
@@ -126,6 +147,14 @@ const extendedApi = candidateApi.injectEndpoints({
       invalidatesTags: (_r, _e, { candidateId }) => [
         { type: 'CandidateMessageHistory', id: candidateId },
       ],
+      async onQueryStarted({ candidateId }, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          recheckHistoryAfterSend(dispatch, [candidateId]);
+        } catch {
+          // A failed send has nothing to re-check.
+        }
+      },
     }),
 
     previewCandidateEmail: build.mutation<
@@ -172,6 +201,14 @@ const extendedApi = candidateApi.injectEndpoints({
         }),
         invalidatesTags: (_r, _e, { candidateIds }) =>
           candidateIds.map((id) => ({ type: 'CandidateMessageHistory' as const, id })),
+        async onQueryStarted({ candidateIds }, { dispatch, queryFulfilled }) {
+          try {
+            await queryFulfilled;
+            recheckHistoryAfterSend(dispatch, candidateIds);
+          } catch {
+            // A failed send has nothing to re-check.
+          }
+        },
       }
     ),
 

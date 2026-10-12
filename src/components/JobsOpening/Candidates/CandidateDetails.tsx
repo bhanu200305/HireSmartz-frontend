@@ -56,6 +56,7 @@ import {
 } from '../../../api/candidate-service/Candidates/scoring';
 import { useListRecruiterNotesQuery } from '../../../api/candidate-service/Candidates/notes';
 import { useListApplicationSourcesQuery } from '../../../api/candidate-service/Master/master';
+import { formatStoredPhoneForDisplay } from '../../../shared/utils/validation/phoneValidation';
 import {
   candidateAppliedLocation,
   candidateDisplayStatusColor,
@@ -2696,7 +2697,7 @@ const CandidateDetails = () => {
               )}
               <HeaderInfoRow label="Email:">{candidate?.email_id ?? 'N/A'}</HeaderInfoRow>
               <HeaderInfoRow label="Phone:">
-                {candidate?.contact_no ?? 'N/A'}
+                {formatStoredPhoneForDisplay(candidate?.contact_no) || 'N/A'}
                 {phoneNumberIssueMessage(candidate?.phone_number_issue) && (
                   <span className="mt-1 flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
                     <LuTriangleAlert size={14} className="mt-px shrink-0" aria-hidden />

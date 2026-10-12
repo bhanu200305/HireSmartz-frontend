@@ -138,6 +138,22 @@ const BulkSendSmsModal = ({ open, onClose, candidates }: BulkSendSmsModalProps) 
         smsBody: text,
       }).unwrap();
 
+      // One recipient: the toast says it was queued, and the status then shows in the
+      // candidate's own message list, so the Results screen (made for a batch) is skipped.
+      // A refusal for the one candidate is shown on the form so the message is kept.
+      if (isSingleCandidate && res.results.length === 1) {
+        const only = res.results[0];
+        if (only.sent) {
+          showToast({ message: 'SMS queued.', type: 'success' });
+          onClose();
+        } else {
+          const reason = `Not sent: ${describeSkippedReason(only.skipped_reason)}`;
+          setMessageError(reason);
+          showToast({ message: reason, type: 'warning' });
+        }
+        return;
+      }
+
       const byId = new Map(candidates.map((c) => [c.id, c]));
       setResults(
         res.results.map((r) => ({

@@ -23,7 +23,7 @@ import { PanelQuestionsPanel, usePanelQuestions } from './shared/PanelQuestionsP
 import { useFullscreenLock } from './shared/useFullscreenLock';
 import { useDisablePictureInPicture } from './shared/useDisablePictureInPicture';
 import { isAiInterviewer } from './shared/participantKind';
-import { tileGridColumns } from './shared/tileGrid';
+import { tileCellClass, tileGridClass, tileGridColumns } from './shared/tileGrid';
 
 // The custom room UI that replaces LiveKit's stock `<VideoConference />`
 // (what `SessionJoinScreen` used before this component existed — a generic
@@ -225,12 +225,12 @@ const InterviewRoomLayoutInner = ({ isInterviewer }: { isInterviewer: boolean })
           // with `overflow-y-auto` as the fallback once tiles hit their
           // 220px floor for a very large panel.
           <div
-            className="grid h-full auto-rows-fr content-start gap-3 overflow-y-auto"
+            className={tileGridClass(allSides.length)}
             style={{ gridTemplateColumns: tileGridColumns(allSides.length) }}
           >
-            <div className="min-h-[220px]">{localTile}</div>
+            <div className={tileCellClass(allSides.length)}>{localTile}</div>
             {remoteSides.map((side) => (
-              <div key={side.key} className="min-h-[220px]">
+              <div key={side.key} className={tileCellClass(allSides.length)}>
                 {side.node}
               </div>
             ))}

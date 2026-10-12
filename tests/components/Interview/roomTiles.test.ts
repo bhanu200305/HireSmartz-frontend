@@ -3,7 +3,12 @@ import {
   isAiIdentity,
   isAiInterviewer,
 } from '../../../src/components/Interview/shared/participantKind';
-import { tileGridColumns } from '../../../src/components/Interview/shared/tileGrid';
+import {
+  tileCellClass,
+  tileGridClass,
+  tileGridColumnCount,
+  tileGridColumns,
+} from '../../../src/components/Interview/shared/tileGrid';
 
 const UUID = '2e4b02e6-9350-47d7-ad3d-fe8dee9b085d';
 
@@ -24,11 +29,29 @@ describe('tileGridColumns', () => {
   it('lets one person fill the space', () => {
     expect(tileGridColumns(1)).toBe('1fr');
     expect(tileGridColumns(0)).toBe('1fr');
+    expect(tileCellClass(1)).toContain('h-full');
   });
 
-  it('uses responsive columns for two or more, small enough for two side by side', () => {
+  it('puts two side by side, three or four in a 2 x 2, and more in wider rows', () => {
+    expect(tileGridColumnCount(2)).toBe(2);
+    expect(tileGridColumnCount(3)).toBe(2);
+    expect(tileGridColumnCount(4)).toBe(2);
+    expect(tileGridColumnCount(5)).toBe(3);
+    expect(tileGridColumnCount(9)).toBe(3);
+    expect(tileGridColumnCount(10)).toBe(4);
+  });
+
+  it('keeps a minimum tile width so a narrow window wraps instead of making slivers', () => {
     for (const count of [2, 3, 6]) {
-      expect(tileGridColumns(count)).toBe('repeat(auto-fit, minmax(min(100%, 180px), 1fr))');
+      expect(tileGridColumns(count)).toContain('auto-fit');
+      expect(tileGridColumns(count)).toContain('max(220px');
     }
+  });
+
+  it('gives tiles beyond the first a 16:9 shape rather than the full room height', () => {
+    expect(tileCellClass(2)).toContain('aspect-video');
+    expect(tileCellClass(5)).toContain('aspect-video');
+    expect(tileGridClass(3)).toContain('content-center');
+    expect(tileGridClass(3)).not.toContain('auto-rows-fr');
   });
 });
