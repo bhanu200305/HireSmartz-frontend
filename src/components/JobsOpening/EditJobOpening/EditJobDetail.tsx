@@ -31,7 +31,7 @@ import {
 import { lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsEditingDraft } from '../../../hooks/useIsEditingDraft';
 import SelectedLocations from '../AddJobDescription/SelectedLocations';
-import { useDuplicateJobWarning } from '../../../hooks/useDuplicateJobWarning';
+import { useOpenJobDuplicate } from '../../../hooks/useOpenJobDuplicate';
 import { MAX_JOB_LOCATIONS, coverageIssue } from '../AddJobDescription/locationCoverage';
 import {
   setEditJobOpeningId,
@@ -968,9 +968,10 @@ const EditJobDetail = () => {
     const found = offices.find((office) => idsMatch(office.office_id, officeId));
     return found ? officeDisplayName(found) : 'this location';
   };
-  const duplicateJobWarning = useDuplicateJobWarning({
+  const openJobDuplicate = useOpenJobDuplicate({
     jobTitleId: selectedJobTitleId ? resolveOrgJobTitleId(selectedJobTitleId) : undefined,
     offices: selectedLocations,
+    departmentId: selectedDepartmentId,
     excludeJobId: parsedJobId,
   });
   const hiringManagerCoverageIssue = hiringManagerCoverageReady
@@ -2663,6 +2664,11 @@ const EditJobDetail = () => {
   };
 
   const onSubmit = async (data: JobDetailsState) => {
+    // No open job may already have this title and department at a selected location.
+    if (openJobDuplicate) {
+      showToast({ message: openJobDuplicate, type: 'error' });
+      return;
+    }
     // Every selected location needs a hiring manager who can work there.
     if (hiringManagerCoverageIssue) {
       setError('hiringManagers', { type: 'manual', message: hiringManagerCoverageIssue });
@@ -3203,8 +3209,8 @@ const EditJobDetail = () => {
               </div>
             </Form.Item>
           </div>
-          {duplicateJobWarning && (
-            <p className="text-xs text-amber-600 mt-1 break-words">{duplicateJobWarning}</p>
+          {openJobDuplicate && (
+            <p className="text-xs text-red-500 mt-1 break-words">{openJobDuplicate}</p>
           )}
           <SelectedLocations
             offices={selectedLocations}

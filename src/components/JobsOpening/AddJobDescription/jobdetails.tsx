@@ -130,7 +130,7 @@ import ConfirmationModal from '../../shared/ui/ConfirmationModal';
 import JobActionFooter from './JobActionFooter';
 import { useNavigationBlocker } from '../../../hooks/useNavigationBlocker';
 import SelectedLocations from './SelectedLocations';
-import { useDuplicateJobWarning } from '../../../hooks/useDuplicateJobWarning';
+import { useOpenJobDuplicate } from '../../../hooks/useOpenJobDuplicate';
 import { MAX_JOB_LOCATIONS, coverageIssue } from './locationCoverage';
 import { useOfferedSuggestedSkills } from '../../../hooks/useOfferedSuggestedSkills';
 import { useSessionTenantId } from '../../../hooks/useSessionTenantId';
@@ -1097,8 +1097,9 @@ const JobDetails = () => {
     },
     { skip: !resolvedJobId || !selectedJobTitleOrgId || !selectedJobTitleText }
   );
-  const duplicateJobWarning = useDuplicateJobWarning({
+  const openJobDuplicate = useOpenJobDuplicate({
     jobTitleId: selectedJobTitleOrgId,
+    departmentId: selectedDepartmentId,
     offices: selectedLocations,
     excludeJobId: resolvedJobId,
   });
@@ -2619,9 +2620,14 @@ const JobDetails = () => {
     }
   };
 
-  // Every selected location needs a hiring manager who can work there, whether the
-  // page is saved to continue or as a draft.
+  // Every selected location needs a hiring manager who can work there, and no open job
+  // may already have this title and department at it, whether the page is saved to
+  // continue or as a draft.
   const refuseUncoveredLocations = (): boolean => {
+    if (openJobDuplicate) {
+      showToast({ message: openJobDuplicate, type: 'error' });
+      return true;
+    }
     if (!hiringManagerCoverageIssue) return false;
     setError('hiringManagers', { type: 'manual', message: hiringManagerCoverageIssue });
     showToast({ message: hiringManagerCoverageIssue, type: 'error' });
@@ -3368,8 +3374,8 @@ const JobDetails = () => {
                         )}
                     </Form.Item>
                   </div>
-                  {duplicateJobWarning && (
-                    <p className="text-xs text-amber-600 mt-1 break-words">{duplicateJobWarning}</p>
+                  {openJobDuplicate && (
+                    <p className="text-xs text-red-500 mt-1 break-words">{openJobDuplicate}</p>
                   )}
                   <SelectedLocations
                     offices={selectedLocations}

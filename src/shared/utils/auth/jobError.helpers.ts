@@ -45,6 +45,8 @@ const ROUND_ERROR_MESSAGES: Record<string, string> = {
   RESUME_ROUND_POSITION_INVALID: 'Resume Review must always be round 1.',
   ASSIGNEE_LOCATION_PERMISSION_DENIED:
     'A selected hiring manager or recruiter is not allowed to work on jobs at any of the selected locations. Pick someone who has access to at least one of them.',
+  JOB_ALREADY_OPEN_AT_LOCATION:
+    'An open job with this title and department already exists at this location. Choose a different location, title or department.',
   LOCATION_NEEDS_HIRING_MANAGER:
     'Every selected location needs at least one hiring manager who can work there. Add one for each location.',
   RESUME_ROUND_CANNOT_BE_MODIFIED: 'Resume Review is required and cannot be removed or changed.',
