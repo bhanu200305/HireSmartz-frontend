@@ -10,6 +10,8 @@ export type CatalogField<TFormValues> = {
   required?: boolean;
   options?: { label: string; value: string }[];
   helperText?: string;
+  /** Text fields: the longest value allowed. Typing stops there and a counter shows. */
+  maxLength?: number;
 };
 
 // Existing values come back as "HH:mm:ss" from the backend; parse both formats.
@@ -121,15 +123,24 @@ function CatalogFormFields<TFormValues extends Record<string, unknown>>({
               />
             );
           case 'text':
-          default:
+          default: {
+            const text = (raw as string) || '';
             return (
-              <Input
-                key={field.name}
-                placeholder={field.label + (field.required ? ' *' : '')}
-                value={(raw as string) || ''}
-                onChange={(e) => setField(field.name, e.target.value)}
-              />
+              <div key={field.name}>
+                <Input
+                  placeholder={field.label + (field.required ? ' *' : '')}
+                  value={text}
+                  maxLength={field.maxLength}
+                  onChange={(e) => setField(field.name, e.target.value)}
+                />
+                {field.maxLength != null && (
+                  <p className="text-xs text-gray-400 mt-1 text-right">
+                    {text.length}/{field.maxLength}
+                  </p>
+                )}
+              </div>
             );
+          }
         }
       })}
     </>

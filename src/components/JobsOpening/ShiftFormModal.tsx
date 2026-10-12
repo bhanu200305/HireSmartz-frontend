@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AntdCommonModal from '../shared/ui/AntdCommonModal';
+import { SHIFT_NAME_MAX_LENGTH } from '../../shared/utils/catalogueNameLimits';
 import { Button } from '../shared';
 import CatalogFormFields, {
   type CatalogField,
@@ -14,7 +15,7 @@ export type ShiftFormValues = {
 const EMPTY_FORM: ShiftFormValues = { name: '', start_time: '', end_time: '' };
 
 const fields: CatalogField<ShiftFormValues>[] = [
-  { name: 'name', label: 'Name', type: 'text', required: true },
+  { name: 'name', label: 'Name', type: 'text', required: true, maxLength: SHIFT_NAME_MAX_LENGTH },
   { name: 'start_time', label: 'Start Time', type: 'time', required: true },
   { name: 'end_time', label: 'End Time', type: 'time', required: true },
 ];
@@ -54,8 +55,11 @@ const ShiftFormModal: React.FC<ShiftFormModalProps> = ({
 }) => {
   const [form, setForm] = useState<ShiftFormValues>(initialValues ?? EMPTY_FORM);
 
+  // A pre-filled name longer than the limit is cut, so the form can always be submitted.
   useEffect(() => {
-    if (open) setForm(initialValues ?? EMPTY_FORM);
+    if (!open) return;
+    const start = initialValues ?? EMPTY_FORM;
+    setForm({ ...start, name: start.name.slice(0, SHIFT_NAME_MAX_LENGTH) });
   }, [open, initialValues]);
 
   const missingRequired = !form.name.trim() || !form.start_time || !form.end_time;

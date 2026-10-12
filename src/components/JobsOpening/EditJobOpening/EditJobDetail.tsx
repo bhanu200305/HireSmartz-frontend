@@ -138,6 +138,7 @@ import {
   useDeactivateOrganizationShiftMutation,
 } from '../../../api/job-service/Shifts/shifts';
 import ShiftFormModal, { computeShiftDurationMinutes } from '../ShiftFormModal';
+import { fitCatalogueName } from '../../../shared/utils/catalogueNameLimits';
 import { toMoneyString } from '../../../shared/utils/money';
 import { parseCalendarDate } from '../../../shared/utils/calendarDate';
 
@@ -2435,7 +2436,9 @@ const EditJobDetail = () => {
     }
   };
 
-  const handleCreateFromUnresolvedSuggestion = (fieldKey: string, guess: string) => {
+  const handleCreateFromUnresolvedSuggestion = (fieldKey: string, rawGuess: string) => {
+    // Cut to the catalogue's own limit, so a long guess can never be refused.
+    const guess = fitCatalogueName(fieldKey, rawGuess);
     switch (fieldKey) {
       case 'job_type':
         handleAddOption(guess, 'jobType');
