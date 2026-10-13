@@ -1,4 +1,4 @@
-# CareerForcePro Web - Comprehensive Developer Guide
+# HireSmartz Web - Comprehensive Developer Guide
 
 **Version**: Phase 2 | **Last Updated**: January 27, 2026  
 **Purpose**: Strict architectural patterns and conventions for consistent, maintainable code
@@ -37,7 +37,7 @@
 ```bash
 # Clone and install
 git clone <repo>
-cd careerforcepro-web
+cd hiresmartz-web
 npm install
 
 # Create environment file
@@ -341,7 +341,7 @@ JobsOpening/
 ### Phase 2 Structure (After Refactoring)
 
 ```
-careerforcepro-web/
+hiresmartz-web/
 ├── public/                          # Static assets (favicon, etc.)
 ├── src/
 │   ├── api/                         # RTK Query endpoints by feature
@@ -1415,7 +1415,7 @@ BREAKING CHANGE: Changed JobOpening API response structure
 
 ## Typography Standardization Strategy
 
-To ensure a premium and uniform aesthetic, CareerForcePro enforces a strict typographic hierarchy. Standardizing typography prevents the usage of arbitrary font sizes, line heights, and styles scattered across codebases.
+To ensure a premium and uniform aesthetic, HireSmartz enforces a strict typographic hierarchy. Standardizing typography prevents the usage of arbitrary font sizes, line heights, and styles scattered across codebases.
 
 ### 1. Unified Fonts Stack
 
@@ -1732,7 +1732,7 @@ const {
 
 ---
 
-**Maintained By**: CareerForcePro Dev Team  
+**Maintained By**: HireSmartz Dev Team  
 **Last Updated**: January 27, 2026  
 **Phase**: 2 (Form Patterns, Testing, Consolidation)
 

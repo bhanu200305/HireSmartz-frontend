@@ -359,8 +359,8 @@ const ViewJobDescription = () => {
           <div className="w-full mt-4 mx-auto p-6 bg-[#FAFAFA] border border-[#E2E2E2] shadow-xl rounded-lg flex flex-col justify-between h-full">
             <h1 className="text-2xl font-bold p-4 -mx-6 -mt-6 rounded-t-lg text-center text-white bg-primary">
               <img
-                src="/white-logo.svg"
-                alt="Careerforce Pro"
+                src="/netsmartz-logo-white.png"
+                alt="HireSmartz"
                 className="mx-auto h-7 w-auto object-contain"
               />
             </h1>

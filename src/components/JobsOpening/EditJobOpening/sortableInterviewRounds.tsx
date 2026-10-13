@@ -150,7 +150,7 @@ export const SortableInterviewRounds = ({
               {index + 1}. {round.round?.name}
             </h3>
             {badge && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full whitespace-nowrap">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 bg-primary-50 px-2.5 py-1 rounded-full whitespace-nowrap">
                 {BadgeIcon && <BadgeIcon className="text-sm shrink-0" />}
                 {badge.label}
               </span>

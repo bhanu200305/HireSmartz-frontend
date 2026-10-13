@@ -130,7 +130,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
             isLoading={isFunnelLoading}
             available={funnelStages.length > 0}
           >
-            <FunnelBars stages={funnelStages} color="#263d92" />
+            <FunnelBars stages={funnelStages} color="#fe7725" />
           </ChartCard>
 
           <ChartCard
@@ -189,7 +189,7 @@ const JobDetailModal: React.FC<{ job: JobSummary; onClose: () => void }> = ({ jo
                     boxShadow: '0 8px 24px -12px rgba(16,30,54,.18)',
                   }}
                 />
-                <Bar dataKey="Candidates" fill="#0f9fc4" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="Candidates" fill="#e5661f" radius={[6, 6, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

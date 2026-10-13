@@ -117,7 +117,7 @@ export const createDevBypassToken = (): string => {
     role_id: 'dev-bypass-role',
     organization_id: 'dev-bypass-org',
     session_id: 'dev-bypass-session',
-    email: 'dev-bypass@careerforcepro.local',
+    email: 'dev-bypass@hiresmartz.local',
     canManageCompanySettings: true,
     impersonating: false,
     exp: tenYearsFromNow,

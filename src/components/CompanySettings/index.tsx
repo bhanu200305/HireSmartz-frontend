@@ -23,7 +23,7 @@ import JobCatalogsTab from './JobCatalogsTab';
  * the mistaken belief that no backend endpoint existed for them; a real one
  * does, `app/modules/masters/api/platform_router.py`'s `/master-departments`
  * routes, confirmed and re-wired against it directly. Not the same thing as
- * Careerforce Pro's own internal Sales/Support/Finance/Ops departments, which
+ * HireSmartz's own internal Sales/Support/Finance/Ops departments, which
  * live in the CFP Users section of the Users page instead.
  *
  * "Notification Settings" collects everything notification-related as its

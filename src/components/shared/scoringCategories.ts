@@ -20,7 +20,7 @@ export const RESUME_CATEGORY_META: ScoringCategoryMeta = {
     label: 'Experience Match',
     description: 'Relevance and depth of professional experience',
     defaultPct: 30,
-    color: '#6366f1',
+    color: '#ff8340',
   },
   QUALIFICATIONS: {
     label: 'Qualifications',
@@ -47,7 +47,7 @@ export const INTERVIEW_CATEGORY_META: ScoringCategoryMeta = {
     label: 'Qualifications',
     description: 'Education, qualifications, experience',
     defaultPct: 15,
-    color: '#6366f1',
+    color: '#ff8340',
   },
   PERSONALITY_TRAITS: {
     label: 'Personality Traits',

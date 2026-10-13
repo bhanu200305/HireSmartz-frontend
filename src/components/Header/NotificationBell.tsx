@@ -231,7 +231,7 @@ const NotificationBell = ({ disabled = false }: NotificationBellProps) => {
                   type="button"
                   onClick={handleMarkAllAsRead}
                   disabled={isMarkingAll || unreadCount <= 0}
-                  className="text-primary hover:text-[#0B5ED7] disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap cursor-pointer transition-colors"
+                  className="text-primary hover:text-[#e5661f] disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed whitespace-nowrap cursor-pointer transition-colors"
                   style={{
                     fontFamily: 'var(--font-sans)',
                     fontWeight: 500,

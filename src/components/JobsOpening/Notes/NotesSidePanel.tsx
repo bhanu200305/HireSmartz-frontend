@@ -98,8 +98,8 @@ function getAuthorInitials(name: string): string {
 function avatarColorsForInitials(initials: string): { bg: string; fg: string } {
   const u = initials.toUpperCase();
   if (u === 'SA') return { bg: '#e6f4f1', fg: '#3d8c7a' };
-  if (u === 'DW') return { bg: '#E3F2FD', fg: '#1565C0' };
-  if (u === 'RA') return { bg: '#e6f0ff', fg: NOTES_ACCENT };
+  if (u === 'DW') return { bg: '#fff1e6', fg: '#e5661f' };
+  if (u === 'RA') return { bg: '#fff1e6', fg: NOTES_ACCENT };
   if (u === 'AS') return { bg: '#e6f4f1', fg: '#2d7a6c' };
   return { bg: '#F3F4F6', fg: '#4b5563' };
 }
@@ -487,7 +487,7 @@ const NotesSidePanel = ({
                       isCompact ? 'px-3 py-3' : 'px-4 py-4'
                     } ${
                       isHmCard
-                        ? 'border border-[#c7d9f7] bg-[#F0F7FF] shadow-sm'
+                        ? 'border border-[#ffc59a] bg-[#fff7f0] shadow-sm'
                         : 'border border-[#e0e0e0] bg-white shadow-sm'
                     }`}
                   >

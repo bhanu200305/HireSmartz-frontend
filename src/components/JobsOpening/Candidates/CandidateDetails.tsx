@@ -2836,7 +2836,7 @@ const CandidateDetails = () => {
                     </span>
                   </Tooltip>
                   <Button
-                    className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-blue-500 bg-blue-50 text-blue-500 hover:bg-blue-100"
+                    className="flex h-[34px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 px-3 text-[13px] font-semibold leading-none disabled:cursor-not-allowed disabled:opacity-50 border-primary-500 bg-primary-50 text-primary-500 hover:bg-primary-100"
                     onClick={() => setIsAssignJobOpen(true)}
                   >
                     <span>Assign New Job</span>
@@ -3147,7 +3147,7 @@ const CandidateDetails = () => {
         currentJobId={parsedJobId ?? ''}
       />
       {isSkipOpen && (
-        // Same layout as the old app's skip popup (careerforcepro-web
+        // Same layout as the old app's skip popup (hiresmartz-web
         // InterviewRounds): one question as the title, a single Reason box,
         // SUBMIT and CANCEL side by side.
         <AntdCommonModal
@@ -3171,7 +3171,7 @@ const CandidateDetails = () => {
               </label>
               <Textarea
                 id="skip-round-reason"
-                className="w-full rounded-3xl border border-gray-300 bg-white p-3 focus:ring focus:ring-blue-300"
+                className="w-full rounded-3xl border border-gray-300 bg-white p-3 focus:ring focus:ring-primary-300"
                 rows={4}
                 maxLength={1000}
                 value={skipReason}

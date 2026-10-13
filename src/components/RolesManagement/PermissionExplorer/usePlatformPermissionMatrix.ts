@@ -135,7 +135,7 @@ export const usePlatformPermissionMatrix = (
       Organization_User_Permissions: [
         {
           Organization_Id: PLATFORM_ORGANIZATION_ID,
-          Organization_Name: 'Careerforce Pro',
+          Organization_Name: 'HireSmartz',
           Users_Permission: users,
         },
       ],

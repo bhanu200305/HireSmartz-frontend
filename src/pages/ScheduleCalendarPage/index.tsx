@@ -150,7 +150,7 @@ const ScheduleCalendarPage = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#f0f4f8] px-4">
         <div className="bg-white rounded-2xl shadow-md p-10 max-w-md w-full text-center">
-          <div className="text-5xl mb-4">&#128197;</div>
+          <div className="text-5xl mb-4">&#b84f14;</div>
           <h1 className="text-2xl font-semibold text-gray-800 mb-2">No Calendar Found</h1>
           <p className="text-gray-500 text-sm">
             The scheduling link you followed is missing a configuration ID. Please check the link

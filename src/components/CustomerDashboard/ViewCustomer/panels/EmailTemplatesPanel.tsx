@@ -18,22 +18,22 @@ import { getNotifErrorMessage } from '../../../../shared/utils/auth/notifError.h
 // Same values `jinja_renderer.py`'s `_PACK_THEME_DEFAULTS[PackKey.CORPORATE]`
 // resolves to for any field this tenant hasn't set.
 const CORPORATE_DEFAULTS: Required<EmailThemeColors> = {
-  primary_color: '#1F3A5F',
+  primary_color: '#3d1a08',
   secondary_color: '#D9E2EC',
   background_color: '#EEF1F5',
   text_color: '#344054',
   title_color: '#101828',
   greeting_color: '#101828',
-  button_background: '#1F3A5F',
+  button_background: '#3d1a08',
   button_text: '#FFFFFF',
-  button_border_color: '#1F3A5F',
+  button_border_color: '#3d1a08',
   highlight_background: '#FFFFFF',
   highlight_text: '#667085',
   footer_background: '#F7F8FA',
   footer_text: '#98A2B3',
   action_button_text: '#FFFFFF',
-  action_button_background: '#1F3A5F',
-  action_button_border_color: '#1F3A5F',
+  action_button_background: '#3d1a08',
+  action_button_border_color: '#3d1a08',
 };
 
 /**
@@ -95,7 +95,7 @@ const TenantThemeSection: React.FC<{ tenantId: string }> = ({ tenantId }) => {
           </Typography>
           <Typography variant="caption" className="block text-gray-500">
             Applies to this company&apos;s candidate-facing mail only, never their invite email,
-            which always carries Careerforce Pro&apos;s own branding.
+            which always carries HireSmartz&apos;s own branding.
           </Typography>
         </div>
         <Button

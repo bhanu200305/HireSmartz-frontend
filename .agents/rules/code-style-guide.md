@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# CareerForcePro - Agent Code Style Guide
+# HireSmartz - Agent Code Style Guide
 
 AI coding agents operating on this repository must strictly adhere to these rules at all times.
 

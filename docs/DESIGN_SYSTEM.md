@@ -2,7 +2,7 @@
 
 Source: Figma Make file ["Redesign Dashboard for Usability"](https://www.figma.com/make/yyVEABmgRB3AWBSkXrtPUu/Redesign-Dashboard-for-Usability) (file key `yyVEABmgRB3AWBSkXrtPUu`).
 
-This file is a Figma Make prototype (React + Tailwind v4), not a linked Figma design-library file, so it has no exported variable/style collection — the tokens below were reverse-engineered from its `src/index.css` theme block and the inline styles used consistently throughout `src/App.tsx`. Treat this as the working reference for the redesigned "careerforce pro" admin dashboard until a real component library exists.
+This file is a Figma Make prototype (React + Tailwind v4), not a linked Figma design-library file, so it has no exported variable/style collection — the tokens below were reverse-engineered from its `src/index.css` theme block and the inline styles used consistently throughout `src/App.tsx`. Treat this as the working reference for the redesigned "hiresmartz" admin dashboard until a real component library exists.
 
 Use this doc to brief future redesign prompts, e.g. _"restyle the Candidates table using the DESIGN_SYSTEM.md tokens."_
 
@@ -190,7 +190,7 @@ Custom inline SVG icon set (no external icon library):
 
 ### Sidebar (`Sidebar`)
 
-Fixed, 220px, navy background (`#0f1c4d`), hairline white-opacity dividers. Logo mark: 28px rounded-md square in cyan with a 2×2 dot grid glyph, plus wordmark "careerforce" + "pro" in cyan. Nav items: 12px radius rows, icon + label + optional count badge; active state = `rgba(17,183,221,0.12)` background with cyan text/icon; inactive = transparent with `rgba(255,255,255,0.45)` text. Footer: user avatar chip (navy circle, white initial) + name/role, above a hairline divider.
+Fixed, 220px, navy background (`#0f1c4d`), hairline white-opacity dividers. Logo mark: 28px rounded-md square in cyan with a 2×2 dot grid glyph, plus wordmark "hiresmartz" + "pro" in cyan. Nav items: 12px radius rows, icon + label + optional count badge; active state = `rgba(17,183,221,0.12)` background with cyan text/icon; inactive = transparent with `rgba(255,255,255,0.45)` text. Footer: user avatar chip (navy circle, white initial) + name/role, above a hairline divider.
 
 ### Top bar (header)
 

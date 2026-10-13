@@ -1,4 +1,4 @@
-# CareerForcePro Web
+# HireSmartz Web
 
 A modern hiring platform built with React 19 and TypeScript, enabling real-time video interviews, AI-powered candidate screening, and comprehensive job management.
 
@@ -21,7 +21,7 @@ A modern hiring platform built with React 19 and TypeScript, enabling real-time 
 
 ## 📱 Project Overview
 
-**CareerForcePro** is a comprehensive hiring and recruitment platform designed to streamline the interview process for organizations, hiring managers, recruiters, and candidates. The frontend talks to a backend microservices monorepo — each domain (auth, org, jobs, candidates, interviews, notifications, AI) is its own service, and `src/api/` mirrors that boundary (see [Project Structure](#project-structure)).
+**HireSmartz** is a comprehensive hiring and recruitment platform designed to streamline the interview process for organizations, hiring managers, recruiters, and candidates. The frontend talks to a backend microservices monorepo — each domain (auth, org, jobs, candidates, interviews, notifications, AI) is its own service, and `src/api/` mirrors that boundary (see [Project Structure](#project-structure)).
 
 ### 🎯 Target Users
 
@@ -779,4 +779,4 @@ Not yet decided — no license file exists in this repository.
 
 ---
 
-**Maintained By:** CareerForcePro Team
+**Maintained By:** HireSmartz Team

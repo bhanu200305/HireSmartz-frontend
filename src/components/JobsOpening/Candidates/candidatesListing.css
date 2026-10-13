@@ -1,5 +1,5 @@
 /* candidatesListing.css — typography for the job's Candidates tab, matched to
- * the legacy careerforcepro-web candidate list (Roboto body, Sora headings).
+ * the legacy hiresmartz-web candidate list (Roboto body, Sora headings).
  *
  * Scoped to `.candidates-list-page` so only this page changes: the theme's
  * font tokens are re-pointed inside the wrapper, every other page keeps

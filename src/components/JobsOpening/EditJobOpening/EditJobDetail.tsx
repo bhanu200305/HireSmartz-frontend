@@ -2861,9 +2861,9 @@ const EditJobDetail = () => {
           </div>
         )}
         {fieldsLocked && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800">
             <span
-              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary-400 border-t-transparent"
               aria-hidden="true"
             />
             <span>

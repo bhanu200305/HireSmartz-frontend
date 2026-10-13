@@ -674,7 +674,7 @@ const Login = () => {
           why: it clipped the whole page to one viewport tall with no way to
           scroll to whatever fell outside it. The decorative blobs below are
           clipped to their own wrapper instead. */}
-      <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#e5661f] via-[#ff8340] to-[#ffa766] px-4 py-12">
         {isLoading && <Loader />}
 
         {/* decorative background texture + glow blobs for depth */}
@@ -686,10 +686,10 @@ const Login = () => {
               backgroundSize: '28px 28px',
             }}
           />
-          <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
+          <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#ffa766]/30 blur-3xl" />
           <div className="absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
-          <div className="absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-[#11b7dd]/20 blur-2xl" />
+          <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#b84f14]/30 blur-3xl" />
+          <div className="absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-[#fe7725]/20 blur-2xl" />
           <div className="absolute top-10 left-1/3 h-24 w-24 rounded-full border border-white/20" />
           <div className="absolute bottom-24 right-1/4 h-16 w-16 rounded-full border border-white/10" />
         </div>
@@ -703,8 +703,8 @@ const Login = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/cfpLogo.svg"
-                alt="Careerforce Pro"
+                src="/netsmartz-logo.png"
+                alt="HireSmartz"
                 className="h-10 w-auto object-contain"
               />
             </button>
@@ -723,7 +723,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="login-tab-fade flex flex-col gap-4">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-900">Welcome Back</h2>
-                <p className="mt-1 text-sm text-gray-500">Log in to continue to Careerforce Pro</p>
+                <p className="mt-1 text-sm text-gray-500">Log in to continue to HireSmartz</p>
               </div>
 
               <Input

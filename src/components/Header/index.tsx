@@ -747,7 +747,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                   style={{
                     backgroundColor: '#fff',
                     borderRadius: 12,
-                    boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
+                    boxShadow: '0 8px 24px rgba(26, 26, 26, 0.12)',
                   }}
                 >
                   <GlobalSearch
@@ -900,7 +900,7 @@ const Header = ({ onOpenMobileMenu }: HeaderProps) => {
                       className="rounded-xl overflow-hidden"
                       style={{
                         backgroundColor: '#fff',
-                        boxShadow: '0 8px 24px rgba(16, 26, 58, 0.12)',
+                        boxShadow: '0 8px 24px rgba(26, 26, 26, 0.12)',
                       }}
                     >
                       {tenantId && tenantProfile && (

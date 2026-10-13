@@ -131,7 +131,7 @@ const ExternalServiceErrorBanner = ({
         <p className="mt-1 text-sm text-red-700">
           Something went wrong on our end while activating {invitedEmail}. Your invite is still
           valid, so it&apos;s safe to try again, but if this happens more than once, please contact
-          your admin or Careerforce Pro support before trying a different email address. Your
+          your admin or HireSmartz support before trying a different email address. Your
           account may have been partially created, and support can check before you continue.
         </p>
       </div>
@@ -164,7 +164,7 @@ const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boo
   // reason `overflow-hidden` was here — are clipped to their own wrapper
   // instead, so the page can grow taller than 100vh and scroll normally
   // while the background still can't cause horizontal overflow.
-  <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
+  <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#e5661f] via-[#ff8340] to-[#ffa766] px-4 py-12">
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         className="absolute inset-0 opacity-[0.15]"
@@ -173,15 +173,15 @@ const PageShell = ({ children, wide = false }: { children: ReactNode; wide?: boo
           backgroundSize: '28px 28px',
         }}
       />
-      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
+      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#ffa766]/30 blur-3xl" />
       <div className="absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-      <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
+      <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#b84f14]/30 blur-3xl" />
     </div>
     <div
       className={`login-card-pop relative z-10 w-full rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5 sm:px-10 ${wide ? 'max-w-2xl' : 'max-w-md'}`}
     >
       <div className="mb-6 flex flex-col items-center">
-        <img src="/cfpLogo.svg" alt="Careerforce Pro" className="h-10 w-auto object-contain" />
+        <img src="/netsmartz-logo.png" alt="HireSmartz" className="h-10 w-auto object-contain" />
         <span className="ai-recruitment-text mt-2 text-xs tracking-widest uppercase">
           AI Powered Recruitment Solutions
         </span>

@@ -23,7 +23,7 @@ const humanizeType = (value: string): string =>
 
 /**
  * `GET /v1/template-settings/overrides` — every system notification
- * Careerforce Pro can send on this tenant's behalf (invites, password
+ * HireSmartz can send on this tenant's behalf (invites, password
  * resets, MFA codes, account-locked alerts, …), whether or not this tenant
  * has customised it. Distinct from the OTHER "SMS Templates" tab on this
  * page, which is a separate, candidate-facing recruiting-SMS feature with
@@ -64,7 +64,7 @@ const NotificationCopyTab: React.FC = () => {
               Notification Copy
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
-              Every system message Careerforce Pro can send on your behalf. Edit the ones you&apos;d
+              Every system message HireSmartz can send on your behalf. Edit the ones you&apos;d
               like in your own words; the rest use the platform&apos;s default copy inside your
               chosen pack.
             </Typography>

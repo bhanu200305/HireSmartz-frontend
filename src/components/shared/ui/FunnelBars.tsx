@@ -17,7 +17,7 @@ type FunnelBarsProps = {
  * shape at a glance, which a `BarChart` with tick labels and gridlines
  * doesn't for a strict top-to-bottom funnel like this.
  */
-const FunnelBars: React.FC<FunnelBarsProps> = ({ stages, color = '#263d92' }) => {
+const FunnelBars: React.FC<FunnelBarsProps> = ({ stages, color = '#fe7725' }) => {
   const max = Math.max(...stages.map((stage) => stage.value), 1);
 
   return (

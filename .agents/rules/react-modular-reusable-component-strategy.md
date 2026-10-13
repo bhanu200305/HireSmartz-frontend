@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Guidelines for creating and structuring reusable shared components in the CareerForcePro codebase.
+description: Guidelines for creating and structuring reusable shared components in the HireSmartz codebase.
 ---
 
 # React Modular & Reusable Component Rules

@@ -13,7 +13,7 @@ describe('Footer', () => {
   it('renders the support contact email', () => {
     render(<Footer />);
 
-    expect(screen.getByText('support@careerforcepro.com')).toBeInTheDocument();
+    expect(screen.getByText('support@hiresmartz.com')).toBeInTheDocument();
   });
 
   it('applies an extra className to the root element', () => {

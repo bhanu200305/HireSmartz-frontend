@@ -69,7 +69,7 @@ const ONBOARDED_RANK = { onboarded: 0, pending: 1, deactivated: 2 } as const;
  * restoring access is the low-risk direction, same reasoning as
  * UsersPanel.tsx's identical Super-Admin-side switch) turns one back on.
  * The tenant-scoped reactivate route used to not exist at all — only
- * organization-service's platform router had it, for a Careerforce Pro
+ * organization-service's platform router had it, for a HireSmartz
  * operator acting on a tenant's behalf — which meant a Company Admin who
  * deactivated someone by mistake, or wanted to re-add them, had no way
  * back: re-adding via "Add user" 409s with "already exists" (deactivating

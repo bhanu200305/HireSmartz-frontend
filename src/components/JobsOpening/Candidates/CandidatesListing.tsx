@@ -452,7 +452,7 @@ const CandidatesListing = () => {
     '[&_svg]:!h-5 [&_svg]:!w-5 [&_.anticon]:!inline-flex [&_.anticon]:!h-5 [&_.anticon]:!w-5 [&_.anticon]:!items-center [&_.anticon]:!justify-center';
 
   return (
-    // Layout/typography follow the legacy careerforcepro-web candidate list:
+    // Layout/typography follow the legacy hiresmartz-web candidate list:
     // job facts stacked on the left, search/notes/add + filters on the right.
     <div className="candidates-list-page relative">
       {isJobOpeningLoading && <Loader />}
@@ -500,12 +500,12 @@ const CandidatesListing = () => {
 
               {canViewJobNotes && (
                 <Button
-                  className={`box-border flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-full border border-[#a9c5e6] bg-[#eaf3ff] px-5 text-[#2c69ad] font-semibold ${notesPillIconClass}`}
+                  className={`box-border flex h-11 min-w-[170px] items-center justify-center gap-2 rounded-full border border-[#ffc59a] bg-[#fff1e6] px-5 text-[#e5661f] font-semibold ${notesPillIconClass}`}
                   onClick={() => setIsJobNotesPanelOpen(true)}
                 >
                   <LuSquarePen size={18} />
                   <span>Notes</span>
-                  <span className="min-w-6 h-6 px-1.5 rounded-lg bg-[#2c69ad] text-white flex items-center justify-center text-xs leading-none">
+                  <span className="min-w-6 h-6 px-1.5 rounded-lg bg-[#e5661f] text-white flex items-center justify-center text-xs leading-none">
                     {jobNotes.length}
                   </span>
                 </Button>

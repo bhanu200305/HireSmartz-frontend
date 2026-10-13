@@ -20,14 +20,14 @@
   background-size: 260% 260%;
   animation: cfp-gradient-flow 6.5s ease-in-out infinite;
   box-shadow:
-    0 16px 36px rgba(38, 61, 146, 0.16),
+    0 16px 36px rgba(254, 119, 37, 0.16),
     0 2px 10px rgba(15, 159, 196, 0.12);
   transition: box-shadow 320ms ease-out;
 }
 
 .cfp-gradient-frame--active {
   box-shadow:
-    0 20px 48px rgba(38, 61, 146, 0.22),
+    0 20px 48px rgba(254, 119, 37, 0.22),
     0 4px 16px rgba(15, 159, 196, 0.2);
 }
 

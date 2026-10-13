@@ -7,7 +7,7 @@ type RoleContextSwitcherProps = {
   onChange: (next: RoleManagementContext) => void;
   /** False for a platform caller who isn't a real Super Admin (cfp_admin/
    * cfp_support) — they hold no platform-role-management permission at all
-   * (the backend 403s that tab outright), so the "Careerforce Pro (CFP
+   * (the backend 403s that tab outright), so the "HireSmartz (CFP
    * staff)" toggle is dropped entirely rather than offering a choice that
    * always fails. Only the company picker renders; there's nothing left to
    * toggle between. */
@@ -58,7 +58,7 @@ const RoleContextSwitcher: React.FC<RoleContextSwitcherProps> = ({
               mode === 'owner' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500'
             }`}
           >
-            Careerforce Pro (CFP staff)
+            HireSmartz (CFP staff)
           </button>
           <button
             type="button"

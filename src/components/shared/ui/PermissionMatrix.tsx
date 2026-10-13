@@ -13,7 +13,7 @@ import type { RoleScope } from '../../../types';
 const MODULE_DESCRIPTIONS: Partial<Record<PermissionModule, string>> = {
   Company: 'Manage client companies on the platform: add, edit, approve, and archive tenants.',
   'Company Settings': "View and update this company's own profile and configuration.",
-  'CFP Users': "Manage Careerforce Pro's internal staff accounts.",
+  'CFP Users': "Manage HireSmartz's internal staff accounts.",
   'Organization Users': "Manage a company's own team members.",
   'Departments & Locations': 'Manage departments and office locations.',
   'Team & Invitations': 'Send, update, and revoke invitations to join the team.',
@@ -33,7 +33,7 @@ const MODULE_DESCRIPTIONS: Partial<Record<PermissionModule, string>> = {
 /**
  * "CFP Users" and "Organization Users" are two headings over the exact same
  * `USER_VIEW`/`USER_ADD`/`USER_EDIT`/`USER_ARCHIVE` codes (see
- * authorities.constant.ts) — one for Careerforce Pro's own internal staff
+ * authorities.constant.ts) — one for HireSmartz's own internal staff
  * (platform scope), one for a tenant's own team (tenant scope). Without this
  * filter, anyone who holds those codes sees the identical checkboxes twice,
  * under two headings, because both modules pass the same ceiling test. Only

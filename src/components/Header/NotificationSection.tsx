@@ -52,7 +52,7 @@ const NotificationSection = ({
               className={`group w-full text-left rounded-md border px-3 py-2.5 transition-colors flex flex-col gap-1.5 relative cursor-pointer ${
                 isRead
                   ? 'border-gray-200 bg-white hover:bg-gray-50'
-                  : 'border-l-4 border-l-[#165DCC] border-gray-300 bg-[#EEF4FF] hover:bg-[#E6EEFC]'
+                  : 'border-l-4 border-l-[#e5661f] border-gray-300 bg-[#fff1e6] hover:bg-[#fff1e6]'
               }`}
               onClick={() => onNotificationClick(notification)}
               onKeyDown={(e) => {
@@ -94,7 +94,7 @@ const NotificationSection = ({
                     <button
                       type="button"
                       aria-label="Mark notification as read"
-                      className="mark-read-button hidden h-4 w-4 rounded-full border border-gray-400 bg-transparent shrink-0 transition-colors cursor-pointer flex items-center justify-center group-hover:flex group-hover:border-gray-300 hover:bg-[#165DCC] hover:border-[#165DCC]"
+                      className="mark-read-button hidden h-4 w-4 rounded-full border border-gray-400 bg-transparent shrink-0 transition-colors cursor-pointer flex items-center justify-center group-hover:flex group-hover:border-gray-300 hover:bg-[#e5661f] hover:border-[#e5661f]"
                       onClick={(e) => {
                         e.stopPropagation();
                         onMarkAsRead(notification);

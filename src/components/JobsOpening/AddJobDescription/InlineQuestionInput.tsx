@@ -44,7 +44,7 @@ export const InlineQuestionInput = ({
         placeholder={placeholder}
         rows={4}
         disabled={disabled}
-        className="w-full resize-none rounded-xl border border-gray-200 bg-[#F6F8FD] px-4 py-2.5 text-sm leading-relaxed text-gray-800 placeholder-gray-400 focus:border-primary focus:outline-none disabled:cursor-not-allowed roboto-font"
+        className="w-full resize-none rounded-xl border border-gray-200 bg-[#fff7f0] px-4 py-2.5 text-sm leading-relaxed text-gray-800 placeholder-gray-400 focus:border-primary focus:outline-none disabled:cursor-not-allowed roboto-font"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();

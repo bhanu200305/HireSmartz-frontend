@@ -16,7 +16,7 @@ import { getCandidateErrorMessage } from '../../../shared/utils/auth/candidateEr
 
 // A round's recording and transcript, shown INLINE in the round's own
 // collapsible cards ("Interview Recording" / "Transcripts"), laid out like
-// the old app (careerforcepro-web InterviewRecording.tsx / Transcript.tsx):
+// the old app (hiresmartz-web InterviewRecording.tsx / Transcript.tsx):
 // a plain full-width player, and the transcript as chat bubbles —
 // interviewer/AI on the left, candidate on the right. Replaced the
 // RoundArtifactsModal popup on 2026-10-03.
@@ -325,7 +325,7 @@ const TranscriptBody = ({ text, aiSpeaksFirst }: { text: string; aiSpeaksFirst: 
           </div>
         ) : (
           <div key={message.id} className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+            <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white">
               {message.isBot ? (
                 <FaRobot size={18} title="AI Interviewer" />
               ) : (

@@ -58,7 +58,7 @@ const NotificationCopyPanel: React.FC<{ tenantId: string }> = ({ tenantId }) => 
               Notification Copy
             </Typography>
             <Typography variant="caption" className="block text-gray-500">
-              Every message Careerforce Pro can send on this company&apos;s behalf. Edit the ones
+              Every message HireSmartz can send on this company&apos;s behalf. Edit the ones
               that need this tenant&apos;s own words; the rest use the platform&apos;s default copy.
             </Typography>
           </div>

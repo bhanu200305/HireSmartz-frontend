@@ -283,7 +283,7 @@ const QuestionRow: React.FC<{
           <div className="grid grid-cols-[1fr_11rem_auto] items-center gap-3 w-full">
             <input
               ref={inputRef}
-              className="min-w-0 rounded-lg border border-primary-200 bg-[#F6F8FD] px-3 py-1 text-sm text-gray-800 focus:border-primary focus:outline-none disabled:opacity-60"
+              className="min-w-0 rounded-lg border border-primary-200 bg-[#fff7f0] px-3 py-1 text-sm text-gray-800 focus:border-primary focus:outline-none disabled:opacity-60"
               value={text}
               disabled={saving}
               onChange={(e) => setText(e.target.value)}
@@ -667,7 +667,7 @@ const JobIntakeQuestionsSection: React.FC<Props> = ({
           <div className="mb-2 text-sm font-semibold text-gray-800">Add An Intake Question</div>
           <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_11rem_auto]">
             <input
-              className="min-w-0 rounded-xl border border-gray-200 bg-[#F6F8FD] px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none"
+              className="min-w-0 rounded-xl border border-gray-200 bg-[#fff7f0] px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none"
               placeholder="Type a question..."
               value={newQuestionText}
               onChange={(e) => setNewQuestionText(e.target.value)}

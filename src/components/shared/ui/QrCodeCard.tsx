@@ -64,7 +64,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
   };
 
   return (
-    // Styled after the legacy careerforcepro-web QR card: Sora heading,
+    // Styled after the legacy hiresmartz-web QR card: Sora heading,
     // Roboto body, a bordered input-style row and a plain "DOWNLOAD" pill.
     <div
       className="flex items-center justify-center py-0"
@@ -102,7 +102,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
         {hasQr && (
           <>
             {/* Public link, always valid — the QR just encodes this same URL */}
-            <div className="w-full h-10 flex items-center gap-2 bg-white border border-gray-300 rounded-md pl-3 pr-2 hover:border-[#1B4DFF] transition-colors">
+            <div className="w-full h-10 flex items-center gap-2 bg-white border border-gray-300 rounded-md pl-3 pr-2 hover:border-[#fe7725] transition-colors">
               <span className="flex-1 min-w-0 text-sm text-gray-700 truncate" title={publicUrl}>
                 {publicUrl}
               </span>
@@ -120,7 +120,7 @@ export const QrCodeCard: React.FC<QrCodeCardProps> = ({
             <Button
               onClick={() => void handleDownload()}
               disabled={isDownloading}
-              className="w-full h-11 bg-[#1B4DFF] text-white rounded-full font-bold text-sm tracking-widest uppercase flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="w-full h-11 bg-[#fe7725] text-white rounded-full font-bold text-sm tracking-widest uppercase flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               {isDownloading ? 'Downloading...' : 'Download'}
             </Button>

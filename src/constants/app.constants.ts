@@ -378,7 +378,7 @@ export const COLOR_WARNING = '#f59e0b';
 /**
  * Info color code
  */
-export const COLOR_INFO = '#3b82f6';
+export const COLOR_INFO = '#fe7725';
 
 /**
  * Neutral/Gray color code

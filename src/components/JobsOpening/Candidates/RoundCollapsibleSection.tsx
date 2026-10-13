@@ -16,7 +16,7 @@ type RoundCollapsibleSectionProps = {
 };
 
 // One collapsible block in a round's detail panel, styled like the old
-// app's accordion (careerforcepro-web AiInterviewDetails.tsx): a pill-shaped
+// app's accordion (hiresmartz-web AiInterviewDetails.tsx): a pill-shaped
 // bordered row while collapsed, rounded card once open, title on the left
 // and a blue plus/minus on the right, content in an inner bordered box.
 // Content is always mounted (unless `lazy`), just height-animated, so

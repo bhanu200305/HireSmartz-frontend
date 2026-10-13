@@ -53,7 +53,7 @@ const InterviewConsentModal = ({
               type="checkbox"
               checked={isChecked}
               onChange={(event) => setIsChecked(event.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[#1D4ED8]"
+              className="mt-0.5 h-4 w-4 accent-[#e5661f]"
             />
             <span>{consentLabel}</span>
           </label>
@@ -78,7 +78,7 @@ const InterviewConsentModal = ({
             type="button"
             disabled={disableContinue}
             onClick={onContinue}
-            className="min-w-30 rounded-lg px-5 py-2.5 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-[#B9BDC3] enabled:bg-linear-to-r enabled:from-[#3CB6EC] enabled:to-[#263DAA] enabled:hover:opacity-90"
+            className="min-w-30 rounded-lg px-5 py-2.5 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-[#B9BDC3] enabled:bg-linear-to-r enabled:from-[#ff9555] enabled:to-[#fe7725] enabled:hover:opacity-90"
           >
             {continueText}
           </button>

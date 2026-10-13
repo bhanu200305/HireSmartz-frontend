@@ -58,7 +58,7 @@ const RolesManagement: React.FC = () => {
   // regardless of actual role — cfp_admin/cfp_support hold no
   // platform-role-management permission at all (confirmed by the backend's
   // own 403 on that tab), so only a genuine Super Admin should be offered
-  // the "Careerforce Pro (CFP staff)" tier at all.
+  // the "HireSmartz (CFP staff)" tier at all.
   const canManagePlatformRoles = isPlatformSuperAdminRole(platformProfileData?.role);
 
   const [switcherContext, setSwitcherContext] = useState<RoleManagementContext>({
@@ -146,7 +146,7 @@ const RolesManagement: React.FC = () => {
   const canLookupCompany = context.scope === 'tenant' && Boolean(context.tenantId);
 
   // The same lookups, for CFP's OWN internal staff — only meaningful once a
-  // Super Admin is actually looking at the "Careerforce Pro (CFP staff)"
+  // Super Admin is actually looking at the "HireSmartz (CFP staff)"
   // tier itself (RoleContextSwitcher's other option), not a client company.
   const canLookupPlatformStaff = context.scope === 'platform';
 

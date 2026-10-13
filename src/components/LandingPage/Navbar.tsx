@@ -30,8 +30,8 @@ const Navbar = () => {
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
         <Link to="/">
           <img
-            src="/cfpLogo.svg"
-            alt="Careerforce Pro"
+            src="/netsmartz-logo.png"
+            alt="HireSmartz"
             className="h-8 w-auto object-contain sm:h-9"
           />
         </Link>

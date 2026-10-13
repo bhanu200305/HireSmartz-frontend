@@ -95,7 +95,7 @@ const VARIANT_STYLES: Record<
     hoverGradient: 'from-primary-50 via-white to-white',
     hoverGradientTall: 'from-primary-200 via-primary-50 to-white',
     hoverBorder: 'group-hover:border-primary-300',
-    hoverGlow: 'group-hover:shadow-[0_12px_28px_-8px_rgba(38,61,146,0.4)]',
+    hoverGlow: 'group-hover:shadow-[0_12px_28px_-8px_rgba(254, 119, 37,0.4)]',
   },
   green: {
     badge: 'bg-success text-white',

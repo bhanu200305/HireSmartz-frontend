@@ -49,13 +49,13 @@ type CardStatus =
 const HEADER_STYLE: Record<CardStatus, { bg: string; text: string }> = {
   'NOT INVITED': { bg: 'bg-red-100', text: 'text-red-700' },
   'INVITATION SENT': { bg: 'bg-gray-100', text: 'text-gray-700' },
-  SCHEDULED: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  ONGOING: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  SCHEDULED: { bg: 'bg-primary-100', text: 'text-primary-700' },
+  ONGOING: { bg: 'bg-primary-100', text: 'text-primary-700' },
   RESCHEDULED: { bg: 'bg-gray-100', text: 'text-gray-700' },
   // The candidate asked for a new time (nothing has been rebooked yet): needs
   // attention without being alarm-red like NO-SHOW / CANCELLED.
   'RESCHEDULE REQUESTED': { bg: 'bg-amber-100', text: 'text-amber-700' },
-  COMPLETED: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  COMPLETED: { bg: 'bg-primary-100', text: 'text-primary-700' },
   SKIPPED: { bg: 'bg-red-100', text: 'text-red-700' },
   CANCELLED: { bg: 'bg-red-100', text: 'text-red-700' },
   'NO-SHOW': { bg: 'bg-red-100', text: 'text-red-700' },

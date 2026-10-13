@@ -324,7 +324,7 @@ export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
     module: 'Company Settings',
   },
 
-  // CFP Users (Careerforce Pro's own internal staff roster) is a DIFFERENT
+  // CFP Users (HireSmartz's own internal staff roster) is a DIFFERENT
   // backend resource from Organization Users below, despite both modules
   // historically being labeled with the same USER_* codes here — confirmed
   // directly against organization-service's real route decorators
@@ -741,9 +741,9 @@ export const PERMISSION_DESCRIPTIONS: Partial<Record<Authorities, string>> = {
 
   [Authorities.PLATFORM_VIEW]: "View the platform's internal administration area.",
   [Authorities.PLATFORM_INVITE]:
-    'Invite a new Super Admin or internal Careerforce Pro staff member.',
-  [Authorities.PLATFORM_MANAGE_DEPARTMENTS]: "Manage Careerforce Pro's own internal departments.",
-  [Authorities.PLATFORM_OFFBOARD_STAFF]: 'Offboard an internal Careerforce Pro staff member.',
+    'Invite a new Super Admin or internal HireSmartz staff member.',
+  [Authorities.PLATFORM_MANAGE_DEPARTMENTS]: "Manage HireSmartz's own internal departments.",
+  [Authorities.PLATFORM_OFFBOARD_STAFF]: 'Offboard an internal HireSmartz staff member.',
   [Authorities.PLATFORM_APPROVE]: 'Approve a platform administration action.',
   [Authorities.PLATFORM_EXPORT]: 'Download platform administration data as a file.',
 

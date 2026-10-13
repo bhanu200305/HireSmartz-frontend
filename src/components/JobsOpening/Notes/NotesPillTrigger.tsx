@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { LuSquarePen } from 'react-icons/lu';
 
 /** Brand color for notes triggers and drawer accents */
-export const NOTES_ACCENT = '#263d92';
+export const NOTES_ACCENT = '#fe7725';
 
 const pillBase =
   'inline-flex items-center rounded-full border font-medium transition-colors border-primary-200 bg-primary-50 text-primary-600 hover:bg-primary-100 hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-50 disabled:hover:border-primary-200';
@@ -53,7 +53,7 @@ export function NotesPillTrigger({
       <LuSquarePen size={iconSize} strokeWidth={2} className="shrink-0" aria-hidden />
       <span className="whitespace-nowrap">{label}</span>
       {showBadge ? (
-        <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md bg-[#263d92] px-1.5 py-0.5 text-xs font-semibold leading-none text-white tabular-nums">
+        <span className="inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-md bg-[#fe7725] px-1.5 py-0.5 text-xs font-semibold leading-none text-white tabular-nums">
           {count}
         </span>
       ) : null}

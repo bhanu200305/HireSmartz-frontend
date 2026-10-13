@@ -463,7 +463,7 @@ export const CareersApplyPage = () => {
               className="text-sm text-gray-600 leading-relaxed cursor-pointer"
             >
               I agree to receive SMS updates regarding my job application, interview scheduling,
-              reminders, and status updates from Careerforce Pro. Message frequency may vary.
+              reminders, and status updates from HireSmartz. Message frequency may vary.
               Message &amp; data rates may apply. Reply STOP to opt out.
               <br />
               <span className="text-gray-400">(Uncheck if you don&apos;t want SMS updates)</span>
@@ -487,7 +487,7 @@ export const CareersApplyPage = () => {
             >
               By checking, I accept{' '}
               <a
-                href="https://www.careerforcepro.com/terms-of-service"
+                href="https://www.hiresmartz.com/terms-of-service"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-600 hover:underline"
@@ -496,7 +496,7 @@ export const CareersApplyPage = () => {
               </a>{' '}
               &amp;{' '}
               <a
-                href="https://www.careerforcepro.com/privacy-policy"
+                href="https://www.hiresmartz.com/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-600 hover:underline"

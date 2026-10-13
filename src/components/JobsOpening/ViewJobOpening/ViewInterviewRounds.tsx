@@ -112,7 +112,7 @@ const ViewInterviewRound = () => {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <h3 className="m-0 text-base font-bold text-neutral-900">{activeName}</h3>
               {activeBadge && (
-                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
                   {ActiveBadgeIcon && <ActiveBadgeIcon className="shrink-0 text-sm" />}
                   {activeBadge.label}
                 </span>

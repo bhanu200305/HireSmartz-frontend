@@ -99,7 +99,7 @@ const MenuItems = [
     requiredAuthority: Authorities.ROLE_VIEW,
   },
   {
-    // CFP Users (Careerforce Pro's own internal team) lives as a section on
+    // CFP Users (HireSmartz's own internal team) lives as a section on
     // this same page now, not a separate nav entry — see
     // pages/OrganisationUserPage and components/CfpUsers.
     name: 'CFP Users',

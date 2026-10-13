@@ -138,7 +138,7 @@ const InterviewSmsPanel = ({
               {headerPhone}
             </span>
           </div>
-          <div className="text-sm text-[#3565b7]">Candidate</div>
+          <div className="text-sm text-[#fe7725]">Candidate</div>
         </div>
 
         <button
@@ -172,9 +172,9 @@ const InterviewSmsPanel = ({
             const initials = getInitials('Hiring Team') || 'U';
             return (
               <div key={msg.id} className="mb-3 flex justify-end">
-                <div className="max-w-[88%] rounded-lg border border-[#9eb3d7] bg-[#d9e3f7] px-3 py-2 text-[#2f2f2f]">
+                <div className="max-w-[88%] rounded-lg border border-[#ffa766] bg-[#ffe0c7] px-3 py-2 text-[#2f2f2f]">
                   <div className="mb-1 flex items-center gap-2 text-sm">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#d5deee] text-xs font-semibold text-[#2f5ea8]">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#d5deee] text-xs font-semibold text-[#e5661f]">
                       {initials}
                     </span>
                     <span className="font-semibold">Hiring Team</span>
@@ -230,7 +230,7 @@ const InterviewSmsPanel = ({
             type="button"
             onClick={() => void handleSend()}
             disabled={!canSend}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#9fb4d5] hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#ffa766] hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Send message"
           >
             <IoSend size={18} />

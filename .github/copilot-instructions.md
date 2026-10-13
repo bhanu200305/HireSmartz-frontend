@@ -1,8 +1,8 @@
-# CareerForcePro Web - AI Coding Instructions
+# HireSmartz Web - AI Coding Instructions
 
 ## Project Overview
 
-CareerForcePro is a React 19 + TypeScript hiring platform with real-time video interviews, candidate management, job openings, and AI-powered question generation. Built with Vite, Redux Toolkit, and React Router v7.
+HireSmartz is a React 19 + TypeScript hiring platform with real-time video interviews, candidate management, job openings, and AI-powered question generation. Built with Vite, Redux Toolkit, and React Router v7.
 
 ## Architecture
 

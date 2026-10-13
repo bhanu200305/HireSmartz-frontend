@@ -26,9 +26,9 @@ import { parseCalendarDate } from '../../shared/utils/calendarDate';
 // interviews-by-status groups by (round_type_classification.py).
 const ROUND_TYPES = ['AUDIO', 'AVATAR', 'VIDEO'] as const;
 const ROUND_TYPE_COLORS: Record<(typeof ROUND_TYPES)[number], string> = {
-  AUDIO: '#1d4ed8',
+  AUDIO: '#e5661f',
   AVATAR: '#0d9488',
-  VIDEO: '#3b82f6',
+  VIDEO: '#fe7725',
 };
 // Display names for those buckets (round_type_classification.py): AUDIO =
 // AI Agent Call rounds, AVATAR = AI Video Interview rounds (soundwave/avatar),
@@ -42,7 +42,7 @@ const ROUND_TYPE_LABELS: Record<(typeof ROUND_TYPES)[number], string> = {
 const COLOR_SUCCESS = '#059669';
 const COLOR_WARNING = '#d97706';
 const COLOR_NEUTRAL = '#9aa3bc';
-const COLOR_ACCENT = '#0f9fc4';
+const COLOR_ACCENT = '#e5661f';
 
 const capitalize = (value: string): string =>
   value

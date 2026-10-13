@@ -25,8 +25,8 @@ import { parseCalendarDate } from '../../shared/utils/calendarDate';
 
 // Brand tokens (src/theme/index.css) — no new colors introduced, same
 // palette every other chart/badge in the app already draws from.
-const COLOR_PRIMARY = '#263d92';
-const COLOR_ACCENT = '#0f9fc4';
+const COLOR_PRIMARY = '#fe7725';
+const COLOR_ACCENT = '#e5661f';
 const COLOR_SUCCESS = '#059669';
 const COLOR_WARNING = '#d97706';
 const COLOR_DANGER = '#dc2626';

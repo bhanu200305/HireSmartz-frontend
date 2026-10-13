@@ -8,7 +8,7 @@ const Footer = () => (
   <footer className="bg-neutral-950 px-5 pt-16 pb-8 text-white sm:px-8">
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
       <div>
-        <img src="/white-logo.svg" alt="Careerforce Pro" className="h-8 w-auto object-contain" />
+        <img src="/netsmartz-logo-white.png" alt="HireSmartz" className="h-8 w-auto object-contain" />
         <p className="mt-4 max-w-xs text-sm text-white/50">
           Transform your manual, inconsistent hiring process into a scalable, data-driven workflow
           with our AI-powered Talent Acquisition platform.
@@ -30,8 +30,8 @@ const Footer = () => (
       ))}
     </div>
     <div className="mx-auto mt-12 flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
-      <p>© {new Date().getFullYear()} Careerforce Pro Inc. All rights reserved.</p>
-      <p>support@careerforcepro.com</p>
+      <p>© {new Date().getFullYear()} HireSmartz Inc. All rights reserved.</p>
+      <p>support@hiresmartz.com</p>
     </div>
   </footer>
 );

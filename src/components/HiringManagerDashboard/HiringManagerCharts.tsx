@@ -9,8 +9,8 @@ import {
 import { useJobOpeningNameMap, jobDisplayName } from './useJobOpeningNameMap';
 import { AI_SCORE_MAX } from '../JobsOpening/Candidates/roundPipeline';
 
-const COLOR_PRIMARY = '#263d92';
-const COLOR_ACCENT = '#0f9fc4';
+const COLOR_PRIMARY = '#fe7725';
+const COLOR_ACCENT = '#e5661f';
 const COLOR_SUCCESS = '#059669';
 
 const cardTooltipStyle = {

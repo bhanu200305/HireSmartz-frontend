@@ -355,7 +355,7 @@ export const CareersInstantCallPage = () => {
             >
               By checking, I accept{' '}
               <a
-                href="https://www.careerforcepro.com/terms-of-service"
+                href="https://www.hiresmartz.com/terms-of-service"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-600 hover:underline"
@@ -364,7 +364,7 @@ export const CareersInstantCallPage = () => {
               </a>{' '}
               &amp;{' '}
               <a
-                href="https://www.careerforcepro.com/privacy-policy"
+                href="https://www.hiresmartz.com/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-600 hover:underline"

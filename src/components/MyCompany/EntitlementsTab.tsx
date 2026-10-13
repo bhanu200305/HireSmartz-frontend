@@ -107,7 +107,7 @@ const EntitlementsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
         <div>
           <Typography variant="h5">Feature Settings</Typography>
           <Typography variant="body2" className="text-gray-400 mt-0.5">
-            {enabledCount} of {FLAGS.length} features enabled. A locked flag was set by Careerforce
+            {enabledCount} of {FLAGS.length} features enabled. A locked flag was set by HireSmartz
             Pro. Contact support to change it.
           </Typography>
         </div>
@@ -142,7 +142,7 @@ const EntitlementsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => {
                     {description}
                   </Typography>
                   {isLocked && (
-                    <Tooltip title="Locked by Careerforce Pro. Contact support to change this.">
+                    <Tooltip title="Locked by HireSmartz. Contact support to change this.">
                       <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold tracking-wide px-1.5 py-0.5 shrink-0">
                         <MdLockOutline size={10} /> Locked
                       </span>

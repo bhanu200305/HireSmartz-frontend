@@ -236,8 +236,8 @@ export const ScoringWeightCard: React.FC<ScoringWeightCardProps> = ({
                     handleSliderChange(w.id, Math.min(val, maxForThis));
                   }
                 }}
-                trackStyle={{ backgroundColor: meta?.color ?? '#6366f1' }}
-                handleStyle={{ borderColor: meta?.color ?? '#6366f1' }}
+                trackStyle={{ backgroundColor: meta?.color ?? '#ff8340' }}
+                handleStyle={{ borderColor: meta?.color ?? '#ff8340' }}
                 tooltip={{ formatter: (val) => `${val}%` }}
               />
             </div>

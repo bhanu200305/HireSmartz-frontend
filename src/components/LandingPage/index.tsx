@@ -160,11 +160,11 @@ const HeroMockup = () => {
         </div>
 
         <div className="mb-4 grid grid-cols-3 gap-2.5">
-          <div className="rounded-xl bg-[#eef2ff] px-3 py-2.5">
+          <div className="rounded-xl bg-[#fff1e6] px-3 py-2.5">
             <p className="font-display text-lg font-bold text-primary-600">128</p>
             <p className="text-xs font-medium text-neutral-500">Candidates</p>
           </div>
-          <div className="rounded-xl bg-[#ecf7fb] px-3 py-2.5">
+          <div className="rounded-xl bg-[#fff1e6] px-3 py-2.5">
             <p className="font-display text-lg font-bold text-accent-500">42</p>
             <p className="text-xs font-medium text-neutral-500">Interviews</p>
           </div>
@@ -198,11 +198,11 @@ const HeroMockup = () => {
 };
 
 const Hero = () => (
-  <section className="relative overflow-hidden bg-gradient-to-b from-[#eef2ff] via-[#f9fafc] to-white pt-32 pb-20 sm:pt-40 sm:pb-28">
+  <section className="relative overflow-hidden bg-gradient-to-b from-[#fff1e6] via-[#f9fafc] to-white pt-32 pb-20 sm:pt-40 sm:pb-28">
     <div
       className="pointer-events-none absolute inset-0 opacity-[0.35]"
       style={{
-        backgroundImage: 'radial-gradient(rgba(38,61,146,0.12) 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(rgba(254, 119, 37,0.12) 1px, transparent 1px)',
         backgroundSize: '26px 26px',
       }}
     />
@@ -440,7 +440,7 @@ const WhyCfp = () => (
   <section id="why-cfp" className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
     <Reveal className="text-center">
       <h2 className="font-display text-3xl font-extrabold text-neutral-900 sm:text-4xl">
-        Why Careerforce Pro
+        Why HireSmartz
       </h2>
       <p className="mt-3 text-neutral-500">
         Deep, dependable, and built to scale with your hiring needs.
@@ -453,7 +453,7 @@ const WhyCfp = () => (
           delayMs={i * 80}
           className="flex flex-col items-center text-center"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ecf7fb] text-2xl text-accent-500">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff1e6] text-2xl text-accent-500">
             {item.icon}
           </div>
           <p className="mt-3 text-sm font-bold text-neutral-900">{item.title}</p>
@@ -476,7 +476,7 @@ const CtaBanner = () => (
         Stay Ahead of the Curve with AI-Powered Hiring
       </h2>
       <p className="relative mx-auto mt-4 max-w-xl text-white/80">
-        Enable consistency and confidence while embracing the future of hiring with Careerforce Pro.
+        Enable consistency and confidence while embracing the future of hiring with HireSmartz.
       </p>
       <div className="relative mt-8 flex flex-wrap items-center justify-center gap-4">
         <Link

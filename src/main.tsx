@@ -13,7 +13,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 dayjs.extend(customParseFormat);
 
-// Careerforce Pro brand theme applied to every Ant Design component app-wide.
+// HireSmartz brand theme applied to every Ant Design component app-wide.
 // Sourced from the same CSS custom properties as the Tailwind theme
 // (src/theme/index.css) so AntD and the hand-rolled shared/ui kit never drift
 // apart — change a hex value once, both systems pick it up.
@@ -45,8 +45,8 @@ const cfpAntdTheme = {
 
     // Elevation — navy-tinted, not pure black; reserved for floating layers
     // (dropdowns, modals, popovers) to match the rest of the app.
-    boxShadow: '0 2px 8px rgba(16, 26, 58, 0.08)',
-    boxShadowSecondary: '0 8px 24px rgba(16, 26, 58, 0.12)',
+    boxShadow: '0 2px 8px rgba(26, 26, 26, 0.08)',
+    boxShadowSecondary: '0 8px 24px rgba(26, 26, 26, 0.12)',
   },
   components: {
     Button: { borderRadius: 8, fontWeight: 600 },

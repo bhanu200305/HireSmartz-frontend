@@ -56,7 +56,7 @@ const RoundInfoModal: FC<RoundInfoModalProps> = ({
             {roundName}
           </h2>
           {badgeLabel && (
-            <p className="text-xs font-medium text-sky-700 mt-0.5 truncate">{badgeLabel}</p>
+            <p className="text-xs font-medium text-primary-700 mt-0.5 truncate">{badgeLabel}</p>
           )}
         </div>
         <button

@@ -108,7 +108,7 @@ export const QuestionRowItem = ({
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={(e) => commitOrRevert(e.relatedTarget)}
-            className="min-w-0 flex-1 rounded-lg border border-primary-200 bg-[#F6F8FD] px-3 py-1 text-sm text-gray-800 focus:border-primary focus:outline-none"
+            className="min-w-0 flex-1 rounded-lg border border-primary-200 bg-[#fff7f0] px-3 py-1 text-sm text-gray-800 focus:border-primary focus:outline-none"
           />
           <div className="flex shrink-0 items-center gap-3">
             <Tooltip title="Save (Enter)">

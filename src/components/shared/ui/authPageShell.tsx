@@ -14,7 +14,7 @@ export const AuthPageShell = ({ children }: { children: ReactNode }) => (
   // outside it. The decorative blobs below are clipped to their own wrapper
   // instead, so this shell can grow taller than 100vh when a page using it
   // needs to.
-  <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#2c47a3] via-[#3f5bc4] to-[#6fc3e0] px-4 py-12">
+  <div className="relative flex min-h-screen w-full flex-col items-center justify-center font-['DM Sans'] bg-gradient-to-br from-[#e5661f] via-[#ff8340] to-[#ffa766] px-4 py-12">
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         className="absolute inset-0 opacity-[0.15]"
@@ -23,13 +23,13 @@ export const AuthPageShell = ({ children }: { children: ReactNode }) => (
           backgroundSize: '28px 28px',
         }}
       />
-      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#7dd8ee]/30 blur-3xl" />
+      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[#ffa766]/30 blur-3xl" />
       <div className="absolute top-1/4 -right-16 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-      <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#182a72]/30 blur-3xl" />
+      <div className="absolute -bottom-28 -right-24 h-[26rem] w-[26rem] rounded-full bg-[#b84f14]/30 blur-3xl" />
     </div>
     <div className="login-card-pop relative z-10 w-full max-w-sm rounded-3xl bg-white px-8 py-9 shadow-2xl ring-1 ring-black/5">
       <div className="mb-6 flex flex-col items-center">
-        <img src="/cfpLogo.svg" alt="Careerforce Pro" className="h-10 w-auto object-contain" />
+        <img src="/netsmartz-logo.png" alt="HireSmartz" className="h-10 w-auto object-contain" />
         <span className="ai-recruitment-text mt-2 text-xs tracking-widest uppercase">
           AI Powered Recruitment Solutions
         </span>

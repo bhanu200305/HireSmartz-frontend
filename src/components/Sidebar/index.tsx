@@ -23,17 +23,12 @@ import { useGetOwnUserProfileQuery } from '../../api/organization-service/Users/
 import { useGetOwnPlatformProfileQuery } from '../../api/organization-service/Platform/staff';
 import { systemRoleLabel } from '../RolesManagement/data/roleTemplates';
 
-// Public-folder asset — referenced by URL, not imported (mirrors how Header
-// previously referenced /cfpLogo.svg). This is the dedicated icon-only mark
-// (also this app's favicon — see index.html), not a shrunk crop of the full
-// wordmark. It keeps its real brand gradient at both collapsed and expanded
-// widths — paired with a plain-text wordmark (below) when expanded, rather
-// than swapping to `/white-logo.svg`, whose flattened all-white rendering
-// stripped the "F" mark's gradient too, so the logo's colors used to change
-// depending on whether the sidebar was collapsed.
-const ICON_LOGO_SRC = '/logoSmall.svg';
+// Public-folder assets — referenced by URL, not imported. The icon-only mark is
+// also this app's favicon (see index.html); the sidebar is dark, so the full
+// logo uses the white-text variant.
+const ICON_LOGO_SRC = '/netsmartz-icon.png';
 // Full brand logo (icon + wordmark) shown when the sidebar is expanded.
-const FULL_LOGO_SRC = '/cfpLogo.svg';
+const FULL_LOGO_SRC = '/netsmartz-logo-white.png';
 
 // menuItem.tsx entries for audit-service's Activity Feed, one per audience;
 // all displayed as "Activity Feed" (see the label below).
@@ -287,11 +282,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         {isCollapsed ? (
           <img
             src={ICON_LOGO_SRC}
-            alt="Careerforce Pro"
+            alt="HireSmartz"
             className="h-8 w-8 shrink-0 object-contain"
           />
         ) : (
-          <img src={FULL_LOGO_SRC} alt="Careerforce Pro" className="h-8 w-auto object-contain" />
+          <img src={FULL_LOGO_SRC} alt="HireSmartz" className="h-8 w-auto object-contain" />
         )}
       </div>
 
@@ -371,8 +366,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 isCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
               }`}
               style={{
-                background: isActive ? 'rgba(17,183,221,0.12)' : 'transparent',
-                color: isActive ? '#11b7dd' : 'rgba(255,255,255,0.45)',
+                background: isActive ? 'rgba(254, 119, 37,0.12)' : 'transparent',
+                color: isActive ? '#fe7725' : 'rgba(255,255,255,0.45)',
               }}
             >
               <span className="flex-shrink-0">{item.icon}</span>

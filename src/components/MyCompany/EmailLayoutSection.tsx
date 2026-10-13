@@ -31,22 +31,22 @@ import {
 // same values `jinja_renderer.py`'s `_PACK_THEME_DEFAULTS[PackKey.CORPORATE]`
 // falls back to, so an untouched picker matches what a real send renders.
 const CORPORATE_DEFAULTS: Required<EmailThemeColors> = {
-  primary_color: '#1F3A5F',
+  primary_color: '#3d1a08',
   secondary_color: '#D9E2EC',
   background_color: '#EEF1F5',
   text_color: '#344054',
   title_color: '#101828',
   greeting_color: '#101828',
-  button_background: '#1F3A5F',
+  button_background: '#3d1a08',
   button_text: '#FFFFFF',
-  button_border_color: '#1F3A5F',
+  button_border_color: '#3d1a08',
   highlight_background: '#FFFFFF',
   highlight_text: '#667085',
   footer_background: '#F7F8FA',
   footer_text: '#98A2B3',
   action_button_text: '#FFFFFF',
-  action_button_background: '#1F3A5F',
-  action_button_border_color: '#1F3A5F',
+  action_button_background: '#3d1a08',
+  action_button_border_color: '#3d1a08',
 };
 
 /**
@@ -195,7 +195,7 @@ const EmailLayoutSection: React.FC = () => {
       </Typography>
       <Typography variant="caption" className="mb-4 block text-gray-500">
         Applies to candidate-facing mail only, since your company logo already shows there. This
-        never changes the Company-Admin invite or sign-in emails, which always carry Careerforce
+        never changes the Company-Admin invite or sign-in emails, which always carry HireSmartz
         Pro&apos;s own branding.
       </Typography>
 

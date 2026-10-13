@@ -180,7 +180,7 @@ const AiCallBooking = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Careerforce Pro</h1>
+          <h1 className="text-3xl font-bold text-primary">HireSmartz</h1>
           <p className="text-gray-600">AI-Powered Recruitment Platform</p>
         </div>
 

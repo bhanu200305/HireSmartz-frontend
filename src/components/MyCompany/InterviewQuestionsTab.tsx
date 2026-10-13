@@ -220,7 +220,7 @@ const InterviewQuestionsTab: React.FC<{ tenantId: string }> = ({ tenantId }) => 
       <Typography variant="body2" className="mb-6 block">
         Your HR/interpersonal question set, asked in every candidate&apos;s first-round intake call.
         Each question is tied to one Resume Field, the section of a candidate&apos;s resume its
-        spoken answer is meant to fill in. Set by Careerforce Pro by default; once you add, edit, or
+        spoken answer is meant to fill in. Set by HireSmartz by default; once you add, edit, or
         remove a question here, this becomes your company&apos;s own independent set.
       </Typography>
 

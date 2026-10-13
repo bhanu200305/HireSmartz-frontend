@@ -114,7 +114,7 @@ interface GlobalSearchProps {
 // A USER result's `extraJson.userType` says which of three things it is
 // (see org-service's `GlobalSearchUseCase._to_result_item`):
 //   - "COMPANY": a real, accepted `users` row — has its own detail page.
-//   - "CFP": Careerforce Pro's own internal staff, merged in for a platform
+//   - "CFP": HireSmartz's own internal staff, merged in for a platform
 //     (SuperAdmin) search — no single-record detail page anywhere in the
 //     app, only the listing at `/organisation-users`.
 //   - "COMPANY_PENDING": someone a tenant has invited who has not yet
@@ -247,7 +247,7 @@ const ResultSection: React.FC<ResultSectionProps> = ({
                 transition: 'background-color 0.15s ease',
                 borderBottom: withBottomBorder ? undefined : 'none',
                 backgroundColor: isKeyboardFocused ? '#f8f9fb' : undefined,
-                boxShadow: isKeyboardFocused ? 'inset 0 0 0 1px #c7d2fe' : undefined,
+                boxShadow: isKeyboardFocused ? 'inset 0 0 0 1px #ffc59a' : undefined,
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#f8f9fb';
@@ -331,7 +331,7 @@ const JobResultItem: React.FC<{
         width: 32,
         height: 32,
         borderRadius: '50%',
-        backgroundColor: '#eff6ff',
+        backgroundColor: '#fff1e6',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -339,7 +339,7 @@ const JobResultItem: React.FC<{
         pointerEvents: 'none',
       }}
     >
-      <SolutionOutlined style={{ fontSize: 16, color: '#2563eb' }} />
+      <SolutionOutlined style={{ fontSize: 16, color: '#fe7725' }} />
     </div>
     <div style={{ pointerEvents: 'none', flex: 1 }}>
       <Link
@@ -452,7 +452,7 @@ const CompanyResultItem: React.FC<{
         width: 32,
         height: 32,
         borderRadius: '50%',
-        backgroundColor: '#eff6ff',
+        backgroundColor: '#fff1e6',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -460,7 +460,7 @@ const CompanyResultItem: React.FC<{
         pointerEvents: 'none',
       }}
     >
-      <ShopOutlined style={{ fontSize: 16, color: '#2563eb' }} />
+      <ShopOutlined style={{ fontSize: 16, color: '#fe7725' }} />
     </div>
     <div style={{ pointerEvents: 'none', flex: 1 }}>
       <Link
@@ -884,8 +884,8 @@ export default function GlobalSearch({
                   handleRecentSearchClick(item.queryText as string);
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#eef2ff';
-                  e.currentTarget.style.borderColor = '#c7d2fe';
+                  e.currentTarget.style.backgroundColor = '#fff1e6';
+                  e.currentTarget.style.borderColor = '#ffc59a';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#f8f9fb';

@@ -38,7 +38,7 @@ const UpdatePackage = () => {
                 <span>Update Package</span>
               </Button>
               <Button
-                className="w-full text-center text-black border border-[#1976D2] bg-white rounded-3xl px-4 py-2  items-center space-x-2 mt-2"
+                className="w-full text-center text-black border border-[#fe7725] bg-white rounded-3xl px-4 py-2  items-center space-x-2 mt-2"
                 onClick={() => navigate('/update-payment')}
               >
                 {' '}

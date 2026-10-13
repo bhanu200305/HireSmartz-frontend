@@ -16,7 +16,7 @@ const TABS: { key: RoundDetailTabKey; label: string }[] = [
   { key: 'feedback', label: 'Feedback' },
 ];
 
-// Old app's per-round tab strip (FeedbackTabs.tsx in careerforcepro-web):
+// Old app's per-round tab strip (FeedbackTabs.tsx in hiresmartz-web):
 // underlined text tabs on the left, round actions on the right. Mounted per
 // round (the parent keys the round panel by id), so it always opens on
 // Summary and Scoring.

@@ -95,7 +95,7 @@
    without a pointer nearby. */
 .customTable .ant-table-tbody > tr.customTable-row-focused > td {
   background: var(--color-primary-50) !important;
-  box-shadow: inset 0 0 0 1px var(--color-primary-200, #c7d2fe);
+  box-shadow: inset 0 0 0 1px var(--color-primary-200, #ffc59a);
 }
 
 /* `.cfp-h-scroll` is on the SAME div as `.customTable` (see table.tsx) —

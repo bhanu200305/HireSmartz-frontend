@@ -116,7 +116,7 @@ export const CareersSmsConsentPage = () => {
         </p>
         <p className="text-sm text-gray-500 leading-relaxed mb-6">
           By confirming, you agree to receive SMS updates regarding your job application, interview
-          scheduling, reminders, and status updates from Careerforce Pro. Message frequency may
+          scheduling, reminders, and status updates from HireSmartz. Message frequency may
           vary. Message &amp; data rates may apply. Reply STOP to opt out.
         </p>
 

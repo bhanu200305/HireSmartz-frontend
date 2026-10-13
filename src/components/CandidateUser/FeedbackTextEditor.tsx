@@ -103,7 +103,7 @@ export const FeedbackTextEditor = ({
       options: ['left', 'center', 'right'],
     },
     colorPicker: {
-      colors: ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'],
+      colors: ['#000000', '#FF0000', '#00FF00', '#fe7725', '#FFFF00'],
     },
     link: {
       showOpenOptionOnHover: true,
